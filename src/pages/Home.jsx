@@ -28,9 +28,7 @@ function Home() {
         .catch(() => {
           toast.error("FoodDash: Session expired. Please scan QR again.");
 
-          setTimeout(() => {
-            navigate("/scan"); // ✅ FIXED
-          }, 800);
+          navigate("/scan"); // ✅ FIXED
         });
 
       return; // ✅ stop further execution
@@ -70,7 +68,7 @@ function Home() {
       {!storedToken && (
         <Link
           to="/scan"
-          className="bg-emerald-500 text-white px-6 py-3 rounded-lg"
+          className="px-6 py-3 text-white rounded-lg bg-emerald-500"
         >
           Scan QR
         </Link>
