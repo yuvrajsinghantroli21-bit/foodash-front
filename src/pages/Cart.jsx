@@ -6,7 +6,7 @@ import socket from "../socket/socket";
 
 function Cart() {
   const [toast, setToast] = useState(null);
-  const [notes, setNotes] = useState({}); // ✅ NEW (for instructions)
+  const [notes, setNotes] = useState({});
 
   const { cart, addToCart, removeItem, deleteItem, clearCart } =
     useContext(CartContext);
@@ -22,7 +22,7 @@ function Cart() {
 
   useEffect(() => {
     socket.on("session-expired", (data) => {
-      if (data.table === table) {
+      if (data.token === token) {
         setToast("Session expired. Please scan QR again.");
 
         localStorage.removeItem("token");
@@ -38,7 +38,6 @@ function Cart() {
     };
   }, []);
 
-  // ✅ HANDLE NOTE CHANGE
   const handleNoteChange = (id, value) => {
     setNotes((prev) => ({
       ...prev,
@@ -61,11 +60,12 @@ function Cart() {
     const order = {
       table: table,
       sessionId: token,
+      total: total,
       items: cart.map((item) => ({
         name: item.name,
         price: item.price,
         qty: item.qty,
-        note: notes[item._id] || "", // ✅ include note
+        note: notes[item._id] || "",
       })),
       status: "pending",
     };
@@ -97,13 +97,12 @@ function Cart() {
 
   return (
     <>
-      <div className="min-h-screen px-4 py-8 bg-gray-100 dark:bg-slate-950 dark:text-gray-200">
+      <div className="min-h-screen px-4 py-8 pb-32 bg-gray-100 dark:bg-slate-950 dark:text-gray-200">
         <div className="max-w-3xl mx-auto">
           {/* HEADER */}
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-3xl font-bold">Cart — Table {table}</h1>
 
-            {/* ✅ ADD MORE ITEMS BUTTON */}
             <button
               onClick={() => navigate("/menu")}
               className="px-4 py-2 text-sm font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600"
@@ -154,7 +153,7 @@ function Cart() {
                   </div>
                 </div>
 
-                {/* ✅ SPECIAL INSTRUCTION INPUT */}
+                {/* NOTE INPUT */}
                 <div className="mt-3">
                   <input
                     type="text"
@@ -167,27 +166,30 @@ function Cart() {
               </div>
             ))}
           </div>
-
-          {/* TOTAL + CTA */}
-          {cart.length > 0 && (
-            <div className="p-6 mt-8 bg-white shadow-lg rounded-2xl dark:bg-slate-900">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">Total</h2>
-                <span className="text-2xl font-bold text-emerald-500">
-                  ₹{total}
-                </span>
-              </div>
-
-              <button
-                onClick={placeOrder}
-                className="w-full py-3 font-semibold text-white transition bg-emerald-500 rounded-xl hover:bg-emerald-600"
-              >
-                Place Order 🚀
-              </button>
-            </div>
-          )}
         </div>
       </div>
+
+      {/* ✅ STICKY TOTAL BOX */}
+      {cart.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-transparent">
+          <div className="max-w-3xl p-5 mx-auto bg-white border shadow-2xl rounded-2xl dark:bg-slate-900 dark:border-slate-800">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-400">{cart.length} items</span>
+
+              <span className="text-xl font-bold text-emerald-500">
+                ₹{total}
+              </span>
+            </div>
+
+            <button
+              onClick={placeOrder}
+              className="w-full py-3 font-semibold text-white transition bg-emerald-500 rounded-xl hover:bg-emerald-600"
+            >
+              Place Order 🚀
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* TOAST */}
       {toast && (
