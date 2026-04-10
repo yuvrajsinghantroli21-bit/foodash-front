@@ -129,11 +129,11 @@ function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-slate-950 p-6">
+    <div className="min-h-screen p-6 bg-gray-100 dark:bg-slate-950">
       <audio ref={audioRef} src="/sound.mp3" />
 
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Admin Dashboard
         </h1>
@@ -148,16 +148,15 @@ function AdminDashboard() {
                   setSoundEnabled(true);
                 });
               }}
-              className="bg-emerald-500 text-white px-4 py-2 rounded"
+              className="px-4 py-2 text-white rounded bg-emerald-500"
             >
               Enable Sound 🔔
             </button>
           )}
 
-          {/* ACTIVE */}
           <Link
             to="/admin/dashboard"
-            className="px-4 py-2 bg-gray-200 dark:bg-gray-800 dark:text-white rounded-lg"
+            className="px-4 py-2 bg-gray-200 rounded-lg dark:bg-gray-800 dark:text-white"
           >
             Active Orders
           </Link>
@@ -169,7 +168,7 @@ function AdminDashboard() {
       </div>
 
       {/* TOAST */}
-      <div className="fixed top-6 right-6 space-y-3 z-50">
+      <div className="fixed z-50 space-y-3 top-6 right-6">
         {orderToasts.map((t, i) => (
           <OrderToast key={i} order={t} onClose={() => removeToast(i)} />
         ))}
@@ -188,23 +187,23 @@ function AdminDashboard() {
           return (
             <div
               key={table}
-              className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-5"
+              className="p-5 bg-white shadow-xl dark:bg-slate-900 rounded-2xl"
             >
-              <h2 className="text-xl font-bold mb-4 text-black dark:text-white">
+              <h2 className="mb-4 text-xl font-bold text-black dark:text-white">
                 Table {table}
               </h2>
 
               {tableOrders
                 .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
                 .map((order, idx) => (
-                  <div key={order._id} className="mb-4 border-t pt-3">
+                  <div key={order._id} className="pt-3 mb-4 border-t">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-bold text-gray-600 dark:text-gray-300">
                           Batch #{idx + 1}
                         </span>
 
-                        <span className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-gray-200">
+                        <span className="px-2 py-1 text-xs text-gray-800 bg-gray-200 rounded dark:bg-slate-700 dark:text-gray-200">
                           Order #{order._id.slice(-5).toUpperCase()}
                         </span>
                       </div>
@@ -221,43 +220,52 @@ function AdminDashboard() {
                     </div>
 
                     {order.items.map((item, i) => (
-                      <div
-                        key={i}
-                        className="flex justify-between items-center mb-2"
-                      >
-                        <span className="flex-1">{item.name}</span>
+                      <div key={i} className="flex flex-col mb-2">
+                        {/* EXISTING ROW */}
+                        <div className="flex items-center justify-between">
+                          <span className="flex-1">{item.name}</span>
 
-                        <input
-                          type="number"
-                          value={item.qty}
-                          onChange={(e) => updateQty(order, i, e.target.value)}
-                          className="w-14 text-center border rounded"
-                        />
+                          <input
+                            type="number"
+                            value={item.qty}
+                            onChange={(e) =>
+                              updateQty(order, i, e.target.value)
+                            }
+                            className="text-center border rounded w-14"
+                          />
 
-                        <span className="w-20 text-right">
-                          ₹{item.price * item.qty}
-                        </span>
+                          <span className="w-20 text-right">
+                            ₹{item.price * item.qty}
+                          </span>
 
-                        <button
-                          onClick={() => deleteItem(order, i)}
-                          className="text-red-500 ml-2"
-                        >
-                          ✕
-                        </button>
+                          <button
+                            onClick={() => deleteItem(order, i)}
+                            className="ml-2 text-red-500"
+                          >
+                            ✕
+                          </button>
+                        </div>
+
+                        {/* ✅ ADDED NOTE DISPLAY */}
+                        {item.note && item.note.trim() !== "" && (
+                          <p className="mt-1 ml-1 text-xs italic text-emerald-500">
+                            📝 {item.note}
+                          </p>
+                        )}
                       </div>
                     ))}
 
                     <div className="flex gap-2 mt-2">
                       <button
                         onClick={() => updateBatchStatus(order._id, "served")}
-                        className="bg-green-500 text-white px-3 py-1 rounded"
+                        className="px-3 py-1 text-white bg-green-500 rounded"
                       >
                         Served
                       </button>
 
                       <button
                         onClick={() => deleteBatch(order._id)}
-                        className="bg-red-500 text-white px-3 py-1 rounded"
+                        className="px-3 py-1 text-white bg-red-500 rounded"
                       >
                         Delete
                       </button>
@@ -266,7 +274,7 @@ function AdminDashboard() {
                 ))}
 
               {/* TOTAL */}
-              <div className="mt-4 flex justify-between font-bold text-lg">
+              <div className="flex justify-between mt-4 text-lg font-bold">
                 <span>Total</span>
                 <input
                   value={total}
@@ -279,14 +287,14 @@ function AdminDashboard() {
               <div className="flex gap-2 mt-4">
                 <button
                   onClick={() => completeTable(tableOrders)}
-                  className="bg-black text-white px-4 py-2 rounded"
+                  className="px-4 py-2 text-white bg-black rounded"
                 >
                   Complete
                 </button>
 
                 <button
                   onClick={() => deleteTable(tableOrders)}
-                  className="bg-red-600 text-white px-4 py-2 rounded"
+                  className="px-4 py-2 text-white bg-red-600 rounded"
                 >
                   Delete
                 </button>
