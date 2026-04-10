@@ -7,11 +7,11 @@ function Home() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const storedToken = localStorage.getItem("token"); // ✅ renamed
+  // const storedToken = localStorage.getItem("token"); // ✅ kept same
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const urlToken = params.get("token"); // ✅ renamed
+    const urlToken = params.get("token");
 
     /* ================= SCAN FLOW ================= */
     if (urlToken) {
@@ -28,18 +28,17 @@ function Home() {
         .catch(() => {
           toast.error("FoodDash: Session expired. Please scan QR again.");
 
-          navigate("/scan"); // ✅ FIXED
+          navigate("/scan");
         });
 
-      return; // ✅ stop further execution
+      return;
     }
 
-    /* ================= NO TOKEN CASE ================= */
-    if (!storedToken) {
-      toast.error("FoodDash: No active session. Please scan QR");
-
-      navigate("/scan");
-    }
+    // ❌ REMOVED this block:
+    // if (!storedToken) {
+    //   toast.error("FoodDash: No active session. Please scan QR");
+    //   navigate("/scan");
+    // }
   }, []);
 
   return (
@@ -48,24 +47,15 @@ function Home() {
 
       <button
         onClick={() => {
-          const token = localStorage.getItem("token");
-
-          if (!token) {
-            toast.error("FoodDash: Please scan QR first 📷");
-            setTimeout(() => {
-              navigate("/scan");
-            }, 1200);
-          } else {
-            navigate("/order");
-          }
+          navigate("/order"); // ✅ ALWAYS go to menu
         }}
         className="px-6 py-3 text-white rounded-lg bg-emerald-500"
       >
         Explore Menu
       </button>
 
-      {/* ✅ Hide scan button if session exists
-      {!storedToken && (
+      {/* kept exactly same (commented) */}
+      {/* {!storedToken && (
         <Link
           to="/scan"
           className="px-6 py-3 text-white rounded-lg bg-emerald-500"
