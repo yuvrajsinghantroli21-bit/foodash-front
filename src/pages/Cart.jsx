@@ -78,26 +78,14 @@ function Cart() {
         setNotes({});
         navigate(`/order/${token}`);
       })
-      .catch((err) => {
-        if (err.response?.status === 403) {
-          setToast("Session expired. Please scan again");
-
-          localStorage.removeItem("token");
-          localStorage.removeItem("table");
-          clearCart();
-
-          setTimeout(() => {
-            navigate("/scan");
-          }, 1200);
-        } else {
-          setToast("Error placing order");
-        }
+      .catch(() => {
+        setToast("Error placing order");
       });
   };
 
   return (
     <>
-      <div className="min-h-screen px-4 py-8 pb-32 bg-gray-100 dark:bg-slate-950 dark:text-gray-200">
+      <div className="min-h-screen px-4 py-8 bg-gray-100 dark:bg-slate-950 dark:text-gray-200">
         <div className="max-w-3xl mx-auto">
           {/* HEADER */}
           <div className="flex items-center justify-between mb-6">
@@ -107,7 +95,7 @@ function Cart() {
               onClick={() => navigate("/menu")}
               className="px-4 py-2 text-sm font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600"
             >
-              + Add More Items
+              + Add Items
             </button>
           </div>
 
@@ -115,6 +103,7 @@ function Cart() {
             <p className="text-gray-400">Your cart is empty</p>
           )}
 
+          {/* ITEMS */}
           <div className="space-y-4">
             {cart.map((item) => (
               <div
@@ -153,47 +142,59 @@ function Cart() {
                   </div>
                 </div>
 
-                {/* NOTE INPUT */}
-                <div className="mt-3">
-                  <input
-                    type="text"
-                    placeholder="Add instructions (e.g. extra spicy)"
-                    value={notes[item._id] || ""}
-                    onChange={(e) => handleNoteChange(item._id, e.target.value)}
-                    className="w-full px-3 py-2 text-sm border rounded-lg dark:bg-slate-800 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                  />
-                </div>
+                {/* NOTE */}
+                <input
+                  type="text"
+                  placeholder="Add instruction (e.g. less spicy)"
+                  value={notes[item._id] || ""}
+                  onChange={(e) => handleNoteChange(item._id, e.target.value)}
+                  className="w-full px-3 py-2 mt-3 text-sm border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                />
               </div>
             ))}
           </div>
+
+          {/* 🔥 BILL SUMMARY BOX */}
+          {cart.length > 0 && (
+            <div className="p-6 mt-8 bg-white shadow-xl rounded-2xl dark:bg-slate-900">
+              <h2 className="mb-4 text-lg font-bold">Order Summary</h2>
+
+              <div className="space-y-2">
+                {cart.map((item) => (
+                  <div key={item._id} className="flex justify-between text-sm">
+                    <span>
+                      {item.name} × {item.qty}
+                    </span>
+
+                    <span>₹{item.price * item.qty}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Divider */}
+              <div className="my-4 border-t dark:border-slate-700"></div>
+
+              {/* TOTAL */}
+              <div className="flex justify-between text-lg font-bold">
+                <span>Total</span>
+                <span className="text-emerald-500">₹{total}</span>
+              </div>
+
+              {/* BUTTON */}
+              <button
+                onClick={placeOrder}
+                className="w-full py-3 mt-5 font-semibold text-white transition bg-emerald-500 rounded-xl hover:bg-emerald-600"
+              >
+                Place Order 🚀
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ✅ STICKY TOTAL BOX */}
-      {cart.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-transparent">
-          <div className="max-w-3xl p-5 mx-auto bg-white border shadow-2xl rounded-2xl dark:bg-slate-900 dark:border-slate-800">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-400">{cart.length} items</span>
-
-              <span className="text-xl font-bold text-emerald-500">
-                ₹{total}
-              </span>
-            </div>
-
-            <button
-              onClick={placeOrder}
-              className="w-full py-3 font-semibold text-white transition bg-emerald-500 rounded-xl hover:bg-emerald-600"
-            >
-              Place Order 🚀
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* TOAST */}
       {toast && (
-        <div className="fixed z-50 px-6 py-3 text-white bg-red-500 shadow-lg top-5 right-5 rounded-xl animate-bounce">
+        <div className="fixed z-50 px-6 py-3 text-white bg-red-500 shadow-lg top-5 right-5 rounded-xl">
           <div className="flex items-center gap-4">
             <span>{toast}</span>
 
