@@ -1,13 +1,12 @@
 import { useEffect } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { motion } from "framer-motion";
 
 function Home() {
   const navigate = useNavigate();
   const location = useLocation();
-
-  // const storedToken = localStorage.getItem("token"); // ✅ kept same
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -27,42 +26,72 @@ function Home() {
         })
         .catch(() => {
           toast.error("FoodDash: Session expired. Please scan QR again.");
-
           navigate("/scan");
         });
 
       return;
     }
-
-    // ❌ REMOVED this block:
-    // if (!storedToken) {
-    //   toast.error("FoodDash: No active session. Please scan QR");
-    //   navigate("/scan");
-    // }
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen gap-6">
-      <h1 className="text-3xl font-bold">Welcome to FoodDash 🍽️</h1>
-
-      <button
-        onClick={() => {
-          navigate("/order"); // ✅ ALWAYS go to menu
+    <div className="relative flex items-center justify-center min-h-screen text-white">
+      {/* 🔥 BACKGROUND IMAGE */}
+      <div
+        className="absolute inset-0 bg-center bg-cover"
+        style={{
+          backgroundImage:
+            "url('https://images.unsplash.com/photo-1559925393-8be0ec4767c8')",
         }}
-        className="px-6 py-3 text-white rounded-lg bg-emerald-500"
-      >
-        Explore Menu
-      </button>
+      />
 
-      {/* kept exactly same (commented) */}
-      {/* {!storedToken && (
-        <Link
-          to="/scan"
-          className="px-6 py-3 text-white rounded-lg bg-emerald-500"
+      {/* 🔥 DARK OVERLAY */}
+      <div className="absolute inset-0 bg-black/60 dark:bg-black/70 backdrop-blur-sm" />
+
+      {/* 🔥 CONTENT */}
+      <div className="relative z-10 flex flex-col items-center px-6 text-center">
+        {/* TITLE */}
+        <motion.h1
+          initial={{ opacity: 0, y: -40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7 }}
+          className="mb-4 text-4xl font-extrabold md:text-6xl"
         >
-          Scan QR
-        </Link>
-      )} */}
+          Welcome to <span className="text-emerald-400">FoodDash</span> 🍽️
+        </motion.h1>
+
+        {/* SUBTEXT */}
+        <motion.p
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="max-w-xl mb-8 text-lg text-gray-200"
+        >
+          Experience seamless dining at{" "}
+          <span className="font-semibold text-white">The White House Café</span>
+          . Scan, order, and enjoy — all from your table.
+        </motion.p>
+
+        {/* BUTTON */}
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.5 }}
+          onClick={() => navigate("/menu")}
+          className="px-8 py-4 text-lg font-semibold text-white transition rounded-full shadow-lg bg-emerald-500 hover:bg-emerald-600 hover:scale-105"
+        >
+          Explore Menu 🚀
+        </motion.button>
+
+        {/* OPTIONAL SMALL TEXT */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="mt-6 text-sm text-gray-300"
+        >
+          Fast • Smart • Contactless Dining
+        </motion.p>
+      </div>
     </div>
   );
 }
