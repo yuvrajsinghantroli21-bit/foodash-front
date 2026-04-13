@@ -76,7 +76,7 @@ function Home() {
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.5 }}
-          onClick={() => navigate("/menu")}
+          onClick={() => navigate("/order")}
           className="px-8 py-4 text-lg font-semibold text-white transition rounded-full shadow-lg bg-emerald-500 hover:bg-emerald-600 hover:scale-105"
         >
           Explore Menu 🚀
