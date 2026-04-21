@@ -29,7 +29,7 @@ function Cart() {
         localStorage.removeItem("table");
         clearCart();
 
-        navigate("/");
+        navigate("/thank-you");
       }
     });
 

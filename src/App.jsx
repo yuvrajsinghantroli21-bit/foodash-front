@@ -22,6 +22,7 @@ import AdminMenu from "./pages/AdminMenu";
 import AdminHistory from "./pages/AdminHistory";
 import AddMenu from "./pages/AddMenu";
 import EditMenu from "./pages/EditMenu";
+import ThankYou from "./pages/ThankYou";
 
 function App() {
   return (
@@ -40,6 +41,8 @@ function App() {
               <Route path="/contact" element={<Contact />} />
               <Route path="/order/:token" element={<Menu />} />
               <Route path="/cart" element={<Cart />} />
+
+              <Route path="/thank-you" element={<ThankYou />} />
             </Route>
 
             {/* ADMIN ROUTES */}

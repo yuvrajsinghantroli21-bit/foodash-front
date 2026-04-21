@@ -54,7 +54,7 @@ function Menu() {
         clearCart();
 
         setTimeout(() => {
-          navigate("/scan");
+          navigate("/thank-you");
         }, 1200);
       });
   }, [token]);
