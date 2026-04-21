@@ -92,7 +92,7 @@ function Cart() {
             <h1 className="text-3xl font-bold">Cart — Table {table}</h1>
 
             <button
-              onClick={() => navigate("/menu")}
+              onClick={() => navigate("/order")}
               className="px-4 py-2 text-sm font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600"
             >
               + Add Items
