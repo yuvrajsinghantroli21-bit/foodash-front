@@ -23,6 +23,8 @@ import AdminHistory from "./pages/AdminHistory";
 import AddMenu from "./pages/AddMenu";
 import EditMenu from "./pages/EditMenu";
 import ThankYou from "./pages/ThankYou";
+import SessionGate from "./pages/SessionGate.jsx";
+import MenuPreview from "./pages/MenuPreview.jsx";
 
 function App() {
   return (
@@ -41,7 +43,8 @@ function App() {
               <Route path="/contact" element={<Contact />} />
               <Route path="/order/:token" element={<Menu />} />
               <Route path="/cart" element={<Cart />} />
-
+              <Route path="/session-required" element={<SessionGate />} />
+              <Route path="/menu-preview" element={<MenuPreview />} />
               <Route path="/thank-you" element={<ThankYou />} />
             </Route>
 

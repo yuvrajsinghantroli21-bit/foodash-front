@@ -30,7 +30,7 @@ function Menu() {
       toast.error("FoodDash: Please scan QR first");
 
       setTimeout(() => {
-        navigate("/scan");
+        navigate("/session-required");
       }, 1200);
 
       return;
