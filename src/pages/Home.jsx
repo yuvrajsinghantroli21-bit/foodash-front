@@ -8,6 +8,17 @@ function Home() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  /* ✅ HANDLE BUTTON CLICK */
+  const handleExplore = () => {
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      navigate("/order");
+    } else {
+      navigate("/menu-preview");
+    }
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const urlToken = params.get("token");
@@ -28,10 +39,8 @@ function Home() {
           toast.error("FoodDash: Session expired. Please scan QR again.");
           navigate("/scan");
         });
-
-      return;
     }
-  }, []);
+  }, [location]);
 
   return (
     <div className="relative flex items-center justify-center min-h-screen text-white">
@@ -49,7 +58,6 @@ function Home() {
 
       {/* 🔥 CONTENT */}
       <div className="relative z-10 flex flex-col items-center px-6 text-center">
-        {/* TITLE */}
         <motion.h1
           initial={{ opacity: 0, y: -40 }}
           animate={{ opacity: 1, y: 0 }}
@@ -59,7 +67,6 @@ function Home() {
           Welcome to <span className="text-emerald-400">FoodDash</span> 🍽️
         </motion.h1>
 
-        {/* SUBTEXT */}
         <motion.p
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -71,18 +78,14 @@ function Home() {
           . Scan, order, and enjoy — all from your table.
         </motion.p>
 
-        {/* BUTTON */}
+        {/* ✅ FIXED BUTTON */}
         <motion.button
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.5 }}
-          onClick={() => navigate("/order")}
+          onClick={handleExplore}
           className="px-8 py-4 text-lg font-semibold text-white transition rounded-full shadow-lg bg-emerald-500 hover:bg-emerald-600 hover:scale-105"
         >
           Explore Menu 🚀
         </motion.button>
 
-        {/* OPTIONAL SMALL TEXT */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

@@ -89,15 +89,36 @@ function MenuPreview() {
         className="relative overflow-hidden"
         style={{ backgroundColor: "#f5f0e8" }}
       >
-        <div className="flex flex-col items-center max-w-6xl gap-10 px-6 py-10 mx-auto md:flex-row">
-          {/* Left: Text */}
-          <div className="flex-1 text-center md:text-left">
+        <div className="flex flex-col items-center max-w-6xl gap-6 px-4 py-10 mx-auto md:flex-row sm:px-6 lg:px-8">
+          {/* Image FIRST on mobile */}
+          <div
+            className="flex-1 order-1 md:order-2 flex items-center justify-center relative select-none 
+      min-h-[220px] sm:min-h-[280px] md:min-h-[320px] px-1"
+          >
+            <img
+              src={img} // or "/whitehouse_profile.jpg"
+              alt="The White House Cafe"
+              className="
+          w-[220px] 
+          sm:w-[280px] 
+          md:w-[340px] 
+          lg:w-[400px]
+          xl:w-[440px]
+          h-auto 
+          object-contain 
+          drop-shadow-xl
+        "
+            />
+          </div>
+
+          {/* Text SECOND on mobile */}
+          <div className="flex-1 order-2 text-center md:order-1 md:text-left">
             <p className="text-emerald-600 text-xs tracking-[0.3em] uppercase font-semibold">
               • Explore Our •
             </p>
 
             <h1
-              className="mt-2 text-5xl font-bold leading-tight text-gray-900 md:text-6xl"
+              className="mt-2 text-3xl font-bold leading-tight text-gray-900 sm:text-4xl md:text-5xl lg:text-6xl"
               style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
             >
               Menu Preview
@@ -110,12 +131,13 @@ function MenuPreview() {
               <div className="w-10 h-[1px] bg-amber-400" />
             </div>
 
-            <p className="max-w-sm mx-auto mt-4 text-sm leading-relaxed text-gray-500 md:mx-0">
+            <p className="max-w-xs mx-auto mt-4 text-sm leading-relaxed text-gray-500 sm:max-w-sm md:mx-0">
               You're viewing our menu. To place an order, please scan your table
               QR code.
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 mt-6">
+            {/* Buttons */}
+            <div className="flex flex-col items-center gap-3 mt-6 sm:flex-row sm:justify-center md:justify-start">
               {/* Scan QR */}
               <button
                 onClick={() => navigate("/scan")}
@@ -125,36 +147,17 @@ function MenuPreview() {
                 Scan QR
               </button>
 
-              {/* How it works */}
-              <button
-                onClick={() => setShowHowModal(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium transition-all duration-200 border-2 rounded-full border-emerald-600 text-emerald-700 hover:bg-emerald-600 hover:text-white"
-              >
-                <Eye size={16} />
-                How Ordering Works
-              </button>
+              {/* Optional button (kept commented as you had) */}
+              {/*
+        <button
+          onClick={() => setShowHowModal(true)}
+          className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium transition-all duration-200 border-2 rounded-full border-emerald-600 text-emerald-700 hover:bg-emerald-600 hover:text-white"
+        >
+          <Eye size={16} />
+          How Ordering Works
+        </button>
+        */}
             </div>
-          </div>
-
-          {/* Right: Plate Scene */}
-          <div
-            className="flex-1 flex items-center justify-center relative select-none 
-  min-h-[220px] sm:min-h-[280px] md:min-h-[320px] px-4"
-          >
-            <img
-              src={img} // 👈 put your image in public folder
-              alt="The White House Cafe"
-              className="
-      w-[260px] 
-      sm:w-[320px] 
-      md:w-[380px] 
-      lg:w-[420px]
-      xl:w-[460px]
-      h-auto 
-      object-contain 
-      drop-shadow-xl
-    "
-            />
           </div>
         </div>
       </div>
