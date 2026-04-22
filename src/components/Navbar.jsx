@@ -75,7 +75,7 @@ function Navbar() {
                       active ? "text-emerald-400" : "hover:text-white"
                     }`}
                   >
-                    {token ? "Order Now 🚀" : "Menu"}
+                    {token ? "Order" : "Menu"}
                   </button>
                 ) : (
                   <Link

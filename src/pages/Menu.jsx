@@ -143,34 +143,81 @@ function Menu() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f5f0e8" }}>
       {/* ══════════════ STICKY HEADER ══════════════ */}
-      <div
-        className="sticky top-0 z-40 flex items-center justify-between px-5 py-3 border-b shadow-sm border-amber-100"
-        style={{ backgroundColor: "#f5f0e8" }}
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold tracking-wide text-emerald-600">
-            🍽 Table {table || "..."}
-          </span>
+      {/* ══════════════ STICKY HEADER ══════════════ */}
+      <div className="sticky top-0 z-40" style={{ backgroundColor: "#f5f0e8" }}>
+        {/* Thin gold accent line at top */}
+        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+
+        <div className="flex items-center justify-between px-4 py-3 sm:px-6">
+          {/* LEFT — Brand + Table badge */}
+          <div className="flex items-center gap-3">
+            {/* Logo mark */}
+            <div className="flex items-center justify-center w-8 h-8 rounded-full shadow-md bg-emerald-500 shrink-0">
+              <span className="text-sm leading-none">🍽</span>
+            </div>
+
+            <div className="flex flex-col leading-tight">
+              <span
+                className="text-[11px] text-gray-400 tracking-[0.18em] uppercase hidden sm:block"
+                style={{ fontFamily: "Georgia, serif" }}
+              >
+                White House Café
+              </span>
+              <span className="text-xs font-semibold tracking-wide text-emerald-700">
+                Table&nbsp;
+                <span className="inline-flex items-center justify-center px-2 py-0.5 text-[11px] font-bold text-white rounded-full bg-emerald-500 shadow-sm">
+                  {table || "—"}
+                </span>
+              </span>
+            </div>
+          </div>
+
+          {/* RIGHT — Filter + Cart */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Filter pill — visible on mobile only */}
+            <button
+              onClick={openFilter}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-full border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-all duration-200 md:hidden"
+            >
+              <Filter size={13} />
+              <span>Filter</span>
+            </button>
+
+            {/* Desktop filter pill */}
+            <button
+              onClick={openFilter}
+              className="items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-full border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-all duration-200 hidden md:flex"
+            >
+              <Filter size={14} />
+              Filter
+            </button>
+
+            {/* Cart button */}
+            <Link
+              to="/cart"
+              className="relative flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white transition-all duration-200 rounded-full shadow-md sm:px-5 sm:text-sm bg-emerald-500 hover:bg-emerald-600 hover:shadow-lg active:scale-95"
+              style={{ fontFamily: "Georgia, serif" }}
+            >
+              <ShoppingCart size={15} />
+              <span className="hidden sm:inline">Cart</span>
+
+              {/* Animated badge */}
+              {totalItems > 0 && (
+                <span className="flex items-center justify-center w-5 h-5 text-[10px] font-bold text-emerald-700 bg-white rounded-full shadow-inner">
+                  {totalItems}
+                </span>
+              )}
+
+              {/* On mobile, show count inline when no badge space */}
+              {totalItems === 0 && (
+                <span className="text-xs sm:hidden text-white/80">(0)</span>
+              )}
+            </Link>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Mobile filter */}
-          <button
-            onClick={openFilter}
-            className="flex items-center gap-2 px-4 py-2 text-sm transition border border-gray-300 rounded-full hover:bg-white md:hidden"
-          >
-            <Filter size={15} /> Filter
-          </button>
-
-          {/* Cart */}
-          <Link
-            to="/cart"
-            className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white transition-all rounded-full shadow-md bg-emerald-500 hover:bg-emerald-600 active:scale-95"
-          >
-            <ShoppingCart size={16} />
-            Cart ({totalItems})
-          </Link>
-        </div>
+        {/* Bottom separator — subtle warm shadow line */}
+        <div className="h-px bg-gradient-to-r from-transparent via-amber-200 to-transparent" />
       </div>
 
       {/* ══════════════ HERO SECTION ══════════════ */}
