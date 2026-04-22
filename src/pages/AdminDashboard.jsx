@@ -7,7 +7,6 @@ import OrderToast from "../components/OrderToast";
 function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [orderToasts, setOrderToasts] = useState([]);
-  // const [confirmId, setConfirmId] = useState(null);
 
   const audioRef = useRef(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -17,11 +16,9 @@ function AdminDashboard() {
     try {
       const res = await api.get("/orders");
 
-      const active = res.data.filter(
-        (o) => !o.status || o.status.toLowerCase() !== "completed",
-      );
+      const active = res.data.filter((o) => !o.status || o.status !== "served");
 
-      setOrders([...active]);
+      setOrders(active);
     } catch (err) {
       console.log(err);
     }
@@ -31,6 +28,7 @@ function AdminDashboard() {
     fetchOrders();
   }, []);
 
+  /* ================= SERVE ORDER ================= */
   const serveOrder = async (id) => {
     try {
       await api.put(`/orders/${id}/serve`);
@@ -51,7 +49,7 @@ function AdminDashboard() {
       }
     });
 
-    socket.on("order-updated", (updated) => {
+    socket.on("orderUpdated", (updated) => {
       setOrders((prev) =>
         prev.map((o) => (o._id === updated._id ? updated : o)),
       );
@@ -63,29 +61,22 @@ function AdminDashboard() {
 
     return () => {
       socket.off("new-order");
-      socket.off("order-updated");
+      socket.off("orderUpdated");
       socket.off("order-deleted");
     };
   }, [soundEnabled]);
 
   /* ================= GROUP BY TABLE ================= */
   const grouped = orders.reduce((acc, order) => {
-    if (!acc[order.table]) acc[order.table] = [];
-    acc[order.table].push(order);
+    const tableKey = order.table || order.tableId || "Unknown";
+
+    if (!acc[tableKey]) acc[tableKey] = [];
+    acc[tableKey].push(order);
+
     return acc;
   }, {});
 
   /* ================= ACTIONS ================= */
-
-  const updateBatchStatus = async (id, status) => {
-    try {
-      const res = await api.put(`/order/${id}`, { status });
-
-      setOrders((prev) => prev.map((o) => (o._id === id ? res.data : o)));
-    } catch (err) {
-      console.log(err);
-    }
-  };
 
   const deleteBatch = async (id) => {
     try {
@@ -120,7 +111,7 @@ function AdminDashboard() {
 
   const completeTable = async (tableOrders) => {
     for (let o of tableOrders) {
-      await api.put(`/order/${o._id}`, { status: "completed" });
+      await api.put(`/order/${o._id}`, { status: "served" });
     }
     fetchOrders();
   };
@@ -198,7 +189,7 @@ function AdminDashboard() {
               className="p-5 bg-white shadow-xl dark:bg-slate-900 rounded-2xl"
             >
               <h2 className="mb-4 text-xl font-bold text-black dark:text-white">
-                Table {table}
+                Table {table === "Unknown" ? "N/A" : table}
               </h2>
 
               {tableOrders
@@ -212,24 +203,23 @@ function AdminDashboard() {
                         </span>
 
                         <span className="px-2 py-1 text-xs text-gray-800 bg-gray-200 rounded dark:bg-slate-700 dark:text-gray-200">
-                          Order #{order._id.slice(-5).toUpperCase()}
+                          #{order._id.slice(-5).toUpperCase()}
                         </span>
                       </div>
 
                       <span
                         className={`text-xs px-3 py-1 rounded-full font-semibold ${
                           order.status === "served"
-                            ? "bg-green-500/20 text-green-600 dark:text-green-400"
-                            : "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400"
+                            ? "bg-green-500/20 text-green-600"
+                            : "bg-blue-500/20 text-blue-600"
                         }`}
                       >
-                        {order.status || "pending"}
+                        {order.status || "preparing"}
                       </span>
                     </div>
 
                     {order.items.map((item, i) => (
                       <div key={i} className="flex flex-col mb-2">
-                        {/* EXISTING ROW */}
                         <div className="flex items-center justify-between">
                           <span className="flex-1">{item.name}</span>
 
@@ -254,7 +244,6 @@ function AdminDashboard() {
                           </button>
                         </div>
 
-                        {/* ✅ ADDED NOTE DISPLAY */}
                         {item.note && item.note.trim() !== "" && (
                           <p className="mt-1 ml-1 text-xs italic text-emerald-500">
                             📝 {item.note}
@@ -265,13 +254,15 @@ function AdminDashboard() {
 
                     <div className="flex gap-2 mt-2">
                       <button
-                        onClick={() => {
-                          updateBatchStatus(order._id, "served");
-                          serveOrder(order._id);
-                        }}
-                        className="px-3 py-1 text-white bg-green-500 rounded"
+                        onClick={() => serveOrder(order._id)}
+                        disabled={order.status === "served"}
+                        className={`px-3 py-1 text-white rounded ${
+                          order.status === "served"
+                            ? "bg-gray-400"
+                            : "bg-green-500 hover:bg-green-600"
+                        }`}
                       >
-                        Served
+                        {order.status === "served" ? "Served" : "Serve"}
                       </button>
 
                       <button
@@ -287,11 +278,7 @@ function AdminDashboard() {
               {/* TOTAL */}
               <div className="flex justify-between mt-4 text-lg font-bold">
                 <span>Total</span>
-                <input
-                  value={total}
-                  readOnly
-                  className="w-24 text-right bg-transparent"
-                />
+                <span>₹{total}</span>
               </div>
 
               {/* ACTIONS */}
