@@ -3,64 +3,102 @@ import { CartContext } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import socket from "../socket/socket";
+import {
+  Trash2,
+  Plus,
+  Minus,
+  ShieldCheck,
+  Leaf,
+  ChefHat,
+  Clock,
+  Star,
+  ArrowLeft,
+} from "lucide-react";
+
+/* ── Decorative divider matching the menu page ── */
+const Divider = () => (
+  <div className="flex items-center justify-center gap-2 my-2">
+    <div className="w-8 h-[1px] bg-amber-400" />
+    <span className="text-sm text-amber-500">🌿</span>
+    <div className="w-8 h-[1px] bg-amber-400" />
+  </div>
+);
+
+const TRUST_BADGES = [
+  {
+    icon: <Leaf size={20} />,
+    title: "Fresh Ingredients",
+    sub: "Always fresh & healthy",
+  },
+  {
+    icon: <ChefHat size={20} />,
+    title: "Expertly Cooked",
+    sub: "By our top chefs",
+  },
+  {
+    icon: <Clock size={20} />,
+    title: "Fast & Hot",
+    sub: "Delivered to your table",
+  },
+  {
+    icon: <Star size={20} />,
+    title: "Best Quality",
+    sub: "Premium taste guarantee",
+  },
+];
 
 function Cart() {
   const [toast, setToast] = useState(null);
   const [notes, setNotes] = useState({});
+  const [placing, setPlacing] = useState(false);
 
   const { cart, addToCart, removeItem, deleteItem, clearCart } =
     useContext(CartContext);
 
   const table = localStorage.getItem("table");
   const token = localStorage.getItem("token");
-
   const navigate = useNavigate();
 
-  const total = cart.reduce((sum, item) => {
-    return sum + item.price * item.qty;
-  }, 0);
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
 
+  /* ── Socket: session expire ── */
   useEffect(() => {
     socket.on("session-expired", (data) => {
       if (data.token === token) {
-        setToast("Session expired. Please scan QR again.");
-
+        showToast("Session expired. Please scan QR again.", "error");
         localStorage.removeItem("token");
         localStorage.removeItem("table");
         clearCart();
-
         navigate("/thank-you");
       }
     });
-
-    return () => {
-      socket.off("session-expired");
-    };
+    return () => socket.off("session-expired");
   }, []);
 
-  const handleNoteChange = (id, value) => {
-    setNotes((prev) => ({
-      ...prev,
-      [id]: value,
-    }));
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
   };
+
+  const handleNoteChange = (id, value) =>
+    setNotes((prev) => ({ ...prev, [id]: value }));
 
   const placeOrder = () => {
     if (!token) {
-      setToast("Session expired. Scan QR again.");
+      showToast("Session expired. Scan QR again.", "error");
       navigate("/");
       return;
     }
-
     if (cart.length === 0) {
-      setToast("Cart is empty");
+      showToast("Your cart is empty.", "error");
       return;
     }
 
+    setPlacing(true);
     const order = {
-      table: table,
+      table,
       sessionId: token,
-      total: total,
+      total: subtotal,
       items: cart.map((item) => ({
         name: item.name,
         price: item.price,
@@ -73,135 +111,302 @@ function Cart() {
     api
       .post("/orders", order)
       .then(() => {
-        setToast("Order placed successfully!");
+        showToast("Order placed successfully! 🎉");
         clearCart();
         setNotes({});
         navigate(`/order/${token}`);
       })
       .catch(() => {
-        setToast("Error placing order");
-      });
+        showToast("Error placing order. Try again.", "error");
+      })
+      .finally(() => setPlacing(false));
   };
 
   return (
     <>
-      <div className="min-h-screen px-4 py-8 bg-gray-100 dark:bg-slate-950 dark:text-gray-200">
-        <div className="max-w-3xl mx-auto">
-          {/* HEADER */}
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold">Cart — Table {table}</h1>
+      <div
+        className="min-h-screen pb-16"
+        style={{ backgroundColor: "#f5f0e8" }}
+      >
+        {/* ══ Gold top accent ══ */}
+        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+
+        {/* ══ PAGE HEADER ══ */}
+        <div className="max-w-6xl px-4 pt-8 pb-4 mx-auto sm:px-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1.5 mb-4 text-xs text-gray-400 hover:text-emerald-600 transition-colors"
+          >
+            <ArrowLeft size={14} /> Back to Menu
+          </button>
+
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-emerald-600 text-[11px] tracking-[0.25em] uppercase font-semibold mb-1">
+                • Your Order •
+              </p>
+              <h1
+                className="text-3xl font-bold text-gray-900 sm:text-4xl"
+                style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+              >
+                Cart — Table {table || "…"}
+              </h1>
+              <Divider />
+            </div>
 
             <button
-              onClick={() => navigate("/order")}
-              className="px-4 py-2 text-sm font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600"
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-full bg-emerald-500 hover:bg-emerald-600 shadow-md transition-all active:scale-95 shrink-0 mt-1"
             >
-              + Add Items
+              <Plus size={15} /> Add Items
             </button>
           </div>
+        </div>
 
+        {/* ══ MAIN CONTENT ══ */}
+        <div className="max-w-6xl px-4 mx-auto sm:px-6">
+          {/* Empty state */}
           {cart.length === 0 && (
-            <p className="text-gray-400">Your cart is empty</p>
-          )}
-
-          {/* ITEMS */}
-          <div className="space-y-4">
-            {cart.map((item) => (
-              <div
-                key={item._id}
-                className="p-4 bg-white shadow-md rounded-2xl dark:bg-slate-900"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-semibold">{item.name}</h2>
-                    <p className="text-gray-400">₹{item.price}</p>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => removeItem(item._id)}
-                      className="px-3 py-1 bg-gray-200 rounded dark:bg-slate-700"
-                    >
-                      -
-                    </button>
-
-                    <span>{item.qty}</span>
-
-                    <button
-                      onClick={() => addToCart(item)}
-                      className="px-3 py-1 bg-gray-200 rounded dark:bg-slate-700"
-                    >
-                      +
-                    </button>
-
-                    <button
-                      onClick={() => deleteItem(item._id)}
-                      className="px-3 py-1 text-white bg-red-500 rounded"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-
-                {/* NOTE */}
-                <input
-                  type="text"
-                  placeholder="Add instruction (e.g. less spicy)"
-                  value={notes[item._id] || ""}
-                  onChange={(e) => handleNoteChange(item._id, e.target.value)}
-                  className="w-full px-3 py-2 mt-3 text-sm border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                />
-              </div>
-            ))}
-          </div>
-
-          {/* 🔥 BILL SUMMARY BOX */}
-          {cart.length > 0 && (
-            <div className="p-6 mt-8 bg-white shadow-xl rounded-2xl dark:bg-slate-900">
-              <h2 className="mb-4 text-lg font-bold">Order Summary</h2>
-
-              <div className="space-y-2">
-                {cart.map((item) => (
-                  <div key={item._id} className="flex justify-between text-sm">
-                    <span>
-                      {item.name} × {item.qty}
-                    </span>
-
-                    <span>₹{item.price * item.qty}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Divider */}
-              <div className="my-4 border-t dark:border-slate-700"></div>
-
-              {/* TOTAL */}
-              <div className="flex justify-between text-lg font-bold">
-                <span>Total</span>
-                <span className="text-emerald-500">₹{total}</span>
-              </div>
-
-              {/* BUTTON */}
+            <div className="py-24 text-center">
+              <p className="mb-3 text-4xl">🛒</p>
+              <p className="text-sm text-gray-400">
+                Your cart is empty. Add something delicious!
+              </p>
               <button
-                onClick={placeOrder}
-                className="w-full py-3 mt-5 font-semibold text-white transition bg-emerald-500 rounded-xl hover:bg-emerald-600"
+                onClick={() => navigate(-1)}
+                className="mt-5 px-6 py-2.5 bg-emerald-500 text-white rounded-full text-sm font-semibold hover:bg-emerald-600 transition"
               >
-                Place Order 🚀
+                Browse Menu
               </button>
             </div>
           )}
+
+          {cart.length > 0 && (
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+              {/* ── LEFT: Cart Items ── */}
+              <div className="flex-1 space-y-4">
+                {cart.map((item) => {
+                  const image = `https://fooadash.onrender.com/uploads/${item.image}`;
+                  const isVeg = item.isVeg ?? true;
+
+                  return (
+                    <div
+                      key={item._id}
+                      className="overflow-hidden bg-white border border-gray-100 shadow-md rounded-2xl"
+                    >
+                      <div className="flex gap-4 p-4">
+                        {/* Thumbnail */}
+                        <div className="relative w-20 h-20 shrink-0 sm:w-24 sm:h-24">
+                          <img
+                            src={image}
+                            alt={item.name}
+                            className="object-cover w-full h-full rounded-xl"
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                            }}
+                          />
+                          {/* Veg dot */}
+                          <span className="absolute flex items-center justify-center w-4 h-4 bg-white border border-gray-200 rounded-sm shadow-sm top-1 right-1">
+                            <span
+                              className={`w-2 h-2 rounded-full ${isVeg ? "bg-emerald-500" : "bg-red-500"}`}
+                            />
+                          </span>
+                        </div>
+
+                        {/* Info + controls */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h2 className="text-sm font-bold leading-snug text-gray-800 sm:text-base">
+                                {item.name}
+                              </h2>
+                              <p className="mt-0.5 text-sm font-semibold text-emerald-500">
+                                ₹{item.price}
+                              </p>
+                            </div>
+
+                            {/* Qty + Delete */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              {/* Qty stepper */}
+                              <div className="flex items-center overflow-hidden border border-gray-200 rounded-full">
+                                <button
+                                  onClick={() => removeItem(item._id)}
+                                  className="flex items-center justify-center w-8 h-8 text-gray-600 transition hover:bg-gray-100"
+                                >
+                                  <Minus size={13} />
+                                </button>
+                                <span className="text-sm font-semibold text-center text-gray-800 w-7">
+                                  {item.qty}
+                                </span>
+                                <button
+                                  onClick={() => addToCart(item)}
+                                  className="flex items-center justify-center w-8 h-8 text-gray-600 transition hover:bg-gray-100"
+                                >
+                                  <Plus size={13} />
+                                </button>
+                              </div>
+
+                              {/* Delete */}
+                              <button
+                                onClick={() => deleteItem(item._id)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-500 border border-red-200 rounded-full hover:bg-red-50 transition"
+                              >
+                                <Trash2 size={12} />
+                                <span className="hidden sm:inline">Delete</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Note input */}
+                      <div className="px-4 pb-4">
+                        <input
+                          type="text"
+                          placeholder="Add instruction (e.g. less spicy)"
+                          value={notes[item._id] || ""}
+                          onChange={(e) =>
+                            handleNoteChange(item._id, e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 text-xs text-gray-500 placeholder-gray-300 border border-gray-100 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-200 transition"
+                        />
+                        <Divider />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ── RIGHT: Order Summary ── */}
+              <div className="w-full lg:w-80 xl:w-96 shrink-0">
+                <div className="overflow-hidden bg-white border border-gray-100 shadow-xl rounded-2xl">
+                  <div className="px-6 pt-6 pb-4">
+                    <h2
+                      className="text-lg font-bold text-center text-gray-900"
+                      style={{ fontFamily: "Georgia, serif" }}
+                    >
+                      Order Summary
+                    </h2>
+                    <Divider />
+                  </div>
+
+                  {/* Line items */}
+                  <div className="px-6 space-y-2.5">
+                    {cart.map((item) => (
+                      <div
+                        key={item._id}
+                        className="flex justify-between text-sm text-gray-600"
+                      >
+                        <span className="truncate max-w-[60%]">
+                          {item.name} × {item.qty}
+                        </span>
+                        <span className="font-medium text-gray-800">
+                          ₹{item.price * item.qty}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Subtotal / Tax rows */}
+                  <div className="px-6 pt-4 mt-4 space-y-2 border-t border-gray-100">
+                    <div className="flex justify-between text-sm text-gray-500">
+                      <span>Subtotal</span>
+                      <span>₹{subtotal}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-gray-400">
+                      <span className="flex items-center gap-1">
+                        Service Charge
+                        <span className="text-[10px] text-gray-300 border border-gray-200 rounded-full px-1">
+                          i
+                        </span>
+                      </span>
+                      <span>₹0</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-gray-400">
+                      <span className="flex items-center gap-1">
+                        Taxes
+                        <span className="text-[10px] text-gray-300 border border-gray-200 rounded-full px-1">
+                          i
+                        </span>
+                      </span>
+                      <span>₹0</span>
+                    </div>
+                  </div>
+
+                  {/* Total */}
+                  <div className="flex items-center justify-between px-6 pt-4 pb-2 mt-3 border-t border-gray-100">
+                    <span className="text-base font-bold text-gray-900">
+                      Total
+                    </span>
+                    <span
+                      className="text-2xl font-bold text-emerald-500"
+                      style={{ fontFamily: "Georgia, serif" }}
+                    >
+                      ₹{subtotal}
+                    </span>
+                  </div>
+
+                  {/* CTA */}
+                  <div className="px-6 pt-3 pb-5">
+                    <button
+                      onClick={placeOrder}
+                      disabled={placing}
+                      className="w-full py-3.5 font-semibold text-white rounded-xl bg-emerald-500 hover:bg-emerald-600 shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+                      style={{ fontFamily: "Georgia, serif" }}
+                    >
+                      {placing ? "Placing Order…" : "Place Order 🚀"}
+                    </button>
+
+                    {/* Secure badge */}
+                    <div className="flex items-center justify-center gap-2 py-2 mt-3 border border-gray-100 rounded-xl bg-gray-50">
+                      <ShieldCheck size={14} className="text-emerald-500" />
+                      <span className="text-[11px] text-gray-400">
+                        Secure checkout • Your data is safe with us
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══ TRUST BADGES ══ */}
+          <div className="grid grid-cols-2 gap-3 mt-10 sm:grid-cols-4">
+            {TRUST_BADGES.map((b) => (
+              <div
+                key={b.title}
+                className="flex items-center gap-3 px-4 py-3 bg-white border border-gray-100 shadow-sm rounded-2xl"
+              >
+                <div className="flex items-center justify-center rounded-full w-9 h-9 bg-amber-50 text-amber-500 shrink-0">
+                  {b.icon}
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-700">
+                    {b.title}
+                  </p>
+                  <p className="text-[11px] text-gray-400 leading-tight">
+                    {b.sub}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* TOAST */}
+      {/* ══ TOAST ══ */}
       {toast && (
-        <div className="fixed z-50 px-6 py-3 text-white bg-red-500 shadow-lg top-5 right-5 rounded-xl">
-          <div className="flex items-center gap-4">
-            <span>{toast}</span>
-
-            <button onClick={() => setToast(null)} className="font-bold">
-              ✖
-            </button>
-          </div>
+        <div
+          className={`fixed z-50 top-5 right-4 left-4 sm:left-auto sm:right-5 sm:w-auto flex items-center gap-4 px-5 py-3 rounded-xl shadow-xl text-white text-sm font-medium transition-all
+            ${toast.type === "error" ? "bg-red-500" : "bg-emerald-500"}`}
+        >
+          <span>{toast.msg}</span>
+          <button
+            onClick={() => setToast(null)}
+            className="ml-auto font-bold opacity-80 hover:opacity-100"
+          >
+            ✕
+          </button>
         </div>
       )}
     </>
