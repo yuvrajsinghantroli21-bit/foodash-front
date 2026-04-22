@@ -3,44 +3,72 @@ import axios from "axios";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { CartContext } from "../context/CartContext.jsx";
 import ExpandableText from "../components/ExpandableText";
-import { Filter, X } from "lucide-react";
 import socket from "../socket/socket";
-import "./menu.css";
 import toast from "react-hot-toast";
+import img from "../../public/plate.png";
+import {
+  Filter,
+  X,
+  UtensilsCrossed,
+  Coffee,
+  CakeSlice,
+  LayoutGrid,
+  ChevronUp,
+  ShoppingCart,
+  QrCode,
+} from "lucide-react";
+
+/* ── Thin decorative divider used inside cards ── */
+const Divider = () => (
+  <div className="flex items-center justify-center gap-2 my-1">
+    <div className="w-6 h-[1px] bg-amber-400" />
+    <span className="text-sm text-amber-500">🌿</span>
+    <div className="w-6 h-[1px] bg-amber-400" />
+  </div>
+);
+
+/* ── Category icon helper ── */
+const getIcon = (cat) => {
+  const c = cat.toLowerCase();
+  if (c === "all") return <LayoutGrid size={15} />;
+  if (c.includes("drink") || c.includes("beverage"))
+    return <Coffee size={15} />;
+  if (c.includes("dessert")) return <CakeSlice size={15} />;
+  return <UtensilsCrossed size={15} />;
+};
 
 function Menu() {
   const [menu, setMenu] = useState([]);
-  const [showCards, setShowCards] = useState(false);
   const [table, setTable] = useState(null);
   const [category, setCategory] = useState("all");
-
   const [showFilter, setShowFilter] = useState(false);
   const [renderFilter, setRenderFilter] = useState(false);
+  const [showScroll, setShowScroll] = useState(false);
 
   const { cart, addToCart, removeItem, clearCart } = useContext(CartContext);
-
   const { token: tokenFromUrl } = useParams();
   const navigate = useNavigate();
 
   const token = tokenFromUrl || localStorage.getItem("token");
 
-  /* ================= VERIFY SESSION ================= */
+  /* ── Scroll-to-top visibility ── */
+  useEffect(() => {
+    const onScroll = () => setShowScroll(window.scrollY > 300);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  /* ── Verify session ── */
   useEffect(() => {
     if (!token) {
       toast.error("FoodDash: Please scan QR first");
-
-      setTimeout(() => {
-        navigate("/session-required");
-      }, 1200);
-
+      setTimeout(() => navigate("/session-required"), 1200);
       return;
     }
-
     axios
       .get(`https://fooadash.onrender.com/api/session/${token}`)
       .then((res) => {
         setTable(res.data.table);
-
         if (tokenFromUrl) {
           localStorage.setItem("table", res.data.table);
           localStorage.setItem("token", token);
@@ -48,61 +76,36 @@ function Menu() {
       })
       .catch(() => {
         toast.error("FoodDash: Session expired. Scan again");
-
         localStorage.removeItem("token");
         localStorage.removeItem("table");
         clearCart();
-
-        setTimeout(() => {
-          navigate("/thank-you");
-        }, 1200);
+        setTimeout(() => navigate("/thank-you"), 1200);
       });
   }, [token]);
 
-  /* ================= REAL-TIME SESSION EXPIRE ================= */
+  /* ── Real-time session expiry ── */
   useEffect(() => {
     const currentTable = localStorage.getItem("table");
-
     socket.on("session-expired", (data) => {
-      // ✅ FIXED: backend sends table, not token
       if (data.table == currentTable) {
         toast.error("FoodDash: Session expired");
-
         localStorage.removeItem("token");
         localStorage.removeItem("table");
         clearCart();
-
-        setTimeout(() => {
-          navigate("/thank-you");
-        }, 1200);
+        setTimeout(() => navigate("/thank-you"), 1200);
       }
     });
-
-    return () => {
-      socket.off("session-expired");
-    };
+    return () => socket.off("session-expired");
   }, []);
 
-  /* ================= FETCH MENU ================= */
+  /* ── Fetch menu ── */
   useEffect(() => {
     axios.get("https://fooadash.onrender.com/api/menu").then((res) => {
       setMenu(res.data);
     });
   }, []);
 
-  /* ================= CARD ANIMATION ================= */
-  useEffect(() => {
-    setTimeout(() => setShowCards(true), 120);
-  }, []);
-
-  const getQty = (id) => {
-    const item = cart.find((i) => i._id === id);
-    return item ? item.qty : 0;
-  };
-
-  const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
-
-  /* ================= CATEGORY ================= */
+  /* ── Derived state ── */
   const categories = [
     "all",
     ...new Set(
@@ -112,159 +115,272 @@ function Menu() {
     ),
   ];
 
-  const countByCategory = (cat) => {
-    if (cat === "all") return menu.length;
-    return menu.filter((i) => i.category === cat).length;
-  };
+  const countByCategory = (cat) =>
+    cat === "all" ? menu.length : menu.filter((i) => i.category === cat).length;
 
   const filteredMenu =
     category === "all"
       ? menu
       : menu.filter((item) => item.category === category);
 
-  /* ================= FILTER ================= */
+  const getQty = (id) => {
+    const item = cart.find((i) => i._id === id);
+    return item ? item.qty : 0;
+  };
+
+  const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
+
+  /* ── Filter drawer ── */
   const openFilter = () => {
     setRenderFilter(true);
     setTimeout(() => setShowFilter(true), 10);
   };
-
   const closeFilter = () => {
     setShowFilter(false);
-    setTimeout(() => setRenderFilter(false), 500);
+    setTimeout(() => setRenderFilter(false), 400);
   };
 
   return (
-    <div className="min-h-screen text-gray-900 bg-gray-100 dark:bg-slate-950 dark:text-gray-200">
-      {/* HEADER */}
-      <div className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 bg-white border-b shadow-sm dark:bg-slate-900">
-        <h1 className="text-xl font-bold">
-          Cafe Menu — Table {table || "..."}
-        </h1>
+    <div className="min-h-screen" style={{ backgroundColor: "#f5f0e8" }}>
+      {/* ══════════════ STICKY HEADER ══════════════ */}
+      <div
+        className="sticky top-0 z-40 flex items-center justify-between px-5 py-3 border-b shadow-sm border-amber-100"
+        style={{ backgroundColor: "#f5f0e8" }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold tracking-wide text-emerald-600">
+            🍽 Table {table || "..."}
+          </span>
+        </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {/* Mobile filter */}
           <button
             onClick={openFilter}
-            className="p-2 border rounded-lg min-[1000px]:hidden"
+            className="flex items-center gap-2 px-4 py-2 text-sm transition border border-gray-300 rounded-full hover:bg-white md:hidden"
           >
-            <Filter size={18} />
+            <Filter size={15} /> Filter
           </button>
 
+          {/* Cart */}
           <Link
             to="/cart"
-            className="px-4 py-2 text-white rounded-lg bg-emerald-500"
+            className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white transition-all rounded-full shadow-md bg-emerald-500 hover:bg-emerald-600 active:scale-95"
           >
+            <ShoppingCart size={16} />
             Cart ({totalItems})
           </Link>
         </div>
       </div>
 
-      {/* MOBILE FILTER */}
-      {renderFilter && (
-        <div
-          className="fixed top-[64px] left-0 right-0 bottom-0 z-50 bg-black/40 backdrop-blur-sm flex"
-          onClick={closeFilter}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className={`w-72 h-full bg-white dark:bg-slate-900 p-5 overflow-y-auto
-            transform transition-transform duration-500 ease-in-out
-            ${showFilter ? "translate-x-0" : "-translate-x-full"}`}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold">Filter</h2>
-              <button onClick={closeFilter}>
-                <X />
-              </button>
+      {/* ══════════════ HERO SECTION ══════════════ */}
+      <div
+        className="relative overflow-hidden"
+        style={{ backgroundColor: "#f5f0e8" }}
+      >
+        <div className="flex flex-col items-center max-w-6xl gap-6 px-4 py-10 mx-auto md:flex-row sm:px-6 lg:px-8">
+          {/* Image — first on mobile */}
+          <div className="flex-1 order-1 md:order-2 flex items-center justify-center relative select-none min-h-[220px] sm:min-h-[280px] md:min-h-[320px] px-1">
+            <img
+              src={img}
+              alt="Cafe Menu"
+              className="w-[220px] sm:w-[280px] md:w-[340px] lg:w-[400px] xl:w-[440px] h-auto object-contain drop-shadow-xl"
+            />
+          </div>
+
+          {/* Text — second on mobile */}
+          <div className="flex-1 order-2 text-center md:order-1 md:text-left">
+            <p className="text-emerald-600 text-xs tracking-[0.3em] uppercase font-semibold">
+              • Table {table || "..."} •
+            </p>
+
+            <h1
+              className="mt-2 text-3xl font-bold leading-tight text-gray-900 sm:text-4xl md:text-5xl lg:text-6xl"
+              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+            >
+              Cafe Menu
+            </h1>
+
+            {/* Gold divider */}
+            <div className="flex items-center justify-center gap-3 mt-3 md:justify-start">
+              <div className="w-10 h-[1px] bg-amber-400" />
+              <span className="text-lg text-amber-500">🌿</span>
+              <div className="w-10 h-[1px] bg-amber-400" />
             </div>
 
-            <div className="flex flex-col gap-2">
+            <p className="max-w-xs mx-auto mt-4 text-sm leading-relaxed text-gray-500 sm:max-w-sm md:mx-0">
+              Browse our menu, add items to your cart, and place your order —
+              all from your table.
+            </p>
+
+            {/* View cart CTA */}
+            {totalItems > 0 && (
+              <div className="flex flex-col items-center gap-3 mt-6 sm:flex-row sm:justify-center md:justify-start">
+                <Link
+                  to="/cart"
+                  className="flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-all duration-300 rounded-full shadow-md bg-emerald-500 hover:bg-emerald-600 hover:shadow-lg active:scale-95"
+                >
+                  <ShoppingCart size={18} />
+                  View Cart ({totalItems})
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════ MENU SECTION ══════════════ */}
+      <div className="px-4 py-6 pb-24 mx-auto max-w-7xl">
+        <div className="p-5 bg-white shadow-xl rounded-3xl">
+          {/* ── Category Tabs + Filter Button ── */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+            {/* Desktop tabs */}
+            <div className="flex-wrap hidden gap-2 md:flex">
               {categories.map((cat) => (
                 <button
                   key={cat}
-                  onClick={() => {
-                    setCategory(cat);
-                    closeFilter();
-                  }}
-                  className={`text-left px-3 py-2 rounded-lg capitalize ${
-                    category === cat
-                      ? "bg-emerald-500 text-white"
-                      : "hover:bg-gray-200 dark:hover:bg-slate-800"
-                  }`}
+                  onClick={() => setCategory(cat)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
+                    ${
+                      category === cat
+                        ? "bg-emerald-500 text-white shadow-md"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
                 >
-                  {cat} ({countByCategory(cat)})
+                  {getIcon(cat)}
+                  <span className="capitalize">{cat}</span>
                 </button>
               ))}
             </div>
+
+            {/* Desktop filter button */}
+            <button
+              onClick={openFilter}
+              className="items-center hidden gap-2 px-5 py-2 text-sm transition border rounded-full md:flex hover:bg-gray-50 text-emerald-700 border-emerald-400"
+            >
+              <Filter size={15} /> Filter
+            </button>
           </div>
-        </div>
-      )}
 
-      {/* MAIN */}
-      <div className="flex">
-        {/* SIDEBAR */}
-        <div className="w-60 bg-white dark:bg-slate-900 border-r p-5 max-[1000px]:hidden">
-          <h2 className="mb-4 font-bold">Filter</h2>
-
-          <div className="flex flex-col gap-2">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setCategory(cat)}
-                className={`text-left px-3 py-2 rounded-lg capitalize ${
-                  category === cat
-                    ? "bg-emerald-500 text-white"
-                    : "hover:bg-gray-200 dark:hover:bg-slate-800"
-                }`}
+          {/* ── Drawer Filter (mobile + desktop) ── */}
+          {renderFilter && (
+            <div
+              className="fixed inset-0 z-50 flex bg-black/40"
+              onClick={closeFilter}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className={`w-72 h-full bg-white p-5 overflow-y-auto shadow-2xl transform transition-transform duration-300
+                  ${showFilter ? "translate-x-0" : "-translate-x-full"}`}
               >
-                {cat} ({countByCategory(cat)})
-              </button>
-            ))}
-          </div>
-        </div>
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-lg font-bold">Categories</h2>
+                  <button
+                    onClick={closeFilter}
+                    className="p-1 rounded-full hover:bg-gray-100"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => {
+                        setCategory(cat);
+                        closeFilter();
+                      }}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl capitalize text-sm transition
+                        ${
+                          category === cat
+                            ? "bg-emerald-500 text-white font-medium"
+                            : "hover:bg-gray-100 text-gray-600"
+                        }`}
+                    >
+                      {getIcon(cat)}
+                      <span>{cat}</span>
+                      <span className="ml-auto text-xs opacity-60">
+                        ({countByCategory(cat)})
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
-        {/* MENU GRID */}
-        <div className="flex-1 p-6 md:p-8">
-          <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {filteredMenu.map((item, index) => {
+          {/* ── Menu Grid ── */}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {filteredMenu.map((item) => {
               const qty = getQty(item._id);
               const image = `https://fooadash.onrender.com/uploads/${item.image}`;
+              const isVeg = item.isVeg ?? true;
 
               return (
                 <div
                   key={item._id}
-                  style={{ transitionDelay: `${index * 50}ms` }}
-                  className={`group bg-white dark:bg-slate-900 border rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${
-                    showCards ? "opacity-100" : "opacity-0 translate-y-10"
-                  }`}
+                  className="flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md rounded-2xl hover:shadow-xl hover:-translate-y-1"
                 >
-                  <img
-                    src={image}
-                    className="object-cover w-full h-48 transition-transform duration-500 group-hover:scale-110"
-                  />
-
-                  <div className="flex flex-col gap-3 p-4">
-                    <h2 className="font-bold">{item.name}</h2>
-
-                    <ExpandableText
-                      text={item.description || "No description"}
+                  {/* Image */}
+                  <div className="relative overflow-hidden h-44">
+                    <img
+                      src={image}
+                      alt={item.name}
+                      className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
                     />
+                    {/* Veg / Non-veg dot */}
+                    <span
+                      className="absolute flex items-center justify-center w-5 h-5 border-2 border-white rounded-sm top-2 right-2"
+                      style={{ background: "white" }}
+                    >
+                      <span
+                        className={`w-2.5 h-2.5 rounded-full ${isVeg ? "bg-emerald-500" : "bg-red-500"}`}
+                      />
+                    </span>
+                  </div>
 
-                    <p className="font-semibold text-emerald-500">
+                  {/* Content */}
+                  <div className="flex flex-col items-center flex-1 gap-1 p-4 text-center">
+                    <h2 className="text-sm font-bold leading-snug text-gray-800">
+                      {item.name}
+                    </h2>
+
+                    <p className="text-xs leading-relaxed text-gray-400 line-clamp-2">
+                      {item.description ||
+                        "A delicious item crafted with care."}
+                    </p>
+
+                    <Divider />
+
+                    <p className="mt-1 text-base font-bold text-emerald-500">
                       ₹{item.price}
                     </p>
 
+                    {/* Add / Qty control */}
                     {qty === 0 ? (
                       <button
                         onClick={() => addToCart(item)}
-                        className="py-2 text-white rounded-lg bg-emerald-500"
+                        className="w-full py-2 mt-2 text-sm font-semibold text-white transition-all rounded-full shadow-sm bg-emerald-500 hover:bg-emerald-600 active:scale-95"
                       >
-                        Add
+                        Add to Cart
                       </button>
                     ) : (
-                      <div className="flex justify-between px-3 py-2 bg-gray-100 rounded-lg dark:bg-slate-800">
-                        <button onClick={() => removeItem(item._id)}>-</button>
-                        <span>{qty}</span>
-                        <button onClick={() => addToCart(item)}>+</button>
+                      <div className="flex items-center justify-between w-full mt-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
+                        <button
+                          onClick={() => removeItem(item._id)}
+                          className="flex items-center justify-center text-lg font-bold leading-none text-white transition rounded-full w-7 h-7 bg-emerald-500 hover:bg-emerald-600"
+                        >
+                          −
+                        </button>
+                        <span className="text-sm font-semibold text-emerald-700">
+                          {qty}
+                        </span>
+                        <button
+                          onClick={() => addToCart(item)}
+                          className="flex items-center justify-center text-lg font-bold leading-none text-white transition rounded-full w-7 h-7 bg-emerald-500 hover:bg-emerald-600"
+                        >
+                          +
+                        </button>
                       </div>
                     )}
                   </div>
@@ -272,17 +388,36 @@ function Menu() {
               );
             })}
           </div>
+
+          {/* Empty state */}
+          {filteredMenu.length === 0 && (
+            <div className="py-24 text-center text-gray-400">
+              <UtensilsCrossed size={40} className="mx-auto mb-3 opacity-30" />
+              <p>No items found in this category.</p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* FLOATING CART */}
+      {/* ══════════════ FLOATING CART PILL ══════════════ */}
       {cart.length > 0 && (
         <Link
           to="/cart"
-          className="fixed px-6 py-3 text-white rounded-full shadow-lg bottom-6 right-6 bg-emerald-500"
+          className="fixed z-50 flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-all rounded-full shadow-lg bottom-6 right-6 bg-emerald-500 hover:bg-emerald-600 active:scale-95"
         >
+          <ShoppingCart size={18} />
           View Cart ({totalItems})
         </Link>
+      )}
+
+      {/* ══════════════ SCROLL TO TOP ══════════════ */}
+      {showScroll && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed z-50 flex items-center justify-center text-white transition-all duration-200 rounded-full shadow-lg bottom-6 left-6 w-11 h-11 bg-emerald-500 hover:bg-emerald-600"
+        >
+          <ChevronUp size={20} />
+        </button>
       )}
     </div>
   );
