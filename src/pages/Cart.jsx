@@ -3,6 +3,7 @@ import { CartContext } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import socket from "../socket/socket";
+import toast from "react-hot-toast";
 import {
   Trash2,
   Plus,
@@ -48,7 +49,6 @@ const TRUST_BADGES = [
 ];
 
 function Cart() {
-  const [toast, setToast] = useState(null);
   const [notes, setNotes] = useState({});
   const [placing, setPlacing] = useState(false);
 
@@ -65,32 +65,27 @@ function Cart() {
   useEffect(() => {
     socket.on("session-expired", (data) => {
       if (data.token === token) {
-        showToast("Session expired. Please scan QR again.", "error");
         localStorage.removeItem("token");
         localStorage.removeItem("table");
         clearCart();
-        navigate("/thank-you");
+
+        navigate("/thank-you"); // smooth UX
       }
     });
     return () => socket.off("session-expired");
   }, []);
-
-  const showToast = (msg, type = "success") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
-  };
 
   const handleNoteChange = (id, value) =>
     setNotes((prev) => ({ ...prev, [id]: value }));
 
   const placeOrder = () => {
     if (!token) {
-      showToast("Session expired. Scan QR again.", "error");
+      toast.error("Session expired. Scan QR again.", "error");
       navigate("/");
       return;
     }
     if (cart.length === 0) {
-      showToast("Your cart is empty.", "error");
+      toast.error("Your cart is empty.", "error");
       return;
     }
 
@@ -111,13 +106,15 @@ function Cart() {
     api
       .post("/orders", order)
       .then(() => {
-        showToast("Order placed successfully! 🎉");
+        toast.success("Order placed successfully! 🎉");
         clearCart();
         setNotes({});
-        navigate(`/order/${token}`);
+        setTimeout(() => {
+          navigate(`/order/${token}`);
+        }, 1200);
       })
       .catch(() => {
-        showToast("Error placing order. Try again.", "error");
+        toast.error("Error placing order. Try again.", "error");
       })
       .finally(() => setPlacing(false));
   };
@@ -164,7 +161,7 @@ function Cart() {
         </div>
 
         {/* ══ MAIN CONTENT ══ */}
-        <div className="max-w-6xl px-4 mx-auto sm:px-6">
+        <div className="px-4 mx-auto max-w-7xl sm:px-6">
           {/* Empty state */}
           {cart.length === 0 && (
             <div className="py-24 text-center">
@@ -378,13 +375,13 @@ function Cart() {
             {TRUST_BADGES.map((b) => (
               <div
                 key={b.title}
-                className="flex items-center gap-3 px-4 py-3 bg-white border border-gray-100 shadow-sm rounded-2xl"
+                className="flex items-center gap-3 px-5 py-4 bg-white border border-gray-100 shadow-sm rounded-2xl"
               >
                 <div className="flex items-center justify-center rounded-full w-9 h-9 bg-amber-50 text-amber-500 shrink-0">
                   {b.icon}
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-gray-700">
+                  <p className="my-1 text-xs font-semibold text-gray-700">
                     {b.title}
                   </p>
                   <p className="text-[11px] text-gray-400 leading-tight">
@@ -396,22 +393,6 @@ function Cart() {
           </div>
         </div>
       </div>
-
-      {/* ══ TOAST ══ */}
-      {toast && (
-        <div
-          className={`fixed z-50 top-5 right-4 left-4 sm:left-auto sm:right-5 sm:w-auto flex items-center gap-4 px-5 py-3 rounded-xl shadow-xl text-white text-sm font-medium transition-all
-            ${toast.type === "error" ? "bg-red-500" : "bg-emerald-500"}`}
-        >
-          <span>{toast.msg}</span>
-          <button
-            onClick={() => setToast(null)}
-            className="ml-auto font-bold opacity-80 hover:opacity-100"
-          >
-            ✕
-          </button>
-        </div>
-      )}
     </>
   );
 }

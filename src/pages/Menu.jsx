@@ -75,11 +75,11 @@ function Menu() {
         }
       })
       .catch(() => {
-        toast.error("FoodDash: Session expired. Scan again");
+        toast.error("Session expired. Please scan again.");
         localStorage.removeItem("token");
         localStorage.removeItem("table");
         clearCart();
-        setTimeout(() => navigate("/thank-you"), 1200);
+        navigate("/thank-you");
       });
   }, [token]);
 
@@ -88,7 +88,7 @@ function Menu() {
     const currentTable = localStorage.getItem("table");
     socket.on("session-expired", (data) => {
       if (data.table == currentTable) {
-        toast.error("FoodDash: Session expired");
+        toast.error("Session expired. Please scan again.");
         localStorage.removeItem("token");
         localStorage.removeItem("table");
         clearCart();

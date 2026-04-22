@@ -29,7 +29,34 @@ import MenuPreview from "./pages/MenuPreview.jsx";
 function App() {
   return (
     <BrowserRouter>
-      <Toaster position="top-center" reverseOrder={false} />
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 2500,
+          style: {
+            background: "rgba(30, 41, 59, 0.95)", // dark glass
+            color: "#fff",
+            borderRadius: "12px",
+            padding: "12px 16px",
+            fontSize: "14px",
+            backdropFilter: "blur(10px)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+          },
+          success: {
+            iconTheme: {
+              primary: "#10b981",
+              secondary: "#fff",
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: "#ef4444",
+              secondary: "#fff",
+            },
+          },
+        }}
+      />
       <ThemeProvider>
         <CartProvider>
           <Routes>
