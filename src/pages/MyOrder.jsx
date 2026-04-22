@@ -23,7 +23,7 @@ export default function MyOrder() {
       }
 
       const res = await api.get(`/orders/${token}`);
-      setOrders(res.data || []);
+      setOrders(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.log(err);
       setOrders([]);
