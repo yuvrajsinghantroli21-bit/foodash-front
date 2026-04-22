@@ -7,15 +7,15 @@ import toast from "react-hot-toast";
 export default function MyOrder() {
   const navigate = useNavigate();
 
-  const [order, setOrder] = useState(null);
+  const [orders, setOrders] = useState([]); // 👈 ARRAY now
   const [loading, setLoading] = useState(true);
 
   const token = localStorage.getItem("token");
 
   // ===============================
-  // 📡 Fetch Order
+  // 📡 Fetch Orders (multiple)
   // ===============================
-  const fetchOrder = async () => {
+  const fetchOrders = async () => {
     try {
       if (!token) {
         setLoading(false);
@@ -23,10 +23,10 @@ export default function MyOrder() {
       }
 
       const res = await api.get(`/orders/${token}`);
-      setOrder(res.data);
+      setOrders(res.data || []);
     } catch (err) {
       console.log(err);
-      setOrder(null);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -36,35 +36,43 @@ export default function MyOrder() {
   // ⚡ Effects
   // ===============================
   useEffect(() => {
-    fetchOrder();
+    fetchOrders();
 
-    // 🔴 Real-time update
     socket.on("orderUpdated", (updatedOrder) => {
       if (updatedOrder.token === token) {
-        setOrder(updatedOrder);
+        setOrders((prev) => {
+          const exists = prev.find((o) => o._id === updatedOrder._id);
 
-        if (updatedOrder.status === "completed") {
-          toast.success("Your order is ready! 🎉");
+          if (exists) {
+            return prev.map((o) =>
+              o._id === updatedOrder._id ? updatedOrder : o,
+            );
+          } else {
+            // new batch added
+            return [...prev, updatedOrder];
+          }
+        });
+
+        if (updatedOrder.status === "served") {
+          toast.success("One batch is served! 🍽️");
         }
       }
     });
 
-    return () => {
-      socket.off("orderUpdated");
-    };
+    return () => socket.off("orderUpdated");
   }, []);
 
   // ===============================
-  // 🧹 Clear session on complete
+  // 🧹 Clear session if all served
   // ===============================
   useEffect(() => {
-    if (order?.status === "completed") {
+    if (orders.length > 0 && orders.every((o) => o.status === "served")) {
       setTimeout(() => {
         localStorage.removeItem("token");
-        setOrder(null);
-      }, 3000);
+        setOrders([]);
+      }, 4000);
     }
-  }, [order]);
+  }, [orders]);
 
   // ===============================
   // 🎨 UI
@@ -82,7 +90,6 @@ export default function MyOrder() {
       <div className="max-w-2xl p-6 mx-auto bg-white shadow-xl rounded-2xl">
         <h2 className="mb-6 text-2xl font-bold text-center">🧾 My Order</h2>
 
-        {/* ❌ No Token */}
         {!token ? (
           <div className="text-center">
             <p className="mb-4 text-gray-500">
@@ -95,10 +102,9 @@ export default function MyOrder() {
               Scan QR
             </button>
           </div>
-        ) : !order ? (
-          /* ❌ No Order */
+        ) : orders.length === 0 ? (
           <div className="text-center">
-            <p className="mb-4 text-gray-500">No active order</p>
+            <p className="mb-4 text-gray-500">No active orders</p>
             <button
               onClick={() => navigate("/menu")}
               className="px-6 py-2 text-white bg-orange-500 rounded-full"
@@ -108,45 +114,87 @@ export default function MyOrder() {
           </div>
         ) : (
           <>
-            {/* 🛒 Items */}
-            <div className="space-y-3">
-              {order.items.map((item, i) => (
-                <div key={i} className="flex justify-between pb-2 border-b">
-                  <div>
-                    <p className="font-medium">
-                      {item.name} × {item.qty}
-                    </p>
-                    {item.note && (
-                      <p className="text-sm text-gray-500">Note: {item.note}</p>
-                    )}
-                  </div>
-
-                  <p className="font-semibold">₹{item.price * item.qty}</p>
+            {orders.map((order, index) => (
+              <div key={order._id} className="mb-6">
+                {/* 🟡 Batch Header */}
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-semibold">Batch {index + 1}</p>
+                  <p className="text-sm text-gray-500">
+                    {new Date(order.createdAt).toLocaleTimeString()}
+                  </p>
                 </div>
-              ))}
-            </div>
 
-            {/* 💰 Total */}
-            <div className="flex justify-between mt-6 text-lg font-bold">
+                {/* 🛒 Items */}
+                <div className="space-y-2">
+                  {order.items.map((item, i) => (
+                    <div key={i} className="flex justify-between pb-2 border-b">
+                      <div>
+                        <p className="font-medium">
+                          {item.name} × {item.qty}
+                        </p>
+                        {item.note && (
+                          <p className="text-sm text-gray-500">
+                            Note: {item.note}
+                          </p>
+                        )}
+                      </div>
+
+                      <p className="font-semibold">₹{item.price * item.qty}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 💰 Batch Total */}
+                <div className="flex justify-between mt-2 font-semibold">
+                  <span>Batch Total</span>
+                  <span>
+                    ₹
+                    {order.total ??
+                      order.items.reduce(
+                        (sum, item) => sum + item.price * item.qty,
+                        0,
+                      )}
+                  </span>
+                </div>
+
+                {/* 📊 Status */}
+                <div className="mt-3 text-center">
+                  {order.status === "preparing" && (
+                    <span className="px-4 py-1 text-blue-800 bg-blue-200 rounded-full animate-pulse">
+                      👨‍🍳 Preparing
+                    </span>
+                  )}
+
+                  {order.status === "served" && (
+                    <span className="px-4 py-1 text-green-800 bg-green-200 rounded-full">
+                      ✅ Served
+                    </span>
+                  )}
+                </div>
+
+                {/* Divider between batches */}
+                {index !== orders.length - 1 && (
+                  <hr className="mt-6 border-dashed" />
+                )}
+              </div>
+            ))}
+
+            {/* 🧾 Grand Total */}
+            <div className="flex justify-between pt-4 mt-6 text-lg font-bold border-t">
               <span>Total</span>
-              <span>₹{order.total}</span>
-            </div>
-
-            {/* 📊 Status */}
-            <div className="mt-6 text-center">
-              <p className="mb-2 text-lg font-semibold">Status</p>
-
-              {order.status === "pending" && (
-                <span className="px-4 py-2 text-yellow-800 bg-yellow-200 rounded-full">
-                  ⏳ Preparing...
-                </span>
-              )}
-
-              {order.status === "completed" && (
-                <span className="px-4 py-2 text-green-800 bg-green-200 rounded-full">
-                  ✅ Completed
-                </span>
-              )}
+              <span>
+                ₹
+                {orders.reduce(
+                  (total, order) =>
+                    total +
+                    (order.total ??
+                      order.items.reduce(
+                        (sum, item) => sum + item.price * item.qty,
+                        0,
+                      )),
+                  0,
+                )}
+              </span>
             </div>
           </>
         )}

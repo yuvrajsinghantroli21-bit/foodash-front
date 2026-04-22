@@ -31,6 +31,14 @@ function AdminDashboard() {
     fetchOrders();
   }, []);
 
+  const serveOrder = async (id) => {
+    try {
+      await api.put(`/orders/${id}/serve`);
+    } catch (err) {
+      console.log("Error serving order:", err);
+    }
+  };
+
   /* ================= SOCKET ================= */
   useEffect(() => {
     socket.on("new-order", (order) => {
@@ -257,7 +265,10 @@ function AdminDashboard() {
 
                     <div className="flex gap-2 mt-2">
                       <button
-                        onClick={() => updateBatchStatus(order._id, "served")}
+                        onClick={() => {
+                          updateBatchStatus(order._id, "served");
+                          serveOrder(order._id);
+                        }}
                         className="px-3 py-1 text-white bg-green-500 rounded"
                       >
                         Served
