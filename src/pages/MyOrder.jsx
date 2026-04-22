@@ -66,11 +66,13 @@ export default function MyOrder() {
   // 🧹 Clear session if all served
   // ===============================
   useEffect(() => {
-    if (orders.length > 0 && orders.every((o) => o.status === "served")) {
+    if (orders.length > 0 && orders.every((o) => o.status === "completed")) {
       setTimeout(() => {
         localStorage.removeItem("token");
         setOrders([]);
-      }, 4000);
+        toast.success("Dining completed 🍽️ Thank you!");
+        navigate("/thankyou"); // optional (better UX)
+      }, 3000);
     }
   }, [orders]);
 
