@@ -194,68 +194,71 @@ function Cart() {
                       key={item._id}
                       className="overflow-hidden bg-white border border-gray-100 shadow-md rounded-2xl"
                     >
-                      <div className="flex gap-4 p-4">
-                        {/* Thumbnail */}
-                        <div className="relative w-20 h-20 shrink-0 sm:w-24 sm:h-24">
-                          <img
-                            src={image}
-                            alt={item.name}
-                            className="object-cover w-full h-full rounded-xl"
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                          {/* Veg dot */}
-                          <span className="absolute flex items-center justify-center w-4 h-4 bg-white border border-gray-200 rounded-sm shadow-sm top-1 right-1">
-                            <span
-                              className={`w-2 h-2 rounded-full ${isVeg ? "bg-emerald-500" : "bg-red-500"}`}
+                      <div className="p-4">
+                        {/* TOP ROW: thumbnail + name/price */}
+                        <div className="flex gap-3">
+                          {/* Thumbnail */}
+                          <div className="relative w-16 h-16 shrink-0 sm:w-20 sm:h-20">
+                            <img
+                              src={image}
+                              alt={item.name}
+                              className="object-cover w-full h-full rounded-xl"
+                              onError={(e) => {
+                                e.target.style.display = "none";
+                              }}
                             />
-                          </span>
+                            <span className="absolute flex items-center justify-center w-4 h-4 bg-white border border-gray-200 rounded-sm shadow-sm top-1 right-1">
+                              <span
+                                className={`w-2 h-2 rounded-full ${isVeg ? "bg-emerald-500" : "bg-red-500"}`}
+                              />
+                            </span>
+                          </div>
+
+                          {/* Name + price */}
+                          <div className="flex-1 min-w-0">
+                            <h2 className="text-sm font-bold leading-snug text-gray-800 line-clamp-2">
+                              {item.name}
+                            </h2>
+                            <p className="mt-0.5 text-sm font-semibold text-emerald-500">
+                              ₹{item.price}
+                            </p>
+                          </div>
                         </div>
 
-                        {/* Info + controls */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <h2 className="text-sm font-bold leading-snug text-gray-800 sm:text-base">
-                                {item.name}
-                              </h2>
-                              <p className="mt-0.5 text-sm font-semibold text-emerald-500">
-                                ₹{item.price}
-                              </p>
-                            </div>
-
-                            {/* Qty + Delete */}
-                            <div className="flex items-center gap-2 shrink-0">
-                              {/* Qty stepper */}
-                              <div className="flex items-center overflow-hidden border border-gray-200 rounded-full">
-                                <button
-                                  onClick={() => removeItem(item._id)}
-                                  className="flex items-center justify-center w-8 h-8 text-gray-600 transition hover:bg-gray-100"
-                                >
-                                  <Minus size={13} />
-                                </button>
-                                <span className="text-sm font-semibold text-center text-gray-800 w-7">
-                                  {item.qty}
-                                </span>
-                                <button
-                                  onClick={() => addToCart(item)}
-                                  className="flex items-center justify-center w-8 h-8 text-gray-600 transition hover:bg-gray-100"
-                                >
-                                  <Plus size={13} />
-                                </button>
-                              </div>
-
-                              {/* Delete */}
-                              <button
-                                onClick={() => deleteItem(item._id)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-500 border border-red-200 rounded-full hover:bg-red-50 transition"
-                              >
-                                <Trash2 size={12} />
-                                <span className="hidden sm:inline">Delete</span>
-                              </button>
-                            </div>
+                        {/* BOTTOM ROW: qty stepper + delete — always on its own row */}
+                        <div className="flex items-center justify-between mt-3">
+                          {/* Qty stepper */}
+                          <div className="flex items-center overflow-hidden border border-gray-200 rounded-full">
+                            <button
+                              onClick={() => removeItem(item._id)}
+                              className="flex items-center justify-center w-8 h-8 text-gray-600 transition hover:bg-gray-100"
+                            >
+                              <Minus size={13} />
+                            </button>
+                            <span className="w-8 text-sm font-semibold text-center text-gray-800">
+                              {item.qty}
+                            </span>
+                            <button
+                              onClick={() => addToCart(item)}
+                              className="flex items-center justify-center w-8 h-8 text-gray-600 transition hover:bg-gray-100"
+                            >
+                              <Plus size={13} />
+                            </button>
                           </div>
+
+                          {/* Item subtotal */}
+                          <span className="text-xs font-medium text-gray-400">
+                            ₹{item.price * item.qty}
+                          </span>
+
+                          {/* Delete */}
+                          <button
+                            onClick={() => deleteItem(item._id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-500 border border-red-200 rounded-full hover:bg-red-50 transition"
+                          >
+                            <Trash2 size={12} />
+                            Delete
+                          </button>
                         </div>
                       </div>
 
