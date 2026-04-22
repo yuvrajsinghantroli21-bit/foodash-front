@@ -25,6 +25,7 @@ import EditMenu from "./pages/EditMenu";
 import ThankYou from "./pages/ThankYou";
 import SessionGate from "./pages/SessionGate.jsx";
 import MenuPreview from "./pages/MenuPreview.jsx";
+import MyOrder from "./pages/myorder.jsx";
 
 function App() {
   return (
