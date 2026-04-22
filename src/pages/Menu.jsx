@@ -143,7 +143,6 @@ function Menu() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f5f0e8" }}>
       {/* ══════════════ STICKY HEADER ══════════════ */}
-      {/* ══════════════ STICKY HEADER ══════════════ */}
       <div className="sticky top-0 z-40" style={{ backgroundColor: "#f5f0e8" }}>
         {/* Thin gold accent line at top */}
         <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
@@ -200,6 +199,12 @@ function Menu() {
             >
               <ShoppingCart size={15} />
               <span className="hidden sm:inline">Cart</span>
+
+              <Link to="/my-order">
+                <button className="px-4 py-2 text-white bg-orange-500 rounded-full">
+                  View My Order
+                </button>
+              </Link>
 
               {/* Animated badge */}
               {totalItems > 0 && (

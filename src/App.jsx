@@ -73,6 +73,7 @@ function App() {
               <Route path="/session-required" element={<SessionGate />} />
               <Route path="/menu-preview" element={<MenuPreview />} />
               <Route path="/thank-you" element={<ThankYou />} />
+              <Route path="/my-order" element={<MyOrder />} />
             </Route>
 
             {/* ADMIN ROUTES */}
