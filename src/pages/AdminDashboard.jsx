@@ -51,7 +51,7 @@ function AdminDashboard() {
       }
     });
 
-    socket.on("order-updated", (updated) => {
+    socket.on("orderUpdated", (updated) => {
       setOrders((prev) =>
         prev.map((o) => (o._id === updated._id ? updated : o)),
       );
@@ -126,10 +126,21 @@ function AdminDashboard() {
   };
 
   const completeTable = async (tableOrders) => {
-    for (let o of tableOrders) {
-      await api.put(`/order/${o._id}`, { status: "completed" });
+    try {
+      const token = tableOrders[0]?.token;
+
+      if (!token) {
+        console.log("No token found for table");
+        return;
+      }
+
+      await api.put(`/table/complete/${token}`);
+
+      // optional refresh
+      fetchOrders();
+    } catch (err) {
+      console.log("Complete table error:", err);
     }
-    fetchOrders();
   };
 
   const deleteTable = async (tableOrders) => {
