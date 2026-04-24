@@ -1,7 +1,13 @@
 import { Link } from "react-router-dom";
 import { ShoppingCart } from "lucide-react";
 
-function StickyHeader({ table, totalItems = 0, showCart = true }) {
+function StickyHeader({
+  table,
+  totalItems = 0,
+  showCart = true,
+  actionLabel = "My Order",
+  actionLink = "/my-order",
+}) {
   return (
     <div className="sticky top-0 z-40" style={{ backgroundColor: "#f5f0e8" }}>
       {/* Top gold line */}
@@ -32,30 +38,22 @@ function StickyHeader({ table, totalItems = 0, showCart = true }) {
         </div>
 
         {/* RIGHT */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2">
           {/* CART */}
           {showCart && (
             <Link
               to="/cart"
-              className="relative flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white rounded-full shadow-md sm:px-5 sm:text-sm bg-emerald-500 hover:bg-emerald-600"
+              className="flex items-center gap-2 px-4 py-2 text-white bg-emerald-500 rounded-full"
             >
               <ShoppingCart size={15} />
-              <span className="hidden sm:inline">Cart</span>
-
-              {totalItems > 0 ? (
-                <span className="flex items-center justify-center w-5 h-5 text-[10px] font-bold text-emerald-700 bg-white rounded-full">
-                  {totalItems}
-                </span>
-              ) : (
-                <span className="text-xs sm:hidden text-white/80">(0)</span>
-              )}
+              Cart ({totalItems})
             </Link>
           )}
 
-          {/* MY ORDER */}
-          <Link to="/my-order">
+          {/* MAIN BUTTON */}
+          <Link to={actionLink}>
             <button className="px-4 py-2 text-white bg-orange-500 rounded-full">
-              View My Order
+              {actionLabel}
             </button>
           </Link>
         </div>
