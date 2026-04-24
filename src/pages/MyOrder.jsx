@@ -3,17 +3,19 @@ import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import socket from "../socket/socket";
 import toast from "react-hot-toast";
+import StickyHeader from "../components/StickyHeader";
 
 export default function MyOrder() {
   const navigate = useNavigate();
 
-  const [orders, setOrders] = useState([]); // 👈 ARRAY now
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const table = localStorage.getItem("table");
 
   const token = localStorage.getItem("token");
 
   // ===============================
-  // 📡 Fetch Orders (multiple)
+  // 📡 Fetch Orders
   // ===============================
   const fetchOrders = async () => {
     try {
@@ -33,11 +35,12 @@ export default function MyOrder() {
   };
 
   // ===============================
-  // ⚡ Effects
+  // ⚡ SOCKET + FETCH
   // ===============================
   useEffect(() => {
     fetchOrders();
 
+    // 🔁 ORDER UPDATE
     socket.on("orderUpdated", (updatedOrder) => {
       if (updatedOrder.token === token) {
         setOrders((prev) => {
@@ -48,7 +51,6 @@ export default function MyOrder() {
               o._id === updatedOrder._id ? updatedOrder : o,
             );
           } else {
-            // new batch added
             return [...prev, updatedOrder];
           }
         });
@@ -59,11 +61,28 @@ export default function MyOrder() {
       }
     });
 
-    return () => socket.off("orderUpdated");
+    // ✅ ✅ ✅ MAIN FIX (REAL-TIME SESSION EXPIRE)
+    socket.on("session-expired", (data) => {
+      if (data.token === token) {
+        toast.error("Session expired. Thank you! 🙏");
+
+        localStorage.removeItem("token");
+        localStorage.removeItem("table");
+
+        setTimeout(() => {
+          navigate("/thank-you");
+        }, 1200);
+      }
+    });
+
+    return () => {
+      socket.off("orderUpdated");
+      socket.off("session-expired");
+    };
   }, []);
 
   // ===============================
-  // 🧹 Clear session if all served
+  // 🧹 OPTIONAL FALLBACK (SAFE)
   // ===============================
   useEffect(() => {
     if (orders.length > 0 && orders.every((o) => o.status === "completed")) {
@@ -71,7 +90,7 @@ export default function MyOrder() {
         localStorage.removeItem("token");
         setOrders([]);
         toast.success("Dining completed 🍽️ Thank you!");
-        navigate("/thankyou"); // optional (better UX)
+        navigate("/thank-you");
       }, 3000);
     }
   }, [orders]);
@@ -89,6 +108,7 @@ export default function MyOrder() {
 
   return (
     <div className="min-h-screen px-4 py-10 bg-gradient-to-br from-amber-50 to-orange-100">
+      <StickyHeader table={table} showCart={false} />
       <div className="max-w-2xl p-6 mx-auto bg-white shadow-xl rounded-2xl">
         <h2 className="mb-6 text-2xl font-bold text-center">🧾 My Order</h2>
 
@@ -108,7 +128,7 @@ export default function MyOrder() {
           <div className="text-center">
             <p className="mb-4 text-gray-500">No active orders</p>
             <button
-              onClick={() => navigate("/menu")}
+              onClick={() => navigate("/order")}
               className="px-6 py-2 text-white bg-orange-500 rounded-full"
             >
               Go to Menu
@@ -118,7 +138,6 @@ export default function MyOrder() {
           <>
             {orders.map((order, index) => (
               <div key={order._id} className="mb-6">
-                {/* 🟡 Batch Header */}
                 <div className="flex items-center justify-between mb-2">
                   <p className="font-semibold">Batch {index + 1}</p>
                   <p className="text-sm text-gray-500">
@@ -126,7 +145,6 @@ export default function MyOrder() {
                   </p>
                 </div>
 
-                {/* 🛒 Items */}
                 <div className="space-y-2">
                   {order.items.map((item, i) => (
                     <div key={i} className="flex justify-between pb-2 border-b">
@@ -146,7 +164,6 @@ export default function MyOrder() {
                   ))}
                 </div>
 
-                {/* 💰 Batch Total */}
                 <div className="flex justify-between mt-2 font-semibold">
                   <span>Batch Total</span>
                   <span>
@@ -159,7 +176,6 @@ export default function MyOrder() {
                   </span>
                 </div>
 
-                {/* 📊 Status */}
                 <div className="mt-3 text-center">
                   {order.status === "preparing" && (
                     <span className="px-4 py-1 text-blue-800 bg-blue-200 rounded-full animate-pulse">
@@ -174,14 +190,12 @@ export default function MyOrder() {
                   )}
                 </div>
 
-                {/* Divider between batches */}
                 {index !== orders.length - 1 && (
                   <hr className="mt-6 border-dashed" />
                 )}
               </div>
             ))}
 
-            {/* 🧾 Grand Total */}
             <div className="flex justify-between pt-4 mt-6 text-lg font-bold border-t">
               <span>Total</span>
               <span>

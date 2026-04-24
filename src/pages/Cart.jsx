@@ -3,6 +3,7 @@ import { CartContext } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import socket from "../socket/socket";
+import StickyHeader from "../components/StickyHeader";
 import toast from "react-hot-toast";
 import {
   Trash2,
@@ -63,36 +64,52 @@ function Cart() {
 
   /* ── Socket: session expire ── */
   useEffect(() => {
-    socket.on("session-expired", (data) => {
-      if (data.token === token) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("table");
+    const handleSessionExpired = (data) => {
+      const currentToken = localStorage.getItem("token"); // ✅ always fresh
+
+      if (data.token === currentToken) {
+        toast.error("Session expired");
+
         clearCart();
 
-        navigate("/thank-you"); // smooth UX
+        localStorage.removeItem("token");
+        localStorage.removeItem("table");
+
+        setTimeout(() => {
+          navigate("/thank-you");
+        }, 1200);
       }
-    });
-    return () => socket.off("session-expired");
-  }, []);
+    };
+
+    socket.on("session-expired", handleSessionExpired);
+
+    return () => {
+      socket.off("session-expired", handleSessionExpired);
+    };
+  }, [navigate, clearCart]);
 
   const handleNoteChange = (id, value) =>
     setNotes((prev) => ({ ...prev, [id]: value }));
 
   const placeOrder = () => {
-    if (!token) {
-      toast.error("Session expired. Scan QR again.", "error");
-      navigate("/");
+    const currentToken = localStorage.getItem("token"); // ✅ always fresh
+
+    if (!currentToken) {
+      toast.error("pls scan the qr code to acces this page");
+      navigate("/thank-you");
       return;
     }
+
     if (cart.length === 0) {
-      toast.error("Your cart is empty.", "error");
+      toast.error("Your cart is empty.");
       return;
     }
 
     setPlacing(true);
+
     const order = {
       table,
-      sessionId: token,
+      sessionId: currentToken, // ✅ FIXED
       total: subtotal,
       items: cart.map((item) => ({
         name: item.name,
@@ -109,12 +126,24 @@ function Cart() {
         toast.success("Order placed successfully! 🎉");
         clearCart();
         setNotes({});
+
         setTimeout(() => {
-          navigate(`/order/${token}`);
+          navigate(`/order/${currentToken}`); // ✅ FIXED
         }, 1200);
       })
-      .catch(() => {
-        toast.error("Error placing order. Try again.", "error");
+      .catch((err) => {
+        // ✅ HANDLE EXPIRED SESSION FROM BACKEND
+        if (err.response?.status === 401) {
+          toast.error("Session expired");
+
+          localStorage.removeItem("token");
+          localStorage.removeItem("table");
+          clearCart();
+
+          navigate("/thank-you");
+        } else {
+          toast.error("Error placing order. Try again.");
+        }
       })
       .finally(() => setPlacing(false));
   };
@@ -125,17 +154,18 @@ function Cart() {
         className="min-h-screen pb-16"
         style={{ backgroundColor: "#f5f0e8" }}
       >
+        <StickyHeader table={table} totalItems={cart.length} />
         {/* ══ Gold top accent ══ */}
         <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
 
         {/* ══ PAGE HEADER ══ */}
         <div className="max-w-6xl px-4 pt-8 pb-4 mx-auto sm:px-6">
-          <button
+          {/* <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-1.5 mb-4 text-xs text-gray-400 hover:text-emerald-600 transition-colors"
           >
             <ArrowLeft size={14} /> Back to Menu
-          </button>
+          </button> */}
 
           <div className="flex items-start justify-between">
             <div>
