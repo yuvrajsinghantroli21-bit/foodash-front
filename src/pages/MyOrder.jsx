@@ -51,10 +51,27 @@ const StatusBanner = ({ status }) => {
 export default function MyOrder() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
+  const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const table = localStorage.getItem("table");
   const token = localStorage.getItem("token");
+
+  /* ── Look up image from menu by item name ── */
+  const getImage = (itemName) => {
+    const found = menu.find((m) => m.name === itemName);
+    return found?.image
+      ? `https://fooadash.onrender.com/uploads/${found.image}`
+      : null;
+  };
+
+  /* ── Fetch menu (for images) ── */
+  useEffect(() => {
+    api
+      .get("/menu")
+      .then((res) => setMenu(res.data))
+      .catch(() => {});
+  }, []);
 
   /* ── Fetch orders ── */
   const fetchOrders = async () => {
@@ -64,7 +81,6 @@ export default function MyOrder() {
         return;
       }
       const res = await api.get(`/orders/${token}`);
-      // Sort oldest first so Batch 1 = first order placed
       const sorted = (Array.isArray(res.data) ? res.data : []).sort(
         (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
       );
@@ -76,7 +92,7 @@ export default function MyOrder() {
     }
   };
 
-  /* ── Socket ── */
+  /* ── Socket + initial fetch ── */
   useEffect(() => {
     fetchOrders();
 
@@ -87,7 +103,6 @@ export default function MyOrder() {
           const next = exists
             ? prev.map((o) => (o._id === updatedOrder._id ? updatedOrder : o))
             : [...prev, updatedOrder];
-          // Keep oldest-first sort
           return next.sort(
             (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
           );
@@ -162,7 +177,6 @@ export default function MyOrder() {
         className="min-h-screen pb-16"
         style={{ backgroundColor: "#f5f0e8" }}
       >
-        {/* Gold top accent */}
         <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
 
         <div className="max-w-2xl px-4 pt-8 pb-4 mx-auto sm:px-6">
@@ -221,7 +235,6 @@ export default function MyOrder() {
                   minute: "2-digit",
                 });
                 const dateLabel = "Today, " + time;
-                // Fake order ID suffix from _id tail
                 const orderId = "#WHC-" + order._id.slice(-5).toUpperCase();
 
                 return (
@@ -246,19 +259,20 @@ export default function MyOrder() {
                     {/* Items */}
                     <div className="px-4 divide-y divide-gray-100">
                       {order.items.map((item, i) => {
-                        const image = `https://fooadash.onrender.com/uploads/${item.image}`;
+                        const image = getImage(item.name);
                         return (
                           <div key={i} className="flex items-center gap-3 py-3">
                             {/* Thumbnail */}
-                            <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-gray-100">
-                              <img
-                                src={image}
-                                alt={item.name}
-                                className="object-cover w-full h-full"
-                                onError={(e) => {
-                                  e.target.style.display = "none";
-                                }}
-                              />
+                            <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-gray-100 flex items-center justify-center">
+                              {image ? (
+                                <img
+                                  src={image}
+                                  alt={item.name}
+                                  className="object-cover w-full h-full"
+                                />
+                              ) : (
+                                <span className="text-2xl">🍽</span>
+                              )}
                             </div>
 
                             {/* Name + veg dot + qty */}
@@ -311,11 +325,9 @@ export default function MyOrder() {
 
               {/* ── Grand Summary Card ── */}
               <div className="relative overflow-hidden bg-white rounded-2xl shadow-md border border-amber-100 px-5 py-5">
-                {/* Faint decorative plate illustration */}
                 <div className="absolute right-4 bottom-2 opacity-10 text-amber-400 pointer-events-none select-none text-[80px]">
                   🍽
                 </div>
-
                 <div className="grid grid-cols-3 gap-4 relative z-10">
                   <div>
                     <div className="flex items-center gap-1.5 text-amber-500 mb-1">
@@ -328,7 +340,6 @@ export default function MyOrder() {
                       {totalBatches}
                     </p>
                   </div>
-
                   <div>
                     <div className="flex items-center gap-1.5 text-amber-500 mb-1">
                       <Utensils size={14} />
@@ -340,7 +351,6 @@ export default function MyOrder() {
                       {totalItems}
                     </p>
                   </div>
-
                   <div>
                     <div className="mb-1">
                       <span className="text-xs font-semibold text-emerald-600">
