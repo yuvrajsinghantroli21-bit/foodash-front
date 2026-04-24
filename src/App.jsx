@@ -26,6 +26,7 @@ import ThankYou from "./pages/ThankYou";
 import SessionGate from "./pages/SessionGate.jsx";
 import MenuPreview from "./pages/MenuPreview.jsx";
 import MyOrder from "./pages/MyOrder.jsx";
+import ScrollToTop from "./components/ScrollToTop";
 
 function App() {
   return (
@@ -58,6 +59,8 @@ function App() {
           },
         }}
       />
+      <ScrollToTop />
+
       <ThemeProvider>
         <CartProvider>
           <Routes>
