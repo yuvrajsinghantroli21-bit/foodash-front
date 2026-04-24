@@ -160,33 +160,40 @@ function Cart() {
 
         {/* ══ PAGE HEADER ══ */}
         <div className="max-w-6xl px-4 pt-8 pb-4 mx-auto sm:px-6">
-          {/* <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 mb-4 text-xs text-gray-400 hover:text-emerald-600 transition-colors"
-          >
-            <ArrowLeft size={14} /> Back to Menu
-          </button> */}
-
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-emerald-600 text-[11px] tracking-[0.25em] uppercase font-semibold mb-1">
+          <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start sm:justify-between">
+            {/* LEFT */}
+            <div className="w-full text-center sm:text-left sm:w-auto">
+              <p className="text-emerald-600 text-xs sm:text-sm tracking-[0.3em] uppercase font-semibold mb-2">
                 • Your Order •
               </p>
+
               <h1
-                className="text-3xl font-bold text-gray-900 sm:text-4xl"
+                className="text-3xl sm:text-5xl font-bold text-gray-900 leading-tight"
                 style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
               >
                 Cart — Table {table || "…"}
               </h1>
-              <Divider />
+
+              {/* Divider alignment fix */}
+              <div className="flex justify-center sm:justify-start mt-2">
+                <Divider />
+              </div>
             </div>
 
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-full bg-emerald-500 hover:bg-emerald-600 shadow-md transition-all active:scale-95 shrink-0 mt-1"
-            >
-              <Plus size={15} /> Add Items
-            </button>
+            {/* BUTTON */}
+            <div className="flex justify-center w-full sm:w-auto sm:justify-end">
+              <button
+                onClick={() => navigate(-1)}
+                className="flex items-center justify-center gap-2 
+                   px-6 py-3 text-base sm:text-lg font-semibold 
+                   text-white rounded-full bg-emerald-500 
+                   hover:bg-emerald-600 shadow-md 
+                   transition-all active:scale-95 whitespace-nowrap"
+              >
+                <Plus size={18} />
+                Add Items
+              </button>
+            </div>
           </div>
         </div>
 
@@ -401,22 +408,40 @@ function Cart() {
           )}
 
           {/* ══ TRUST BADGES ══ */}
-          <div className="grid grid-cols-2 gap-3 mt-10 sm:grid-cols-4">
+          <div className="grid grid-cols-1 min-[401px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-10">
             {TRUST_BADGES.map((b) => (
               <div
                 key={b.title}
-                className="flex items-center gap-3 px-5 py-4 bg-white border border-gray-100 shadow-sm rounded-2xl"
+                className="
+        flex flex-col sm:flex-row items-center sm:items-start
+        gap-3 sm:gap-4
+        w-full
+        px-4 sm:px-5
+        py-4 sm:py-5
+        text-center sm:text-left
+        bg-white border border-gray-100
+        shadow-sm rounded-xl sm:rounded-2xl
+        hover:shadow-md transition-all
+      "
               >
-                <div className="flex items-center justify-center rounded-full w-9 h-9 bg-amber-50 text-amber-500 shrink-0">
+                {/* ICON */}
+                <div
+                  className="
+        flex items-center justify-center
+        w-11 h-11 sm:w-12 sm:h-12
+        rounded-full bg-amber-50 text-amber-500 shrink-0
+      "
+                >
                   {b.icon}
                 </div>
-                <div>
-                  <p className="my-1 text-xs font-semibold text-gray-700">
+
+                {/* TEXT */}
+                <div className="space-y-0.5 sm:space-y-1">
+                  <p className="text-sm font-semibold text-gray-800 leading-tight">
                     {b.title}
                   </p>
-                  <p className="text-[11px] text-gray-400 leading-tight">
-                    {b.sub}
-                  </p>
+
+                  <p className="text-xs text-gray-500 leading-snug">{b.sub}</p>
                 </div>
               </div>
             ))}

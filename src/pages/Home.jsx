@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
+import img from "../../public/bg_white_house.jpg";
 
 function Home() {
   const navigate = useNavigate();
@@ -48,8 +49,7 @@ function Home() {
       <div
         className="absolute inset-0 bg-center bg-cover"
         style={{
-          backgroundImage:
-            "url('https://images.unsplash.com/photo-1559925393-8be0ec4767c8')",
+          backgroundImage: `url(${img})`,
         }}
       />
 

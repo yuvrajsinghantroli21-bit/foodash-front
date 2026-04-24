@@ -161,7 +161,7 @@ function Menu() {
         className="relative overflow-hidden"
         style={{ backgroundColor: "#f5f0e8" }}
       >
-        <div className="flex flex-col items-center max-w-6xl gap-6 px-4 py-10 mx-auto md:flex-row sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center max-w-6xl gap-6 px-4 py-10 mx-auto md:flex-row sm:px-6 lg:px-8 bg-gradient-to-r from-transparent via-amber-400 to-transparent">
           {/* Image — first on mobile */}
           <div className="flex-1 order-1 md:order-2 flex items-center justify-center relative select-none min-h-[220px] sm:min-h-[280px] md:min-h-[320px] px-1">
             <img
