@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 
@@ -9,13 +9,48 @@ function AddMenu() {
   const [price, setPrice] = useState("");
   const [salePrice, setSalePrice] = useState("");
   const [description, setDescription] = useState("");
+
   const [category, setCategory] = useState("");
+  const [categoryIconSvg, setCategoryIconSvg] = useState("");
+
   const [foodType, setFoodType] = useState("veg");
   const [badge, setBadge] = useState("none");
   const [available, setAvailable] = useState(true);
 
+  const [categories, setCategories] = useState([]);
+  const [newCategory, setNewCategory] = useState("");
+  const [newIconSvg, setNewIconSvg] = useState("");
+
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
+
+  useEffect(() => {
+    api
+      .get("/categories")
+      .then((res) => {
+        setCategories(res.data);
+      })
+      .catch((err) => {
+        console.log("Category fetch error:", err);
+      });
+  }, []);
+
+  const addCategory = async () => {
+    try {
+      if (!newCategory.trim()) return;
+
+      const res = await api.post("/categories", {
+        name: newCategory,
+        iconSvg: newIconSvg || "",
+      });
+
+      setCategories((prev) => [res.data, ...prev]);
+      setNewCategory("");
+      setNewIconSvg("");
+    } catch (err) {
+      console.log("Category add error:", err);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -27,6 +62,7 @@ function AddMenu() {
     formData.append("salePrice", salePrice);
     formData.append("description", description);
     formData.append("category", category);
+    formData.append("categoryIconSvg", categoryIconSvg);
     formData.append("foodType", foodType);
     formData.append("badge", badge);
     formData.append("available", available);
@@ -50,10 +86,10 @@ function AddMenu() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen text-white bg-gray-900">
+    <div className="flex items-center justify-center min-h-screen px-4 py-10 text-white bg-gray-900">
       <form
         onSubmit={handleSubmit}
-        className="p-8 space-y-4 bg-gray-800 rounded-xl w-96"
+        className="w-full max-w-md p-8 space-y-4 bg-gray-800 rounded-xl"
       >
         <h2 className="text-2xl font-bold text-center">Add Menu Item</h2>
 
@@ -83,17 +119,79 @@ function AddMenu() {
           onChange={(e) => setSalePrice(e.target.value)}
         />
 
+        {/* CATEGORY SELECT */}
         <select
           className="w-full p-2 bg-gray-700 rounded"
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          onChange={(e) => {
+            const selected = categories.find(
+              (cat) => cat.name === e.target.value,
+            );
+
+            setCategory(selected?.name || "");
+            setCategoryIconSvg(selected?.iconSvg || "");
+          }}
           required
         >
           <option value="">Select Category</option>
-          <option value="Fast Food">Fast Food</option>
-          <option value="Drinks">Drinks</option>
-          <option value="Desserts">Desserts</option>
+
+          {categories.map((cat) => (
+            <option key={cat._id} value={cat.name}>
+              {cat.name}
+            </option>
+          ))}
         </select>
+
+        {/* SELECTED CATEGORY SVG PREVIEW */}
+        {categoryIconSvg && (
+          <div className="flex items-center gap-3 p-3 bg-gray-900 border border-gray-700 rounded-lg">
+            <span
+              className="flex items-center justify-center w-8 h-8 text-white"
+              dangerouslySetInnerHTML={{ __html: categoryIconSvg }}
+            />
+            <span className="text-sm text-gray-300">{category}</span>
+          </div>
+        )}
+
+        {/* ADD NEW CATEGORY */}
+        <div className="p-4 space-y-3 border border-gray-600 rounded-lg bg-gray-900">
+          <h3 className="text-sm font-semibold text-gray-300">
+            Add New Category
+          </h3>
+
+          <input
+            type="text"
+            placeholder="Category name e.g. Dessert"
+            className="w-full p-2 bg-gray-700 rounded"
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+          />
+
+          <textarea
+            placeholder="Paste full SVG code here"
+            className="w-full p-2 bg-gray-700 rounded min-h-[120px]"
+            value={newIconSvg}
+            onChange={(e) => setNewIconSvg(e.target.value)}
+          />
+
+          {newIconSvg && (
+            <div className="flex items-center gap-3 p-3 bg-gray-800 rounded">
+              <span
+                className="flex items-center justify-center w-8 h-8 text-white"
+                dangerouslySetInnerHTML={{ __html: newIconSvg }}
+              />
+              <span className="text-sm text-gray-300">SVG Preview</span>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={addCategory}
+            className="w-full py-2 text-sm font-semibold text-white bg-orange-500 rounded hover:bg-orange-600"
+          >
+            Add Category
+          </button>
+        </div>
 
         <select
           className="w-full p-2 bg-gray-700 rounded"
@@ -150,8 +248,9 @@ function AddMenu() {
             type="file"
             hidden
             onChange={(e) => {
-              setImage(e.target.files[0]);
-              setPreview(URL.createObjectURL(e.target.files[0]));
+              const file = e.target.files[0];
+              setImage(file);
+              setPreview(URL.createObjectURL(file));
             }}
             required
           />

@@ -177,7 +177,7 @@ export default function MyOrder() {
         className="min-h-screen pb-16"
         style={{ backgroundColor: "#f5f0e8" }}
       >
-        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+        <div className="" />
 
         <div className="max-w-2xl px-4 pt-8 pb-4 mx-auto sm:px-6">
           {/* ── Page Title ── */}

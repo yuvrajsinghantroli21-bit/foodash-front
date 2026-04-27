@@ -156,7 +156,7 @@ function Cart() {
       >
         <StickyHeader table={table} totalItems={cart.length} />
         {/* ══ Gold top accent ══ */}
-        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+        <div className="" />
 
         {/* ══ PAGE HEADER ══ */}
         <div className="max-w-6xl px-4 pt-8 pb-4 mx-auto sm:px-6">

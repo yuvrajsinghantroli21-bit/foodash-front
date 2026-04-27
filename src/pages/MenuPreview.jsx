@@ -30,6 +30,9 @@ function MenuPreview() {
   const [renderFilter, setRenderFilter] = useState(false);
   const [showScroll, setShowScroll] = useState(false);
   const [showHowModal, setShowHowModal] = useState(false);
+  const [vegOnly, setVegOnly] = useState(false);
+  const [foodFilter, setFoodFilter] = useState("all");
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -53,10 +56,18 @@ function MenuPreview() {
     ),
   ];
 
-  const filteredMenu =
-    category === "all"
-      ? menu
-      : menu.filter((item) => item.category === category);
+  const filteredMenu = menu.filter((item) => {
+    const categoryMatch = category === "all" || item.category === category;
+
+    const vegMatch = !vegOnly || item.foodType === "veg";
+
+    return categoryMatch && vegMatch;
+  });
+
+  const filteredByFood =
+    foodFilter === "veg"
+      ? filteredMenu.filter((item) => item.foodType === "veg")
+      : filteredMenu;
 
   const countByCategory = (cat) => {
     if (cat === "all") return menu.length;
@@ -168,46 +179,70 @@ function MenuPreview() {
       <div className="px-4 py-6 pb-20 mx-auto max-w-7xl">
         <div className="p-5 bg-white shadow-xl rounded-3xl">
           {/* ── Category Tabs + Filter Button ── */}
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-            {/* Desktop tabs */}
-            <div className="flex-wrap hidden gap-2 md:flex">
+          <div className="flex items-center justify-center mb-6 md:justify-between">
+            {/* Desktop categories */}
+            <div className="hidden md:flex flex-wrap gap-2">
               {categories.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setCategory(cat)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
-              ${
-                category === cat
-                  ? "bg-emerald-500 text-white shadow-md"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+                  ${
+                    category === cat
+                      ? "bg-emerald-500 text-white shadow-md"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
                 >
                   {getIcon(cat)}
                   <span className="capitalize">{cat}</span>
                 </button>
               ))}
+              {/* Veg Filter */}
+              <button
+                onClick={() => setVegOnly(!vegOnly)}
+                className={`relative w-[120px] h-[42px] rounded-full p-1 border shadow-sm transition-all duration-500
+              ${
+                vegOnly
+                  ? "bg-emerald-500 border-emerald-500"
+                  : "bg-white border-gray-200"
+              }`}
+              >
+                {/* moving pill */}
+                <span
+                  className={`absolute top-1 left-1 w-[54px] h-[32px] rounded-full shadow transition-all duration-500
+                ${
+                  vegOnly
+                    ? "translate-x-[56px] bg-white"
+                    : "translate-x-0 bg-emerald-500"
+                }`}
+                />
+
+                {/* text */}
+                <span className="relative z-10 flex items-center justify-between h-full px-3 text-xs font-semibold">
+                  <span className={!vegOnly ? "text-white" : "text-white/80"}>
+                    All
+                  </span>
+
+                  <span
+                    className={vegOnly ? "text-emerald-600" : "text-gray-500"}
+                  >
+                    Veg
+                  </span>
+                </span>
+              </button>
             </div>
 
-            {/* Mobile filter button */}
+            {/* Filter button */}
             <button
               onClick={openFilter}
-              className="flex items-center gap-2 px-5 py-2 text-sm border rounded-full hover:bg-gray-100 md:hidden"
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium transition-all duration-300 border rounded-full shadow-sm hover:shadow-md hover:bg-emerald-50 text-emerald-700 border-emerald-300"
             >
               <Filter size={16} />
               Filter
             </button>
-
-            {/* Desktop filter button */}
-            <button
-              onClick={openFilter}
-              className="items-center hidden gap-2 px-5 py-2 text-sm transition border rounded-full md:flex hover:bg-gray-50 text-emerald-700 border-emerald-400"
-            >
-              <Filter size={15} />
-              Filter
-            </button>
           </div>
 
-          {/* ── Mobile Sidebar Filter ── */}
+          {/* ── Drawer Filter (mobile + desktop) ── */}
           {renderFilter && (
             <div
               className="fixed inset-0 z-50 flex bg-black/40"
@@ -216,7 +251,7 @@ function MenuPreview() {
               <div
                 onClick={(e) => e.stopPropagation()}
                 className={`w-72 h-full bg-white p-5 overflow-y-auto shadow-2xl transform transition-transform duration-300
-            ${showFilter ? "translate-x-0" : "-translate-x-full"}`}
+                          ${showFilter ? "translate-x-0" : "-translate-x-full"}`}
               >
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-lg font-bold">Categories</h2>
@@ -236,11 +271,11 @@ function MenuPreview() {
                         closeFilter();
                       }}
                       className={`flex items-center gap-2 px-3 py-2.5 rounded-xl capitalize text-sm transition
-                  ${
-                    category === cat
-                      ? "bg-emerald-500 text-white font-medium"
-                      : "hover:bg-gray-100 text-gray-600"
-                  }`}
+                                ${
+                                  category === cat
+                                    ? "bg-emerald-500 text-white font-medium"
+                                    : "hover:bg-gray-100 text-gray-600"
+                                }`}
                     >
                       {getIcon(cat)}
                       <span>{cat}</span>
@@ -249,6 +284,43 @@ function MenuPreview() {
                       </span>
                     </button>
                   ))}
+                  {/* Veg Filter */}
+                  <button
+                    onClick={() => setVegOnly(!vegOnly)}
+                    className={`relative w-[120px] h-[42px] rounded-full p-1 border shadow-sm transition-all duration-500
+              ${
+                vegOnly
+                  ? "bg-emerald-500 border-emerald-500"
+                  : "bg-white border-gray-200"
+              }`}
+                  >
+                    {/* moving pill */}
+                    <span
+                      className={`absolute top-1 left-1 w-[54px] h-[32px] rounded-full shadow transition-all duration-500
+                ${
+                  vegOnly
+                    ? "translate-x-[56px] bg-white"
+                    : "translate-x-0 bg-emerald-500"
+                }`}
+                    />
+
+                    {/* text */}
+                    <span className="relative z-10 flex items-center justify-between h-full px-3 text-xs font-semibold">
+                      <span
+                        className={!vegOnly ? "text-white" : "text-white/80"}
+                      >
+                        All
+                      </span>
+
+                      <span
+                        className={
+                          vegOnly ? "text-emerald-600" : "text-gray-500"
+                        }
+                      >
+                        Veg
+                      </span>
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -260,6 +332,7 @@ function MenuPreview() {
               const image = `https://fooadash.onrender.com/uploads/${item.image}`;
               const isVeg = item.foodType === "veg";
               const isAvailable = item.available !== false;
+              const badge = item.badge;
 
               return (
                 <div
@@ -275,57 +348,168 @@ function MenuPreview() {
                     <img
                       src={image}
                       alt={item.name}
-                      className={`object-cover w-full h-full transition-transform duration-700 ${
-                        isAvailable ? "group-hover:scale-110" : ""
+                      className={`object-cover w-full h-full transition-transform duration-700 group-hover:scale-110 ${
+                        !isAvailable ? "opacity-50 grayscale" : ""
                       }`}
                     />
 
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
+                    {/* Richer gradient — stronger at bottom for text legibility */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent" />
 
-                    {/* Sold out overlay */}
+                    {/* ── BADGE ── */}
+                    {badge &&
+                      badge !== "none" &&
+                      isAvailable &&
+                      (() => {
+                        const configs = {
+                          bestseller: {
+                            bg: "#7b1c1c",
+                            text: "#ffd4d4",
+                            iconBg: "#ffd4d4",
+                            iconColor: "#7b1c1c",
+                            icon: "★",
+                            label: "Best Seller",
+                          },
+                          chef: {
+                            bg: "#3d1f00",
+                            text: "#ffd280",
+                            iconBg: "#ffd280",
+                            iconColor: "#3d1f00",
+                            icon: "✦",
+                            label: "Chef's Pick",
+                          },
+                          musttry: {
+                            bg: "#6b2200",
+                            text: "#ffb399",
+                            iconBg: "#ffb399",
+                            iconColor: "#6b2200",
+                            icon: "▲",
+                            label: "Must Try",
+                          },
+                          new: {
+                            bg: "#0a3d1f",
+                            text: "#86efac",
+                            iconBg: "#86efac",
+                            iconColor: "#0a3d1f",
+                            icon: "◆",
+                            label: "New Arrival",
+                          },
+                          limited: {
+                            bg: "#2d1563",
+                            text: "#c4b5fd",
+                            iconBg: "#c4b5fd",
+                            iconColor: "#2d1563",
+                            icon: "⬡",
+                            label: "Limited",
+                          },
+                        };
+
+                        const c = configs[badge];
+                        if (!c) return null;
+
+                        return (
+                          <span
+                            className="absolute top-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-full"
+                            style={{
+                              background: c.bg,
+                              color: c.text,
+                              padding: "5px 10px 5px 6px",
+                              fontSize: 10,
+                              fontWeight: 500,
+                              letterSpacing: "0.03em",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {/* Icon circle */}
+                            <span
+                              className="relative flex items-center justify-center rounded-full shrink-0"
+                              style={{
+                                width: 18,
+                                height: 18,
+                                background: c.iconBg,
+                                color: c.iconColor,
+                                fontSize: 10,
+                              }}
+                            >
+                              {/* Ping ring for "new" only */}
+                              {badge === "new" && (
+                                <span
+                                  className="absolute inset-0 rounded-full animate-ping"
+                                  style={{
+                                    background: "#86efac",
+                                    opacity: 0.5,
+                                  }}
+                                />
+                              )}
+                              {c.icon}
+                            </span>
+
+                            {c.label}
+                          </span>
+                        );
+                      })()}
+
+                    {/* ── SOLD OUT overlay ── */}
                     {!isAvailable && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[2px]">
-                        <span className="px-4 py-2 text-sm font-bold tracking-wide text-white bg-red-500 rounded-full shadow-lg">
-                          SOLD OUT
+                      <>
+                        {/* Full overlay with diagonal text */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div
+                            className="px-5 py-1.5 bg-gray-900/80 backdrop-blur-sm border border-white/20 rounded-full shadow-xl"
+                            style={{ transform: "rotate(-12deg)" }}
+                          >
+                            <span className="text-xs font-black text-white tracking-widest uppercase">
+                              Sold Out
+                            </span>
+                          </div>
+                        </div>
+                        {/* Small badge stays top-left too */}
+                        <span className="absolute top-2.5 left-2.5 px-2.5 py-1 text-[10px] font-bold text-white rounded-full bg-gray-900/80 backdrop-blur-md border border-white/10 shadow">
+                          Sold Out
                         </span>
-                      </div>
+                      </>
                     )}
 
-                    {/* Veg / Nonveg */}
-                    <div className="absolute top-3 right-3">
-                      <span className="flex items-center justify-center w-7 h-7 bg-white/95 backdrop-blur-md border border-white rounded-md shadow">
+                    {/* ── VEG / NON-VEG indicator ── */}
+                    <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+                      {/* Tooltip label on hover */}
+                      <span
+                        className={`
+        hidden group-hover:flex
+        items-center px-2 py-0.5 rounded-full
+        text-[9px] font-bold tracking-wide
+        backdrop-blur-md border shadow-sm
+        transition-all duration-200
+        ${
+          isVeg
+            ? "bg-emerald-50/90 text-emerald-700 border-emerald-200"
+            : "bg-red-50/90 text-red-600 border-red-200"
+        }
+      `}
+                      >
+                        {isVeg ? "VEG" : "NON-VEG"}
+                      </span>
+
+                      {/* The dot box */}
+                      <span
+                        className={`
+        flex items-center justify-center w-6 h-6
+        bg-white/95 backdrop-blur-md
+        border-2 rounded-md shadow-md
+        ${isVeg ? "border-emerald-400" : "border-red-400"}
+      `}
+                      >
                         <span
-                          className={`w-3 h-3 rounded-full ${
-                            isVeg ? "bg-emerald-500" : "bg-red-500"
-                          }`}
+                          className={`w-2.5 h-2.5 rounded-full ${isVeg ? "bg-emerald-500" : "bg-red-500"}`}
                         />
                       </span>
                     </div>
 
-                    {/* Badge */}
-                    {item.badge && item.badge !== "none" && (
-                      <div className="absolute top-3 left-3">
-                        <span
-                          className={`px-3 py-1 text-[10px] font-bold rounded-full shadow-md backdrop-blur-md border
-              ${
-                item.badge === "chef"
-                  ? "bg-amber-100/95 text-amber-700 border-amber-200"
-                  : item.badge === "bestseller"
-                    ? "bg-rose-100/95 text-rose-700 border-rose-200"
-                    : item.badge === "musttry"
-                      ? "bg-orange-100/95 text-orange-700 border-orange-200"
-                      : item.badge === "new"
-                        ? "bg-emerald-100/95 text-emerald-700 border-emerald-200"
-                        : "bg-violet-100/95 text-violet-700 border-violet-200"
-              }`}
-                        >
-                          {item.badge === "chef" && "⭐ Chef's Pick"}
-                          {item.badge === "musttry" && "🔥 Must Try"}
-                          {item.badge === "bestseller" && "🏆 Best Seller"}
-                          {item.badge === "new" && "✨ New"}
-                          {item.badge === "limited" && "⏳ Limited"}
-                        </span>
-                      </div>
+                    {/* ── Item category pill (bottom-left over image) — optional ── */}
+                    {item.category && isAvailable && (
+                      <span className="absolute bottom-2.5 left-2.5 px-2.5 py-0.5 text-[9px] font-semibold tracking-widest uppercase text-white/80 bg-black/30 backdrop-blur-sm rounded-full border border-white/10">
+                        {item.category}
+                      </span>
                     )}
                   </div>
 

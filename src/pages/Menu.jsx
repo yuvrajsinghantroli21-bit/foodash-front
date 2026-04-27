@@ -7,6 +7,7 @@ import socket from "../socket/socket";
 import toast from "react-hot-toast";
 import img from "../../public/plate.png";
 import StickyHeader from "../components/StickyHeader";
+import AddToCartButton from "../components/AddToCartButton";
 import {
   Filter,
   X,
@@ -46,6 +47,9 @@ function Menu() {
   const [renderFilter, setRenderFilter] = useState(false);
   const [showScroll, setShowScroll] = useState(false);
 
+  const [foodFilter, setFoodFilter] = useState("all");
+  const [vegOnly, setVegOnly] = useState(false);
+
   const { cart, addToCart, removeItem, clearCart } = useContext(CartContext);
   const { token: tokenFromUrl } = useParams();
   const navigate = useNavigate();
@@ -60,29 +64,29 @@ function Menu() {
   }, []);
 
   /* ── Verify session ── */
-  useEffect(() => {
-    if (!token) {
-      toast.error("FoodDash: Please scan QR first");
-      setTimeout(() => navigate("/thank-you"), 1200);
-      return;
-    }
-    axios
-      .get(`https://fooadash.onrender.com/api/session/${token}`)
-      .then((res) => {
-        setTable(res.data.table);
-        if (tokenFromUrl) {
-          localStorage.setItem("table", res.data.table);
-          localStorage.setItem("token", token);
-        }
-      })
-      .catch(() => {
-        toast.error("Session expired. Please scan again.");
-        localStorage.removeItem("token");
-        localStorage.removeItem("table");
-        clearCart();
-        navigate("/thank-you");
-      });
-  }, [token]);
+  // useEffect(() => {
+  //   if (!token) {
+  //     toast.error("FoodDash: Please scan QR first");
+  //     setTimeout(() => navigate("/thank-you"), 1200);
+  //     return;
+  //   }
+  //   axios
+  //     .get(`https://fooadash.onrender.com/api/session/${token}`)
+  //     .then((res) => {
+  //       setTable(res.data.table);
+  //       if (tokenFromUrl) {
+  //         localStorage.setItem("table", res.data.table);
+  //         localStorage.setItem("token", token);
+  //       }
+  //     })
+  //     .catch(() => {
+  //       toast.error("Session expired. Please scan again.");
+  //       localStorage.removeItem("token");
+  //       localStorage.removeItem("table");
+  //       clearCart();
+  //       navigate("/thank-you");
+  //     });
+  // }, [token]);
 
   /* ── Real-time session expiry ── */
   useEffect(() => {
@@ -129,10 +133,18 @@ function Menu() {
   const countByCategory = (cat) =>
     cat === "all" ? menu.length : menu.filter((i) => i.category === cat).length;
 
-  const filteredMenu =
-    category === "all"
-      ? menu
-      : menu.filter((item) => item.category === category);
+  const filteredMenu = menu.filter((item) => {
+    const categoryMatch = category === "all" || item.category === category;
+
+    const vegMatch = !vegOnly || item.foodType === "veg";
+
+    return categoryMatch && vegMatch;
+  });
+
+  const filteredByFood =
+    foodFilter === "veg"
+      ? filteredMenu.filter((item) => item.foodType === "veg")
+      : filteredMenu;
 
   const getQty = (id) => {
     const item = cart.find((i) => i._id === id);
@@ -197,7 +209,7 @@ function Menu() {
             </p>
 
             {/* View cart CTA */}
-            {totalItems > 0 && (
+            {/* {totalItems > 0 && (
               <div className="flex flex-col items-center gap-3 mt-6 sm:flex-row sm:justify-center md:justify-start">
                 <Link
                   to="/cart"
@@ -207,7 +219,7 @@ function Menu() {
                   View Cart ({totalItems})
                 </Link>
               </div>
-            )}
+            )} */}
           </div>
         </div>
       </div>
@@ -216,32 +228,66 @@ function Menu() {
       <div className="px-4 py-6 pb-24 mx-auto max-w-7xl">
         <div className="p-5 bg-white shadow-xl rounded-3xl">
           {/* ── Category Tabs + Filter Button ── */}
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-            {/* Desktop tabs */}
-            <div className="flex-wrap hidden gap-2 md:flex">
+          <div className="flex items-center justify-center mb-6 md:justify-between">
+            {/* Desktop categories */}
+            <div className="hidden md:flex flex-wrap gap-2">
               {categories.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setCategory(cat)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
-                    ${
-                      category === cat
-                        ? "bg-emerald-500 text-white shadow-md"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
+          ${
+            category === cat
+              ? "bg-emerald-500 text-white shadow-md"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+          }`}
                 >
                   {getIcon(cat)}
                   <span className="capitalize">{cat}</span>
                 </button>
               ))}
+              {/* Veg Filter */}
+              <button
+                onClick={() => setVegOnly(!vegOnly)}
+                className={`relative w-[120px] h-[42px] rounded-full p-1 border shadow-sm transition-all duration-500
+      ${
+        vegOnly
+          ? "bg-emerald-500 border-emerald-500"
+          : "bg-white border-gray-200"
+      }`}
+              >
+                {/* moving pill */}
+                <span
+                  className={`absolute top-1 left-1 w-[54px] h-[32px] rounded-full shadow transition-all duration-500
+        ${
+          vegOnly
+            ? "translate-x-[56px] bg-white"
+            : "translate-x-0 bg-emerald-500"
+        }`}
+                />
+
+                {/* text */}
+                <span className="relative z-10 flex items-center justify-between h-full px-3 text-xs font-semibold">
+                  <span className={!vegOnly ? "text-white" : "text-white/80"}>
+                    All
+                  </span>
+
+                  <span
+                    className={vegOnly ? "text-emerald-600" : "text-gray-500"}
+                  >
+                    Veg
+                  </span>
+                </span>
+              </button>
             </div>
 
-            {/* Desktop filter button */}
+            {/* Filter button */}
             <button
               onClick={openFilter}
-              className="items-center hidden gap-2 px-5 py-2 text-sm transition border rounded-full md:flex hover:bg-gray-50 text-emerald-700 border-emerald-400"
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium transition-all duration-300 border rounded-full shadow-sm hover:shadow-md hover:bg-emerald-50 text-emerald-700 border-emerald-300"
             >
-              <Filter size={15} /> Filter
+              <Filter size={16} />
+              Filter
             </button>
           </div>
 
@@ -287,6 +333,43 @@ function Menu() {
                       </span>
                     </button>
                   ))}
+                  {/* Veg Filter */}
+                  <button
+                    onClick={() => setVegOnly(!vegOnly)}
+                    className={`relative w-[120px] h-[42px] rounded-full p-1 border shadow-sm transition-all duration-500
+      ${
+        vegOnly
+          ? "bg-emerald-500 border-emerald-500"
+          : "bg-white border-gray-200"
+      }`}
+                  >
+                    {/* moving pill */}
+                    <span
+                      className={`absolute top-1 left-1 w-[54px] h-[32px] rounded-full shadow transition-all duration-500
+        ${
+          vegOnly
+            ? "translate-x-[56px] bg-white"
+            : "translate-x-0 bg-emerald-500"
+        }`}
+                    />
+
+                    {/* text */}
+                    <span className="relative z-10 flex items-center justify-between h-full px-3 text-xs font-semibold">
+                      <span
+                        className={!vegOnly ? "text-white" : "text-white/80"}
+                      >
+                        All
+                      </span>
+
+                      <span
+                        className={
+                          vegOnly ? "text-emerald-600" : "text-gray-500"
+                        }
+                      >
+                        Veg
+                      </span>
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -294,7 +377,7 @@ function Menu() {
 
           {/* ── Menu Grid ── */}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {filteredMenu.map((item) => {
+            {filteredByFood.map((item) => {
               const qty = getQty(item._id);
               const image = `https://fooadash.onrender.com/uploads/${item.image}`;
 
@@ -308,7 +391,7 @@ function Menu() {
               return (
                 <div
                   key={item._id}
-                  className="group flex flex-col overflow-hidden rounded-[26px] bg-white border border-[#ece7df] shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
+                  className="flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md rounded-2xl hover:shadow-xl hover:-translate-y-1"
                 >
                   {/* IMAGE */}
                   <div className="relative overflow-hidden h-48">
@@ -320,51 +403,164 @@ function Menu() {
                       }`}
                     />
 
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+                    {/* Richer gradient — stronger at bottom for text legibility */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent" />
 
-                    {/* Badge */}
-                    {badge && badge !== "none" && isAvailable && (
-                      <span
-                        className={`absolute top-3 left-3 px-3 py-1 rounded-full text-[10px] font-bold shadow-md border backdrop-blur-md
-            ${
-              badge === "bestseller"
-                ? "bg-red-50/95 text-red-600 border-red-200"
-                : badge === "chef"
-                  ? "bg-amber-50/95 text-amber-700 border-amber-200"
-                  : badge === "musttry"
-                    ? "bg-orange-50/95 text-orange-600 border-orange-200"
-                    : badge === "new"
-                      ? "bg-emerald-50/95 text-emerald-600 border-emerald-200"
-                      : "bg-purple-50/95 text-purple-600 border-purple-200"
-            }`}
-                      >
-                        {badge === "bestseller"
-                          ? "🏆 Best Seller"
-                          : badge === "chef"
-                            ? "⭐ Chef's Pick"
-                            : badge === "musttry"
-                              ? "🔥 Must Try"
-                              : badge === "new"
-                                ? "✨ New"
-                                : "⏳ Limited"}
-                      </span>
-                    )}
+                    {/* ── BADGE ── */}
+                    {badge &&
+                      badge !== "none" &&
+                      isAvailable &&
+                      (() => {
+                        const configs = {
+                          bestseller: {
+                            bg: "#7b1c1c",
+                            text: "#ffd4d4",
+                            iconBg: "#ffd4d4",
+                            iconColor: "#7b1c1c",
+                            icon: "★",
+                            label: "Best Seller",
+                          },
+                          chef: {
+                            bg: "#3d1f00",
+                            text: "#ffd280",
+                            iconBg: "#ffd280",
+                            iconColor: "#3d1f00",
+                            icon: "✦",
+                            label: "Chef's Pick",
+                          },
+                          musttry: {
+                            bg: "#6b2200",
+                            text: "#ffb399",
+                            iconBg: "#ffb399",
+                            iconColor: "#6b2200",
+                            icon: "▲",
+                            label: "Must Try",
+                          },
+                          new: {
+                            bg: "#0a3d1f",
+                            text: "#86efac",
+                            iconBg: "#86efac",
+                            iconColor: "#0a3d1f",
+                            icon: "◆",
+                            label: "New Arrival",
+                          },
+                          limited: {
+                            bg: "#2d1563",
+                            text: "#c4b5fd",
+                            iconBg: "#c4b5fd",
+                            iconColor: "#2d1563",
+                            icon: "⬡",
+                            label: "Limited",
+                          },
+                        };
 
-                    {/* Sold out */}
+                        const c = configs[badge];
+                        if (!c) return null;
+
+                        return (
+                          <span
+                            className="absolute top-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-full"
+                            style={{
+                              background: c.bg,
+                              color: c.text,
+                              padding: "5px 10px 5px 6px",
+                              fontSize: 10,
+                              fontWeight: 500,
+                              letterSpacing: "0.03em",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {/* Icon circle */}
+                            <span
+                              className="relative flex items-center justify-center rounded-full shrink-0"
+                              style={{
+                                width: 18,
+                                height: 18,
+                                background: c.iconBg,
+                                color: c.iconColor,
+                                fontSize: 10,
+                              }}
+                            >
+                              {/* Ping ring for "new" only */}
+                              {badge === "new" && (
+                                <span
+                                  className="absolute inset-0 rounded-full animate-ping"
+                                  style={{
+                                    background: "#86efac",
+                                    opacity: 0.5,
+                                  }}
+                                />
+                              )}
+                              {c.icon}
+                            </span>
+
+                            {c.label}
+                          </span>
+                        );
+                      })()}
+
+                    {/* ── SOLD OUT overlay ── */}
                     {!isAvailable && (
-                      <span className="absolute px-3 py-1 text-xs font-bold text-white rounded-full top-3 left-3 bg-gray-900/90 backdrop-blur-md">
-                        Sold Out
-                      </span>
+                      <>
+                        {/* Full overlay with diagonal text */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div
+                            className="px-5 py-1.5 bg-gray-900/80 backdrop-blur-sm border border-white/20 rounded-full shadow-xl"
+                            style={{ transform: "rotate(-12deg)" }}
+                          >
+                            <span className="text-xs font-black text-white tracking-widest uppercase">
+                              Sold Out
+                            </span>
+                          </div>
+                        </div>
+                        {/* Small badge stays top-left too */}
+                        <span className="absolute top-2.5 left-2.5 px-2.5 py-1 text-[10px] font-bold text-white rounded-full bg-gray-900/80 backdrop-blur-md border border-white/10 shadow">
+                          Sold Out
+                        </span>
+                      </>
                     )}
 
-                    {/* Veg / Non Veg */}
-                    <span className="absolute top-3 right-3 flex items-center justify-center w-7 h-7 bg-white/95 backdrop-blur-md border border-white rounded-md shadow">
+                    {/* ── VEG / NON-VEG indicator ── */}
+                    <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+                      {/* Tooltip label on hover */}
                       <span
-                        className={`w-3 h-3 rounded-full ${
-                          isVeg ? "bg-emerald-500" : "bg-red-500"
-                        }`}
-                      />
-                    </span>
+                        className={`
+        hidden group-hover:flex
+        items-center px-2 py-0.5 rounded-full
+        text-[9px] font-bold tracking-wide
+        backdrop-blur-md border shadow-sm
+        transition-all duration-200
+        ${
+          isVeg
+            ? "bg-emerald-50/90 text-emerald-700 border-emerald-200"
+            : "bg-red-50/90 text-red-600 border-red-200"
+        }
+      `}
+                      >
+                        {isVeg ? "VEG" : "NON-VEG"}
+                      </span>
+
+                      {/* The dot box */}
+                      <span
+                        className={`
+        flex items-center justify-center w-6 h-6
+        bg-white/95 backdrop-blur-md
+        border-2 rounded-md shadow-md
+        ${isVeg ? "border-emerald-400" : "border-red-400"}
+      `}
+                      >
+                        <span
+                          className={`w-2.5 h-2.5 rounded-full ${isVeg ? "bg-emerald-500" : "bg-red-500"}`}
+                        />
+                      </span>
+                    </div>
+
+                    {/* ── Item category pill (bottom-left over image) — optional ── */}
+                    {item.category && isAvailable && (
+                      <span className="absolute bottom-2.5 left-2.5 px-2.5 py-0.5 text-[9px] font-semibold tracking-widest uppercase text-white/80 bg-black/30 backdrop-blur-sm rounded-full border border-white/10">
+                        {item.category}
+                      </span>
+                    )}
                   </div>
 
                   {/* CONTENT */}
@@ -391,67 +587,48 @@ function Menu() {
                     </div>
 
                     {/* PRICE */}
-                    <div>
-                      {hasDiscount ? (
+                    <div className="mt-auto  flex flex-col items-center justify-end">
+                      {item.salePrice ? (
                         <>
-                          <div className="flex items-center justify-center gap-2">
+                          {/* old + save in one row */}
+                          <div className="flex items-center gap-2 mb-2">
                             <span className="text-sm text-gray-400 line-through">
                               ₹{item.price}
                             </span>
 
-                            <span className="text-2xl font-extrabold text-emerald-600">
-                              ₹{item.salePrice}
+                            <span className="px-2 py-0.5 text-[10px] font-bold text-red-600 bg-red-50 rounded-full">
+                              SAVE ₹{item.price - item.salePrice}
                             </span>
                           </div>
 
-                          <div className="mt-1 text-[11px] font-bold text-red-500">
-                            Save ₹{item.price - item.salePrice}
+                          {/* final price */}
+                          <div className="text-2xl font-extrabold text-emerald-600 leading-none">
+                            ₹{item.salePrice}
                           </div>
                         </>
                       ) : (
-                        <div className="text-2xl font-extrabold text-emerald-600">
-                          ₹{item.price}
-                        </div>
+                        <>
+                          {/* invisible spacer keeps same alignment */}
+                          <div className="mb-2 invisible text-sm">
+                            placeholder
+                          </div>
+
+                          <div className="text-2xl font-extrabold text-emerald-600 leading-none">
+                            ₹{item.price}
+                          </div>
+                        </>
                       )}
                     </div>
 
                     {/* BUTTON */}
                     <div className="mt-4">
-                      {!isAvailable ? (
-                        <button
-                          disabled
-                          className="w-full py-2 text-sm font-semibold text-gray-500 bg-gray-200 rounded-full cursor-not-allowed"
-                        >
-                          Currently Unavailable
-                        </button>
-                      ) : qty === 0 ? (
-                        <button
-                          onClick={() => addToCart(item)}
-                          className="w-full py-2 text-sm font-semibold text-white transition-all rounded-full shadow-sm bg-emerald-500 hover:bg-emerald-600 active:scale-95"
-                        >
-                          Add to Cart
-                        </button>
-                      ) : (
-                        <div className="flex items-center justify-between w-full px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
-                          <button
-                            onClick={() => removeItem(item._id)}
-                            className="flex items-center justify-center text-lg font-bold leading-none text-white transition rounded-full w-7 h-7 bg-emerald-500 hover:bg-emerald-600"
-                          >
-                            −
-                          </button>
-
-                          <span className="text-sm font-semibold text-emerald-700">
-                            {qty}
-                          </span>
-
-                          <button
-                            onClick={() => addToCart(item)}
-                            className="flex items-center justify-center text-lg font-bold leading-none text-white transition rounded-full w-7 h-7 bg-emerald-500 hover:bg-emerald-600"
-                          >
-                            +
-                          </button>
-                        </div>
-                      )}
+                      <AddToCartButton
+                        item={item}
+                        qty={qty}
+                        isAvailable={isAvailable}
+                        addToCart={addToCart}
+                        removeItem={removeItem}
+                      />
                     </div>
                   </div>
                 </div>
@@ -460,7 +637,7 @@ function Menu() {
           </div>
 
           {/* Empty state */}
-          {filteredMenu.length === 0 && (
+          {filteredByFood.length === 0 && (
             <div className="py-24 text-center text-gray-400">
               <UtensilsCrossed size={40} className="mx-auto mb-3 opacity-30" />
               <p>No items found in this category.</p>
