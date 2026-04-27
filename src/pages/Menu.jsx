@@ -12,13 +12,12 @@ import {
   Filter,
   X,
   UtensilsCrossed,
-  Coffee,
-  CakeSlice,
   LayoutGrid,
   ChevronUp,
   ShoppingCart,
-  QrCode,
 } from "lucide-react";
+
+const API = "https://fooadash.onrender.com/api";
 
 /* ── Thin decorative divider used inside cards ── */
 const Divider = () => (
@@ -29,14 +28,31 @@ const Divider = () => (
   </div>
 );
 
-/* ── Category icon helper ── */
-const getIcon = (cat) => {
-  const c = cat.toLowerCase();
-  if (c === "all") return <LayoutGrid size={15} />;
-  if (c.includes("drink") || c.includes("beverage"))
-    return <Coffee size={15} />;
-  if (c.includes("dessert")) return <CakeSlice size={15} />;
-  return <UtensilsCrossed size={15} />;
+/* ── Dynamic category icon ── */
+const CategoryIcon = ({
+  cat,
+  categoryIcons,
+  active = false,
+  small = false,
+}) => {
+  if (cat === "all") {
+    return <LayoutGrid size={small ? 13 : 15} />;
+  }
+
+  const iconSvg = categoryIcons[cat?.toLowerCase()];
+
+  if (!iconSvg) {
+    return <UtensilsCrossed size={small ? 13 : 15} />;
+  }
+
+  return (
+    <span
+      className={`flex items-center justify-center shrink-0 ${
+        small ? "w-4 h-4" : "w-5 h-5"
+      } ${active ? "text-white" : "text-current"}`}
+      dangerouslySetInnerHTML={{ __html: iconSvg }}
+    />
+  );
 };
 
 function Menu() {
@@ -47,8 +63,10 @@ function Menu() {
   const [renderFilter, setRenderFilter] = useState(false);
   const [showScroll, setShowScroll] = useState(false);
 
-  const [foodFilter, setFoodFilter] = useState("all");
   const [vegOnly, setVegOnly] = useState(false);
+
+  // ✅ NEW: DB categories
+  const [dbCategories, setDbCategories] = useState([]);
 
   const { cart, addToCart, removeItem, clearCart } = useContext(CartContext);
   const { token: tokenFromUrl } = useParams();
@@ -63,35 +81,10 @@ function Menu() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  /* ── Verify session ── */
-  // useEffect(() => {
-  //   if (!token) {
-  //     toast.error("FoodDash: Please scan QR first");
-  //     setTimeout(() => navigate("/thank-you"), 1200);
-  //     return;
-  //   }
-  //   axios
-  //     .get(`https://fooadash.onrender.com/api/session/${token}`)
-  //     .then((res) => {
-  //       setTable(res.data.table);
-  //       if (tokenFromUrl) {
-  //         localStorage.setItem("table", res.data.table);
-  //         localStorage.setItem("token", token);
-  //       }
-  //     })
-  //     .catch(() => {
-  //       toast.error("Session expired. Please scan again.");
-  //       localStorage.removeItem("token");
-  //       localStorage.removeItem("table");
-  //       clearCart();
-  //       navigate("/thank-you");
-  //     });
-  // }, [token]);
-
   /* ── Real-time session expiry ── */
   useEffect(() => {
     const handleSessionExpire = (data) => {
-      const currentToken = localStorage.getItem("token"); // always fresh
+      const currentToken = localStorage.getItem("token");
 
       if (data.token === currentToken) {
         toast.error("Session expired");
@@ -111,18 +104,35 @@ function Menu() {
     return () => {
       socket.off("session-expired", handleSessionExpire);
     };
-  }, []);
+  }, [clearCart, navigate]);
 
   /* ── Fetch menu ── */
   useEffect(() => {
-    axios.get("https://fooadash.onrender.com/api/menu").then((res) => {
+    axios.get(`${API}/menu`).then((res) => {
       setMenu(res.data);
     });
   }, []);
 
-  /* ── Derived state ── */
-  const categories = [
-    "all",
+  /* ── Fetch dynamic categories ── */
+  useEffect(() => {
+    axios
+      .get(`${API}/categories`)
+      .then((res) => {
+        setDbCategories(res.data || []);
+      })
+      .catch(() => {
+        console.log("Could not fetch categories");
+      });
+  }, []);
+
+  /* ── Category icon lookup ── */
+  const categoryIcons = dbCategories.reduce((acc, cat) => {
+    acc[cat.name?.toLowerCase()] = cat.iconSvg;
+    return acc;
+  }, {});
+
+  /* ── Derived categories ── */
+  const menuCategories = [
     ...new Set(
       menu
         .map((item) => item.category)
@@ -130,21 +140,22 @@ function Menu() {
     ),
   ];
 
+  const dbCategoryNames = dbCategories.map((cat) => cat.name);
+
+  const categories = [
+    "all",
+    ...new Set([...dbCategoryNames, ...menuCategories]),
+  ];
+
   const countByCategory = (cat) =>
     cat === "all" ? menu.length : menu.filter((i) => i.category === cat).length;
 
   const filteredMenu = menu.filter((item) => {
     const categoryMatch = category === "all" || item.category === category;
-
     const vegMatch = !vegOnly || item.foodType === "veg";
 
     return categoryMatch && vegMatch;
   });
-
-  const filteredByFood =
-    foodFilter === "veg"
-      ? filteredMenu.filter((item) => item.foodType === "veg")
-      : filteredMenu;
 
   const getQty = (id) => {
     const item = cart.find((i) => i._id === id);
@@ -158,6 +169,7 @@ function Menu() {
     setRenderFilter(true);
     setTimeout(() => setShowFilter(true), 10);
   };
+
   const closeFilter = () => {
     setShowFilter(false);
     setTimeout(() => setRenderFilter(false), 400);
@@ -165,16 +177,14 @@ function Menu() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f5f0e8" }}>
-      {/* ══════════════ STICKY HEADER ══════════════ */}
       <StickyHeader table={table} totalItems={totalItems} />
 
-      {/* ══════════════ HERO SECTION ══════════════ */}
+      {/* HERO SECTION */}
       <div
         className="relative overflow-hidden"
         style={{ backgroundColor: "#f5f0e8" }}
       >
-        <div className="flex flex-col items-center max-w-6xl gap-6 px-4 py-10 mx-auto md:flex-row sm:px-6 lg:px-8 ">
-          {/* Image — first on mobile */}
+        <div className="flex flex-col items-center max-w-6xl gap-6 px-4 py-10 mx-auto md:flex-row sm:px-6 lg:px-8">
           <div className="flex-1 order-1 md:order-2 flex items-center justify-center relative select-none min-h-[220px] sm:min-h-[280px] md:min-h-[320px] px-1">
             <img
               src={img}
@@ -183,7 +193,6 @@ function Menu() {
             />
           </div>
 
-          {/* Text — second on mobile */}
           <div className="flex-1 order-2 text-center md:order-1 md:text-left">
             <p className="text-emerald-600 text-xs tracking-[0.3em] uppercase font-semibold">
               • Table {table || "..."} •
@@ -196,7 +205,6 @@ function Menu() {
               Cafe Menu
             </h1>
 
-            {/* Gold divider */}
             <div className="flex items-center justify-center gap-3 mt-3 md:justify-start">
               <div className="w-10 h-[1px] bg-amber-400" />
               <span className="text-lg text-amber-500">🌿</span>
@@ -207,66 +215,59 @@ function Menu() {
               Browse our menu, add items to your cart, and place your order —
               all from your table.
             </p>
-
-            {/* View cart CTA */}
-            {/* {totalItems > 0 && (
-              <div className="flex flex-col items-center gap-3 mt-6 sm:flex-row sm:justify-center md:justify-start">
-                <Link
-                  to="/cart"
-                  className="flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-all duration-300 rounded-full shadow-md bg-emerald-500 hover:bg-emerald-600 hover:shadow-lg active:scale-95"
-                >
-                  <ShoppingCart size={18} />
-                  View Cart ({totalItems})
-                </Link>
-              </div>
-            )} */}
           </div>
         </div>
       </div>
 
-      {/* ══════════════ MENU SECTION ══════════════ */}
+      {/* MENU SECTION */}
       <div className="px-4 py-6 pb-24 mx-auto max-w-7xl">
         <div className="p-5 bg-white shadow-xl rounded-3xl">
-          {/* ── Category Tabs + Filter Button ── */}
+          {/* Category Tabs + Filter Button */}
           <div className="flex items-center justify-center mb-6 md:justify-between">
-            {/* Desktop categories */}
             <div className="hidden md:flex flex-wrap gap-2">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setCategory(cat)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
-          ${
-            category === cat
-              ? "bg-emerald-500 text-white shadow-md"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-          }`}
-                >
-                  {getIcon(cat)}
-                  <span className="capitalize">{cat}</span>
-                </button>
-              ))}
+              {categories.map((cat) => {
+                const active = category === cat;
+
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setCategory(cat)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
+                    ${
+                      active
+                        ? "bg-emerald-500 text-white shadow-md"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    <CategoryIcon
+                      cat={cat}
+                      categoryIcons={categoryIcons}
+                      active={active}
+                    />
+                    <span className="capitalize">{cat}</span>
+                  </button>
+                );
+              })}
+
               {/* Veg Filter */}
               <button
                 onClick={() => setVegOnly(!vegOnly)}
                 className={`relative w-[120px] h-[42px] rounded-full p-1 border shadow-sm transition-all duration-500
-      ${
-        vegOnly
-          ? "bg-emerald-500 border-emerald-500"
-          : "bg-white border-gray-200"
-      }`}
+                ${
+                  vegOnly
+                    ? "bg-emerald-500 border-emerald-500"
+                    : "bg-white border-gray-200"
+                }`}
               >
-                {/* moving pill */}
                 <span
                   className={`absolute top-1 left-1 w-[54px] h-[32px] rounded-full shadow transition-all duration-500
-        ${
-          vegOnly
-            ? "translate-x-[56px] bg-white"
-            : "translate-x-0 bg-emerald-500"
-        }`}
+                  ${
+                    vegOnly
+                      ? "translate-x-[56px] bg-white"
+                      : "translate-x-0 bg-emerald-500"
+                  }`}
                 />
 
-                {/* text */}
                 <span className="relative z-10 flex items-center justify-between h-full px-3 text-xs font-semibold">
                   <span className={!vegOnly ? "text-white" : "text-white/80"}>
                     All
@@ -281,7 +282,6 @@ function Menu() {
               </button>
             </div>
 
-            {/* Filter button */}
             <button
               onClick={openFilter}
               className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium transition-all duration-300 border rounded-full shadow-sm hover:shadow-md hover:bg-emerald-50 text-emerald-700 border-emerald-300"
@@ -291,7 +291,7 @@ function Menu() {
             </button>
           </div>
 
-          {/* ── Drawer Filter (mobile + desktop) ── */}
+          {/* Drawer Filter */}
           {renderFilter && (
             <div
               className="fixed inset-0 z-50 flex bg-black/40"
@@ -300,7 +300,7 @@ function Menu() {
               <div
                 onClick={(e) => e.stopPropagation()}
                 className={`w-72 h-full bg-white p-5 overflow-y-auto shadow-2xl transform transition-transform duration-300
-                  ${showFilter ? "translate-x-0" : "-translate-x-full"}`}
+                ${showFilter ? "translate-x-0" : "-translate-x-full"}`}
               >
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-lg font-bold">Categories</h2>
@@ -311,49 +311,57 @@ function Menu() {
                     <X size={20} />
                   </button>
                 </div>
+
                 <div className="flex flex-col gap-2">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => {
-                        setCategory(cat);
-                        closeFilter();
-                      }}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl capitalize text-sm transition
+                  {categories.map((cat) => {
+                    const active = category === cat;
+
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => {
+                          setCategory(cat);
+                          closeFilter();
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl capitalize text-sm transition
                         ${
-                          category === cat
+                          active
                             ? "bg-emerald-500 text-white font-medium"
                             : "hover:bg-gray-100 text-gray-600"
                         }`}
-                    >
-                      {getIcon(cat)}
-                      <span>{cat}</span>
-                      <span className="ml-auto text-xs opacity-60">
-                        ({countByCategory(cat)})
-                      </span>
-                    </button>
-                  ))}
+                      >
+                        <CategoryIcon
+                          cat={cat}
+                          categoryIcons={categoryIcons}
+                          active={active}
+                        />
+                        <span>{cat}</span>
+                        <span className="ml-auto text-xs opacity-60">
+                          ({countByCategory(cat)})
+                        </span>
+                      </button>
+                    );
+                  })}
+
                   {/* Veg Filter */}
                   <button
                     onClick={() => setVegOnly(!vegOnly)}
-                    className={`relative w-[120px] h-[42px] rounded-full p-1 border shadow-sm transition-all duration-500
-      ${
-        vegOnly
-          ? "bg-emerald-500 border-emerald-500"
-          : "bg-white border-gray-200"
-      }`}
+                    className={`relative w-[120px] h-[42px] rounded-full p-1 border shadow-sm transition-all duration-500 mt-3
+                    ${
+                      vegOnly
+                        ? "bg-emerald-500 border-emerald-500"
+                        : "bg-white border-gray-200"
+                    }`}
                   >
-                    {/* moving pill */}
                     <span
                       className={`absolute top-1 left-1 w-[54px] h-[32px] rounded-full shadow transition-all duration-500
-        ${
-          vegOnly
-            ? "translate-x-[56px] bg-white"
-            : "translate-x-0 bg-emerald-500"
-        }`}
+                      ${
+                        vegOnly
+                          ? "translate-x-[56px] bg-white"
+                          : "translate-x-0 bg-emerald-500"
+                      }`}
                     />
 
-                    {/* text */}
                     <span className="relative z-10 flex items-center justify-between h-full px-3 text-xs font-semibold">
                       <span
                         className={!vegOnly ? "text-white" : "text-white/80"}
@@ -375,23 +383,20 @@ function Menu() {
             </div>
           )}
 
-          {/* ── Menu Grid ── */}
+          {/* Menu Grid */}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {filteredByFood.map((item) => {
+            {filteredMenu.map((item) => {
               const qty = getQty(item._id);
-              const image = `https://fooadash.onrender.com/uploads/${item.image}`;
+              const image = `${API.replace("/api", "")}/uploads/${item.image}`;
 
               const isVeg = item.foodType !== "nonveg";
               const badge = item.badge;
               const isAvailable = item.available !== false;
 
-              const hasDiscount =
-                item.salePrice && Number(item.salePrice) < Number(item.price);
-
               return (
                 <div
                   key={item._id}
-                  className="flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md rounded-2xl hover:shadow-xl hover:-translate-y-1"
+                  className="flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md group rounded-2xl hover:shadow-xl hover:-translate-y-1"
                 >
                   {/* IMAGE */}
                   <div className="relative overflow-hidden h-48">
@@ -403,10 +408,9 @@ function Menu() {
                       }`}
                     />
 
-                    {/* Richer gradient — stronger at bottom for text legibility */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent" />
 
-                    {/* ── BADGE ── */}
+                    {/* BADGE */}
                     {badge &&
                       badge !== "none" &&
                       isAvailable &&
@@ -470,7 +474,6 @@ function Menu() {
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {/* Icon circle */}
                             <span
                               className="relative flex items-center justify-center rounded-full shrink-0"
                               style={{
@@ -481,7 +484,6 @@ function Menu() {
                                 fontSize: 10,
                               }}
                             >
-                              {/* Ping ring for "new" only */}
                               {badge === "new" && (
                                 <span
                                   className="absolute inset-0 rounded-full animate-ping"
@@ -499,10 +501,9 @@ function Menu() {
                         );
                       })()}
 
-                    {/* ── SOLD OUT overlay ── */}
+                    {/* SOLD OUT */}
                     {!isAvailable && (
                       <>
-                        {/* Full overlay with diagonal text */}
                         <div className="absolute inset-0 flex items-center justify-center">
                           <div
                             className="px-5 py-1.5 bg-gray-900/80 backdrop-blur-sm border border-white/20 rounded-full shadow-xl"
@@ -513,51 +514,57 @@ function Menu() {
                             </span>
                           </div>
                         </div>
-                        {/* Small badge stays top-left too */}
+
                         <span className="absolute top-2.5 left-2.5 px-2.5 py-1 text-[10px] font-bold text-white rounded-full bg-gray-900/80 backdrop-blur-md border border-white/10 shadow">
                           Sold Out
                         </span>
                       </>
                     )}
 
-                    {/* ── VEG / NON-VEG indicator ── */}
+                    {/* VEG / NON-VEG */}
                     <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
-                      {/* Tooltip label on hover */}
                       <span
                         className={`
-        hidden group-hover:flex
-        items-center px-2 py-0.5 rounded-full
-        text-[9px] font-bold tracking-wide
-        backdrop-blur-md border shadow-sm
-        transition-all duration-200
-        ${
-          isVeg
-            ? "bg-emerald-50/90 text-emerald-700 border-emerald-200"
-            : "bg-red-50/90 text-red-600 border-red-200"
-        }
-      `}
+                        hidden group-hover:flex
+                        items-center px-2 py-0.5 rounded-full
+                        text-[9px] font-bold tracking-wide
+                        backdrop-blur-md border shadow-sm
+                        transition-all duration-200
+                        ${
+                          isVeg
+                            ? "bg-emerald-50/90 text-emerald-700 border-emerald-200"
+                            : "bg-red-50/90 text-red-600 border-red-200"
+                        }
+                      `}
                       >
                         {isVeg ? "VEG" : "NON-VEG"}
                       </span>
 
-                      {/* The dot box */}
                       <span
                         className={`
-        flex items-center justify-center w-6 h-6
-        bg-white/95 backdrop-blur-md
-        border-2 rounded-md shadow-md
-        ${isVeg ? "border-emerald-400" : "border-red-400"}
-      `}
+                        flex items-center justify-center w-6 h-6
+                        bg-white/95 backdrop-blur-md
+                        border-2 rounded-md shadow-md
+                        ${isVeg ? "border-emerald-400" : "border-red-400"}
+                      `}
                       >
                         <span
-                          className={`w-2.5 h-2.5 rounded-full ${isVeg ? "bg-emerald-500" : "bg-red-500"}`}
+                          className={`w-2.5 h-2.5 rounded-full ${
+                            isVeg ? "bg-emerald-500" : "bg-red-500"
+                          }`}
                         />
                       </span>
                     </div>
 
-                    {/* ── Item category pill (bottom-left over image) — optional ── */}
+                    {/* Dynamic category pill */}
                     {item.category && isAvailable && (
-                      <span className="absolute bottom-2.5 left-2.5 px-2.5 py-0.5 text-[9px] font-semibold tracking-widest uppercase text-white/80 bg-black/30 backdrop-blur-sm rounded-full border border-white/10">
+                      <span className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-semibold tracking-widest uppercase text-white/90 bg-black/35 backdrop-blur-sm rounded-full border border-white/10">
+                        <CategoryIcon
+                          cat={item.category}
+                          categoryIcons={categoryIcons}
+                          active
+                          small
+                        />
                         {item.category}
                       </span>
                     )}
@@ -587,10 +594,9 @@ function Menu() {
                     </div>
 
                     {/* PRICE */}
-                    <div className="mt-auto  flex flex-col items-center justify-end">
+                    <div className="mt-auto flex flex-col items-center justify-end">
                       {item.salePrice ? (
                         <>
-                          {/* old + save in one row */}
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-sm text-gray-400 line-through">
                               ₹{item.price}
@@ -601,14 +607,12 @@ function Menu() {
                             </span>
                           </div>
 
-                          {/* final price */}
                           <div className="text-2xl font-extrabold text-emerald-600 leading-none">
                             ₹{item.salePrice}
                           </div>
                         </>
                       ) : (
                         <>
-                          {/* invisible spacer keeps same alignment */}
                           <div className="mb-2 invisible text-sm">
                             placeholder
                           </div>
@@ -637,7 +641,7 @@ function Menu() {
           </div>
 
           {/* Empty state */}
-          {filteredByFood.length === 0 && (
+          {filteredMenu.length === 0 && (
             <div className="py-24 text-center text-gray-400">
               <UtensilsCrossed size={40} className="mx-auto mb-3 opacity-30" />
               <p>No items found in this category.</p>
@@ -646,7 +650,7 @@ function Menu() {
         </div>
       </div>
 
-      {/* ══════════════ FLOATING CART PILL ══════════════ */}
+      {/* FLOATING CART */}
       {cart.length > 0 && (
         <Link
           to="/cart"
@@ -657,7 +661,7 @@ function Menu() {
         </Link>
       )}
 
-      {/* ══════════════ SCROLL TO TOP ══════════════ */}
+      {/* SCROLL TO TOP */}
       {showScroll && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}

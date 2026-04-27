@@ -18,8 +18,6 @@ function AddMenu() {
   const [available, setAvailable] = useState(true);
 
   const [categories, setCategories] = useState([]);
-  const [newCategory, setNewCategory] = useState("");
-  const [newIconSvg, setNewIconSvg] = useState("");
 
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -34,23 +32,6 @@ function AddMenu() {
         console.log("Category fetch error:", err);
       });
   }, []);
-
-  const addCategory = async () => {
-    try {
-      if (!newCategory.trim()) return;
-
-      const res = await api.post("/categories", {
-        name: newCategory,
-        iconSvg: newIconSvg || "",
-      });
-
-      setCategories((prev) => [res.data, ...prev]);
-      setNewCategory("");
-      setNewIconSvg("");
-    } catch (err) {
-      console.log("Category add error:", err);
-    }
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -83,23 +64,6 @@ function AddMenu() {
       .catch((err) => {
         console.log(err);
       });
-  };
-
-  const deleteCategory = async (id) => {
-    try {
-      await api.delete(`/categories/${id}`);
-
-      setCategories((prev) => prev.filter((cat) => cat._id !== id));
-
-      const deleted = categories.find((cat) => cat._id === id);
-
-      if (deleted?.name === category) {
-        setCategory("");
-        setCategoryIconSvg("");
-      }
-    } catch (err) {
-      console.log("Category delete error:", err);
-    }
   };
 
   return (
@@ -158,96 +122,6 @@ function AddMenu() {
             </option>
           ))}
         </select>
-
-        {/* SELECTED CATEGORY SVG PREVIEW */}
-        {categoryIconSvg && (
-          <div className="flex items-center gap-3 p-3 bg-gray-900 border border-gray-700 rounded-lg">
-            <span
-              className="flex items-center justify-center w-8 h-8 text-white"
-              dangerouslySetInnerHTML={{ __html: categoryIconSvg }}
-            />
-            <span className="text-sm text-gray-300">{category}</span>
-          </div>
-        )}
-
-        {/* ADD NEW CATEGORY */}
-        <div className="p-4 space-y-3 border border-gray-600 rounded-lg bg-gray-900">
-          <h3 className="text-sm font-semibold text-gray-300">
-            Add New Category
-          </h3>
-
-          <input
-            type="text"
-            placeholder="Category name e.g. Dessert"
-            className="w-full p-2 bg-gray-700 rounded"
-            value={newCategory}
-            onChange={(e) => setNewCategory(e.target.value)}
-          />
-
-          <textarea
-            placeholder="Paste full SVG code here"
-            className="w-full p-2 bg-gray-700 rounded min-h-[120px]"
-            value={newIconSvg}
-            onChange={(e) => setNewIconSvg(e.target.value)}
-          />
-
-          {newIconSvg && (
-            <div className="flex items-center gap-3 p-3 bg-gray-800 rounded">
-              <span
-                className="flex items-center justify-center w-8 h-8 text-white"
-                dangerouslySetInnerHTML={{ __html: newIconSvg }}
-              />
-              <span className="text-sm text-gray-300">SVG Preview</span>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={addCategory}
-            className="w-full py-2 text-sm font-semibold text-white bg-orange-500 rounded hover:bg-orange-600"
-          >
-            Add Category
-          </button>
-        </div>
-
-        {/* EXISTING CATEGORIES */}
-        <div className="p-4 space-y-2 border border-gray-600 rounded-lg bg-gray-900">
-          <h3 className="text-sm font-semibold text-gray-300">
-            Existing Categories
-          </h3>
-
-          {categories.length === 0 ? (
-            <p className="text-xs text-gray-500">No categories added yet.</p>
-          ) : (
-            categories.map((cat) => (
-              <div
-                key={cat._id}
-                className="flex items-center justify-between gap-3 p-2 bg-gray-800 rounded"
-              >
-                <div className="flex items-center min-w-0 gap-2">
-                  {cat.iconSvg && (
-                    <span
-                      className="flex items-center justify-center w-6 h-6 text-white shrink-0"
-                      dangerouslySetInnerHTML={{ __html: cat.iconSvg }}
-                    />
-                  )}
-
-                  <span className="text-sm text-gray-200 truncate">
-                    {cat.name}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => deleteCategory(cat._id)}
-                  className="px-2 py-1 text-xs text-white bg-red-600 rounded hover:bg-red-700"
-                >
-                  Delete
-                </button>
-              </div>
-            ))
-          )}
-        </div>
 
         <select
           className="w-full p-2 bg-gray-700 rounded"
