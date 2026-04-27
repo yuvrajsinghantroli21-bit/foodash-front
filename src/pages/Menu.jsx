@@ -161,7 +161,7 @@ function Menu() {
         className="relative overflow-hidden"
         style={{ backgroundColor: "#f5f0e8" }}
       >
-        <div className="flex flex-col items-center max-w-6xl gap-6 px-4 py-10 mx-auto md:flex-row sm:px-6 lg:px-8 bg-gradient-to-r from-transparent via-amber-400 to-transparent">
+        <div className="flex flex-col items-center max-w-6xl gap-6 px-4 py-10 mx-auto md:flex-row sm:px-6 lg:px-8 ">
           {/* Image — first on mobile */}
           <div className="flex-1 order-1 md:order-2 flex items-center justify-center relative select-none min-h-[220px] sm:min-h-[280px] md:min-h-[320px] px-1">
             <img
@@ -298,6 +298,9 @@ function Menu() {
               const qty = getQty(item._id);
               const image = `https://fooadash.onrender.com/uploads/${item.image}`;
               const isVeg = item.isVeg ?? true;
+              const badge = item.badge || "";
+              const hasDiscount =
+                item.originalPrice && item.originalPrice > item.price;
 
               return (
                 <div
@@ -305,40 +308,76 @@ function Menu() {
                   className="flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md rounded-2xl hover:shadow-xl hover:-translate-y-1"
                 >
                   {/* Image */}
-                  <div className="relative overflow-hidden h-44">
+                  <div className="relative overflow-hidden h-44 rounded-t-[22px]">
                     <img
                       src={image}
                       alt={item.name}
-                      className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
+                      className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
                     />
-                    {/* Veg / Non-veg dot */}
-                    <span
-                      className="absolute flex items-center justify-center w-5 h-5 border-2 border-white rounded-sm top-2 right-2"
-                      style={{ background: "white" }}
-                    >
+
+                    {/* Badge */}
+                    {badge && (
                       <span
-                        className={`w-2.5 h-2.5 rounded-full ${isVeg ? "bg-emerald-500" : "bg-red-500"}`}
+                        className={`absolute top-3 left-3 px-3 py-1 rounded-full text-[11px] font-bold shadow-md text-white
+      ${
+        badge === "Best Seller"
+          ? "bg-orange-500"
+          : badge === "Chef's Pick"
+            ? "bg-purple-500"
+            : "bg-emerald-500"
+      }`}
+                      >
+                        {badge}
+                      </span>
+                    )}
+
+                    {/* Veg / Non Veg */}
+                    <span className="absolute top-3 right-3 flex items-center justify-center w-5 h-5 bg-white border-2 border-white rounded-sm shadow">
+                      <span
+                        className={`w-2.5 h-2.5 rounded-full ${
+                          isVeg ? "bg-emerald-500" : "bg-red-500"
+                        }`}
                       />
                     </span>
                   </div>
 
                   {/* Content */}
+                  {/* Content */}
                   <div className="flex flex-col items-center flex-1 gap-1 p-4 text-center">
-                    <h2 className="text-sm font-bold leading-snug text-gray-800">
+                    <h2 className="text-lg font-extrabold leading-snug text-gray-900">
                       {item.name}
                     </h2>
 
-                    <p className="text-xs leading-relaxed text-gray-400 line-clamp-2">
-                      {item.description ||
-                        "A delicious item crafted with care."}
-                    </p>
+                    {/* Expandable description */}
+                    <div className="w-full">
+                      <ExpandableText
+                        text={
+                          item.description ||
+                          "A delicious item crafted with care."
+                        }
+                        className="text-xs leading-relaxed text-gray-400"
+                      />
+                    </div>
 
                     <Divider />
 
-                    <p className="mt-1 text-base font-bold text-emerald-500">
-                      ₹{item.price}
-                    </p>
+                    <div className="mt-2">
+                      {hasDiscount ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="text-sm text-gray-400 line-through">
+                            ₹{item.originalPrice}
+                          </span>
 
+                          <span className="text-2xl font-extrabold text-emerald-600">
+                            ₹{item.price}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-2xl font-extrabold text-emerald-600">
+                          ₹{item.price}
+                        </span>
+                      )}
+                    </div>
                     {/* Add / Qty control */}
                     {qty === 0 ? (
                       <button
@@ -355,9 +394,11 @@ function Menu() {
                         >
                           −
                         </button>
+
                         <span className="text-sm font-semibold text-emerald-700">
                           {qty}
                         </span>
+
                         <button
                           onClick={() => addToCart(item)}
                           className="flex items-center justify-center text-lg font-bold leading-none text-white transition rounded-full w-7 h-7 bg-emerald-500 hover:bg-emerald-600"

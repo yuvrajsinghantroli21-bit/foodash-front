@@ -7,8 +7,13 @@ function AddMenu() {
 
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [salePrice, setSalePrice] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
+  const [foodType, setFoodType] = useState("veg");
+  const [badge, setBadge] = useState("none");
+  const [available, setAvailable] = useState(true);
+
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
 
@@ -19,8 +24,12 @@ function AddMenu() {
 
     formData.append("name", name);
     formData.append("price", price);
+    formData.append("salePrice", salePrice);
     formData.append("description", description);
     formData.append("category", category);
+    formData.append("foodType", foodType);
+    formData.append("badge", badge);
+    formData.append("available", available);
     formData.append("image", image);
 
     api
@@ -59,11 +68,19 @@ function AddMenu() {
 
         <input
           type="number"
-          placeholder="Price"
+          placeholder="Original Price"
           className="w-full p-2 bg-gray-700 rounded"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
           required
+        />
+
+        <input
+          type="number"
+          placeholder="Sale Price (optional)"
+          className="w-full p-2 bg-gray-700 rounded"
+          value={salePrice}
+          onChange={(e) => setSalePrice(e.target.value)}
         />
 
         <select
@@ -78,12 +95,43 @@ function AddMenu() {
           <option value="Desserts">Desserts</option>
         </select>
 
+        <select
+          className="w-full p-2 bg-gray-700 rounded"
+          value={foodType}
+          onChange={(e) => setFoodType(e.target.value)}
+        >
+          <option value="veg">🟢 Veg</option>
+          <option value="nonveg">🔴 Non-Veg</option>
+        </select>
+
+        <select
+          className="w-full p-2 bg-gray-700 rounded"
+          value={badge}
+          onChange={(e) => setBadge(e.target.value)}
+        >
+          <option value="none">No Badge</option>
+          <option value="chef">⭐ Chef's Pick</option>
+          <option value="musttry">🔥 Must Try</option>
+          <option value="bestseller">🏆 Best Seller</option>
+          <option value="new">✨ New</option>
+          <option value="limited">⏳ Limited</option>
+        </select>
+
         <textarea
           placeholder="Description"
           className="w-full p-2 bg-gray-700 rounded"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={available}
+            onChange={(e) => setAvailable(e.target.checked)}
+          />
+          Available
+        </label>
 
         <label className="cursor-pointer">
           <div className="flex items-center justify-center w-full h-40 bg-gray-900 border-2 border-gray-500 border-dashed rounded">

@@ -3,6 +3,7 @@ import axios from "axios";
 import img from "../../public/plate.png";
 import { QrCode } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import ExpandableText from "../components/ExpandableText";
 import {
   Filter,
   X,
@@ -262,41 +263,96 @@ function MenuPreview() {
               return (
                 <div
                   key={item._id}
-                  className="flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md rounded-2xl hover:shadow-xl hover:-translate-y-1"
+                  className="group flex flex-col overflow-hidden rounded-[26px] bg-white border border-[#ece7df] shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
                 >
-                  {/* Image */}
-                  <div className="relative overflow-hidden h-44">
+                  {/* IMAGE */}
+                  <div className="relative overflow-hidden h-48">
                     <img
                       src={image}
                       alt={item.name}
-                      className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
+                      className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
                     />
-                    {/* Veg/Non-veg indicator */}
-                    <span
-                      className="absolute flex items-center justify-center w-5 h-5 border-2 border-white rounded-sm top-2 right-2"
-                      style={{ background: "white" }}
-                    >
-                      <span
-                        className={`w-2.5 h-2.5 rounded-full ${
-                          isVeg ? "bg-emerald-500" : "bg-red-500"
-                        }`}
-                      />
-                    </span>
+
+                    {/* gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
+
+                    {/* veg / nonveg */}
+                    <div className="absolute top-3 right-3">
+                      <span className="flex items-center justify-center w-7 h-7 bg-white/95 backdrop-blur-md border border-white rounded-md shadow">
+                        <span
+                          className={`w-3 h-3 rounded-full ${
+                            isVeg ? "bg-emerald-500" : "bg-red-500"
+                          }`}
+                        />
+                      </span>
+                    </div>
+
+                    {/* badge */}
+                    {item.badge && (
+                      <div className="absolute top-3 left-3">
+                        <span
+                          className={`px-3 py-1 text-[10px] font-bold rounded-full shadow-md backdrop-blur-md border ${
+                            item.badge === "Chef's Pick"
+                              ? "bg-amber-100/95 text-amber-700 border-amber-200"
+                              : item.badge === "Best Seller"
+                                ? "bg-rose-100/95 text-rose-700 border-rose-200"
+                                : "bg-emerald-100/95 text-emerald-700 border-emerald-200"
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Content */}
-                  <div className="flex flex-col items-center flex-1 gap-1 p-4 text-center">
-                    <h2 className="text-sm font-bold leading-snug text-gray-800">
+                  {/* CONTENT */}
+                  <div className="flex flex-col flex-1 p-5 text-center">
+                    {/* title */}
+                    <h2
+                      className="text-[17px] sm:text-[18px] font-extrabold text-gray-900 leading-snug"
+                      style={{ fontFamily: "Georgia, serif" }}
+                    >
                       {item.name}
                     </h2>
-                    <p className="text-xs leading-relaxed text-gray-400 line-clamp-2">
-                      {item.description ||
-                        "A delicious item crafted with care."}
-                    </p>
-                    <Divider />
-                    <p className="mt-1 text-base font-bold text-emerald-500">
-                      ₹{item.price}
-                    </p>
+
+                    {/* desc */}
+                    <div className="mt-2">
+                      <ExpandableText
+                        text={
+                          item.description ||
+                          "A delicious item crafted with care."
+                        }
+                        className="text-[13px] leading-relaxed text-gray-500"
+                      />
+                    </div>
+
+                    {/* divider */}
+                    <div className="my-3">
+                      <Divider />
+                    </div>
+
+                    {/* price */}
+                    <div className="mt-auto">
+                      {item.originalPrice && item.originalPrice > item.price ? (
+                        <div className="space-y-1">
+                          <div className="text-sm text-gray-400 line-through">
+                            ₹{item.originalPrice}
+                          </div>
+
+                          <div className="text-2xl font-extrabold text-emerald-600">
+                            ₹{item.price}
+                          </div>
+
+                          <div className="inline-block px-2 py-1 mt-1 text-[10px] font-bold text-red-600 bg-red-50 rounded-full">
+                            SAVE ₹{item.originalPrice - item.price}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-2xl font-extrabold text-emerald-600">
+                          ₹{item.price}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

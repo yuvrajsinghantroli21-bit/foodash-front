@@ -8,8 +8,13 @@ function EditMenu() {
 
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [salePrice, setSalePrice] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
+  const [foodType, setFoodType] = useState("veg");
+  const [badge, setBadge] = useState("none");
+  const [available, setAvailable] = useState(true);
+
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState("");
 
@@ -20,8 +25,13 @@ function EditMenu() {
       if (item) {
         setName(item.name);
         setPrice(item.price);
+        setSalePrice(item.salePrice || "");
         setDescription(item.description);
         setCategory(item.category || "");
+        setFoodType(item.foodType || "veg");
+        setBadge(item.badge || "none");
+        setAvailable(item.available !== undefined ? item.available : true);
+
         setPreview(`http://localhost:5000/uploads/${item.image}`);
       }
     });
@@ -34,8 +44,12 @@ function EditMenu() {
 
     formData.append("name", name);
     formData.append("price", price);
+    formData.append("salePrice", salePrice);
     formData.append("description", description);
     formData.append("category", category);
+    formData.append("foodType", foodType);
+    formData.append("badge", badge);
+    formData.append("available", available);
 
     if (image) {
       formData.append("image", image);
@@ -93,6 +107,7 @@ function EditMenu() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="w-full p-2 bg-gray-700 rounded"
+          placeholder="Item name"
         />
 
         <input
@@ -100,6 +115,15 @@ function EditMenu() {
           value={price}
           onChange={(e) => setPrice(e.target.value)}
           className="w-full p-2 bg-gray-700 rounded"
+          placeholder="Original price"
+        />
+
+        <input
+          type="number"
+          value={salePrice}
+          onChange={(e) => setSalePrice(e.target.value)}
+          className="w-full p-2 bg-gray-700 rounded"
+          placeholder="Sale price (optional)"
         />
 
         <select
@@ -112,11 +136,43 @@ function EditMenu() {
           <option value="Desserts">Desserts</option>
         </select>
 
+        <select
+          className="w-full p-2 bg-gray-700 rounded"
+          value={foodType}
+          onChange={(e) => setFoodType(e.target.value)}
+        >
+          <option value="veg">🟢 Veg</option>
+          <option value="nonveg">🔴 Non-Veg</option>
+        </select>
+
+        <select
+          className="w-full p-2 bg-gray-700 rounded"
+          value={badge}
+          onChange={(e) => setBadge(e.target.value)}
+        >
+          <option value="none">No Badge</option>
+          <option value="chef">⭐ Chef's Pick</option>
+          <option value="musttry">🔥 Must Try</option>
+          <option value="bestseller">🏆 Best Seller</option>
+          <option value="new">✨ New</option>
+          <option value="limited">⏳ Limited</option>
+        </select>
+
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           className="w-full p-2 bg-gray-700 rounded"
+          placeholder="Description"
         />
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={available}
+            onChange={(e) => setAvailable(e.target.checked)}
+          />
+          Available
+        </label>
 
         <button
           type="submit"
