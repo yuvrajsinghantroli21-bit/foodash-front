@@ -297,116 +297,162 @@ function Menu() {
             {filteredMenu.map((item) => {
               const qty = getQty(item._id);
               const image = `https://fooadash.onrender.com/uploads/${item.image}`;
-              const isVeg = item.isVeg ?? true;
-              const badge = item.badge || "";
+
+              const isVeg = item.foodType !== "nonveg";
+              const badge = item.badge;
+              const isAvailable = item.available !== false;
+
               const hasDiscount =
-                item.originalPrice && item.originalPrice > item.price;
+                item.salePrice && Number(item.salePrice) < Number(item.price);
 
               return (
                 <div
                   key={item._id}
-                  className="flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md rounded-2xl hover:shadow-xl hover:-translate-y-1"
+                  className="group flex flex-col overflow-hidden rounded-[26px] bg-white border border-[#ece7df] shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
                 >
-                  {/* Image */}
-                  <div className="relative overflow-hidden h-44 rounded-t-[22px]">
+                  {/* IMAGE */}
+                  <div className="relative overflow-hidden h-48">
                     <img
                       src={image}
                       alt={item.name}
-                      className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+                      className={`object-cover w-full h-full transition-transform duration-700 group-hover:scale-110 ${
+                        !isAvailable ? "opacity-50 grayscale" : ""
+                      }`}
                     />
 
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+
                     {/* Badge */}
-                    {badge && (
+                    {badge && badge !== "none" && isAvailable && (
                       <span
-                        className={`absolute top-3 left-3 px-3 py-1 rounded-full text-[11px] font-bold shadow-md text-white
-      ${
-        badge === "Best Seller"
-          ? "bg-orange-500"
-          : badge === "Chef's Pick"
-            ? "bg-purple-500"
-            : "bg-emerald-500"
-      }`}
+                        className={`absolute top-3 left-3 px-3 py-1 rounded-full text-[10px] font-bold shadow-md border backdrop-blur-md
+            ${
+              badge === "bestseller"
+                ? "bg-red-50/95 text-red-600 border-red-200"
+                : badge === "chef"
+                  ? "bg-amber-50/95 text-amber-700 border-amber-200"
+                  : badge === "musttry"
+                    ? "bg-orange-50/95 text-orange-600 border-orange-200"
+                    : badge === "new"
+                      ? "bg-emerald-50/95 text-emerald-600 border-emerald-200"
+                      : "bg-purple-50/95 text-purple-600 border-purple-200"
+            }`}
                       >
-                        {badge}
+                        {badge === "bestseller"
+                          ? "🏆 Best Seller"
+                          : badge === "chef"
+                            ? "⭐ Chef's Pick"
+                            : badge === "musttry"
+                              ? "🔥 Must Try"
+                              : badge === "new"
+                                ? "✨ New"
+                                : "⏳ Limited"}
+                      </span>
+                    )}
+
+                    {/* Sold out */}
+                    {!isAvailable && (
+                      <span className="absolute px-3 py-1 text-xs font-bold text-white rounded-full top-3 left-3 bg-gray-900/90 backdrop-blur-md">
+                        Sold Out
                       </span>
                     )}
 
                     {/* Veg / Non Veg */}
-                    <span className="absolute top-3 right-3 flex items-center justify-center w-5 h-5 bg-white border-2 border-white rounded-sm shadow">
+                    <span className="absolute top-3 right-3 flex items-center justify-center w-7 h-7 bg-white/95 backdrop-blur-md border border-white rounded-md shadow">
                       <span
-                        className={`w-2.5 h-2.5 rounded-full ${
+                        className={`w-3 h-3 rounded-full ${
                           isVeg ? "bg-emerald-500" : "bg-red-500"
                         }`}
                       />
                     </span>
                   </div>
 
-                  {/* Content */}
-                  {/* Content */}
-                  <div className="flex flex-col items-center flex-1 gap-1 p-4 text-center">
-                    <h2 className="text-lg font-extrabold leading-snug text-gray-900">
+                  {/* CONTENT */}
+                  <div className="flex flex-col flex-1 p-5 text-center">
+                    <h2
+                      className="text-[17px] sm:text-[18px] font-extrabold text-gray-900 leading-snug"
+                      style={{ fontFamily: "Georgia, serif" }}
+                    >
                       {item.name}
                     </h2>
 
-                    {/* Expandable description */}
-                    <div className="w-full">
+                    <div className="mt-2">
                       <ExpandableText
                         text={
                           item.description ||
                           "A delicious item crafted with care."
                         }
-                        className="text-xs leading-relaxed text-gray-400"
+                        className="text-[13px] leading-relaxed text-gray-500"
                       />
                     </div>
 
-                    <Divider />
+                    <div className="my-3">
+                      <Divider />
+                    </div>
 
-                    <div className="mt-2">
+                    {/* PRICE */}
+                    <div>
                       {hasDiscount ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="text-sm text-gray-400 line-through">
-                            ₹{item.originalPrice}
-                          </span>
+                        <>
+                          <div className="flex items-center justify-center gap-2">
+                            <span className="text-sm text-gray-400 line-through">
+                              ₹{item.price}
+                            </span>
 
-                          <span className="text-2xl font-extrabold text-emerald-600">
-                            ₹{item.price}
-                          </span>
-                        </div>
+                            <span className="text-2xl font-extrabold text-emerald-600">
+                              ₹{item.salePrice}
+                            </span>
+                          </div>
+
+                          <div className="mt-1 text-[11px] font-bold text-red-500">
+                            Save ₹{item.price - item.salePrice}
+                          </div>
+                        </>
                       ) : (
-                        <span className="text-2xl font-extrabold text-emerald-600">
+                        <div className="text-2xl font-extrabold text-emerald-600">
                           ₹{item.price}
-                        </span>
+                        </div>
                       )}
                     </div>
-                    {/* Add / Qty control */}
-                    {qty === 0 ? (
-                      <button
-                        onClick={() => addToCart(item)}
-                        className="w-full py-2 mt-2 text-sm font-semibold text-white transition-all rounded-full shadow-sm bg-emerald-500 hover:bg-emerald-600 active:scale-95"
-                      >
-                        Add to Cart
-                      </button>
-                    ) : (
-                      <div className="flex items-center justify-between w-full mt-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
+
+                    {/* BUTTON */}
+                    <div className="mt-4">
+                      {!isAvailable ? (
                         <button
-                          onClick={() => removeItem(item._id)}
-                          className="flex items-center justify-center text-lg font-bold leading-none text-white transition rounded-full w-7 h-7 bg-emerald-500 hover:bg-emerald-600"
+                          disabled
+                          className="w-full py-2 text-sm font-semibold text-gray-500 bg-gray-200 rounded-full cursor-not-allowed"
                         >
-                          −
+                          Currently Unavailable
                         </button>
-
-                        <span className="text-sm font-semibold text-emerald-700">
-                          {qty}
-                        </span>
-
+                      ) : qty === 0 ? (
                         <button
                           onClick={() => addToCart(item)}
-                          className="flex items-center justify-center text-lg font-bold leading-none text-white transition rounded-full w-7 h-7 bg-emerald-500 hover:bg-emerald-600"
+                          className="w-full py-2 text-sm font-semibold text-white transition-all rounded-full shadow-sm bg-emerald-500 hover:bg-emerald-600 active:scale-95"
                         >
-                          +
+                          Add to Cart
                         </button>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="flex items-center justify-between w-full px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
+                          <button
+                            onClick={() => removeItem(item._id)}
+                            className="flex items-center justify-center text-lg font-bold leading-none text-white transition rounded-full w-7 h-7 bg-emerald-500 hover:bg-emerald-600"
+                          >
+                            −
+                          </button>
+
+                          <span className="text-sm font-semibold text-emerald-700">
+                            {qty}
+                          </span>
+
+                          <button
+                            onClick={() => addToCart(item)}
+                            className="flex items-center justify-center text-lg font-bold leading-none text-white transition rounded-full w-7 h-7 bg-emerald-500 hover:bg-emerald-600"
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

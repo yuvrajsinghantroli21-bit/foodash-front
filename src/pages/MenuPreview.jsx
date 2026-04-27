@@ -258,25 +258,40 @@ function MenuPreview() {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {filteredMenu.map((item) => {
               const image = `https://fooadash.onrender.com/uploads/${item.image}`;
-              const isVeg = item.isVeg ?? true;
+              const isVeg = item.foodType === "veg";
+              const isAvailable = item.available !== false;
 
               return (
                 <div
                   key={item._id}
-                  className="group flex flex-col overflow-hidden rounded-[26px] bg-white border border-[#ece7df] shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
+                  className={`flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md rounded-2xl hover:shadow-xl hover:-translate-y-1 ${
+                    isAvailable
+                      ? "hover:-translate-y-2 hover:shadow-2xl"
+                      : "opacity-70 grayscale"
+                  }`}
                 >
                   {/* IMAGE */}
                   <div className="relative overflow-hidden h-48">
                     <img
                       src={image}
                       alt={item.name}
-                      className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
+                      className={`object-cover w-full h-full transition-transform duration-700 ${
+                        isAvailable ? "group-hover:scale-110" : ""
+                      }`}
                     />
 
-                    {/* gradient overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
 
-                    {/* veg / nonveg */}
+                    {/* Sold out overlay */}
+                    {!isAvailable && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[2px]">
+                        <span className="px-4 py-2 text-sm font-bold tracking-wide text-white bg-red-500 rounded-full shadow-lg">
+                          SOLD OUT
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Veg / Nonveg */}
                     <div className="absolute top-3 right-3">
                       <span className="flex items-center justify-center w-7 h-7 bg-white/95 backdrop-blur-md border border-white rounded-md shadow">
                         <span
@@ -287,19 +302,28 @@ function MenuPreview() {
                       </span>
                     </div>
 
-                    {/* badge */}
-                    {item.badge && (
+                    {/* Badge */}
+                    {item.badge && item.badge !== "none" && (
                       <div className="absolute top-3 left-3">
                         <span
-                          className={`px-3 py-1 text-[10px] font-bold rounded-full shadow-md backdrop-blur-md border ${
-                            item.badge === "Chef's Pick"
-                              ? "bg-amber-100/95 text-amber-700 border-amber-200"
-                              : item.badge === "Best Seller"
-                                ? "bg-rose-100/95 text-rose-700 border-rose-200"
-                                : "bg-emerald-100/95 text-emerald-700 border-emerald-200"
-                          }`}
+                          className={`px-3 py-1 text-[10px] font-bold rounded-full shadow-md backdrop-blur-md border
+              ${
+                item.badge === "chef"
+                  ? "bg-amber-100/95 text-amber-700 border-amber-200"
+                  : item.badge === "bestseller"
+                    ? "bg-rose-100/95 text-rose-700 border-rose-200"
+                    : item.badge === "musttry"
+                      ? "bg-orange-100/95 text-orange-700 border-orange-200"
+                      : item.badge === "new"
+                        ? "bg-emerald-100/95 text-emerald-700 border-emerald-200"
+                        : "bg-violet-100/95 text-violet-700 border-violet-200"
+              }`}
                         >
-                          {item.badge}
+                          {item.badge === "chef" && "⭐ Chef's Pick"}
+                          {item.badge === "musttry" && "🔥 Must Try"}
+                          {item.badge === "bestseller" && "🏆 Best Seller"}
+                          {item.badge === "new" && "✨ New"}
+                          {item.badge === "limited" && "⏳ Limited"}
                         </span>
                       </div>
                     )}
@@ -307,7 +331,6 @@ function MenuPreview() {
 
                   {/* CONTENT */}
                   <div className="flex flex-col flex-1 p-5 text-center">
-                    {/* title */}
                     <h2
                       className="text-[17px] sm:text-[18px] font-extrabold text-gray-900 leading-snug"
                       style={{ fontFamily: "Georgia, serif" }}
@@ -315,7 +338,6 @@ function MenuPreview() {
                       {item.name}
                     </h2>
 
-                    {/* desc */}
                     <div className="mt-2">
                       <ExpandableText
                         text={
@@ -326,31 +348,42 @@ function MenuPreview() {
                       />
                     </div>
 
-                    {/* divider */}
                     <div className="my-3">
                       <Divider />
                     </div>
 
+                    {/* PRICE */}
                     {/* price */}
-                    <div className="mt-auto">
-                      {item.originalPrice && item.originalPrice > item.price ? (
-                        <div className="space-y-1">
-                          <div className="text-sm text-gray-400 line-through">
-                            ₹{item.originalPrice}
+                    <div className="mt-auto pt-3 flex flex-col items-center justify-end">
+                      {item.salePrice ? (
+                        <>
+                          {/* old + save in one row */}
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-sm text-gray-400 line-through">
+                              ₹{item.price}
+                            </span>
+
+                            <span className="px-2 py-0.5 text-[10px] font-bold text-red-600 bg-red-50 rounded-full">
+                              SAVE ₹{item.price - item.salePrice}
+                            </span>
                           </div>
 
-                          <div className="text-2xl font-extrabold text-emerald-600">
+                          {/* final price */}
+                          <div className="text-2xl font-extrabold text-emerald-600 leading-none">
+                            ₹{item.salePrice}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          {/* invisible spacer keeps same alignment */}
+                          <div className="mb-2 invisible text-sm">
+                            placeholder
+                          </div>
+
+                          <div className="text-2xl font-extrabold text-emerald-600 leading-none">
                             ₹{item.price}
                           </div>
-
-                          <div className="inline-block px-2 py-1 mt-1 text-[10px] font-bold text-red-600 bg-red-50 rounded-full">
-                            SAVE ₹{item.originalPrice - item.price}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-2xl font-extrabold text-emerald-600">
-                          ₹{item.price}
-                        </div>
+                        </>
                       )}
                     </div>
                   </div>
