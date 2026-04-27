@@ -85,6 +85,23 @@ function AddMenu() {
       });
   };
 
+  const deleteCategory = async (id) => {
+    try {
+      await api.delete(`/categories/${id}`);
+
+      setCategories((prev) => prev.filter((cat) => cat._id !== id));
+
+      const deleted = categories.find((cat) => cat._id === id);
+
+      if (deleted?.name === category) {
+        setCategory("");
+        setCategoryIconSvg("");
+      }
+    } catch (err) {
+      console.log("Category delete error:", err);
+    }
+  };
+
   return (
     <div className="flex items-center justify-center min-h-screen px-4 py-10 text-white bg-gray-900">
       <form
@@ -191,6 +208,45 @@ function AddMenu() {
           >
             Add Category
           </button>
+        </div>
+
+        {/* EXISTING CATEGORIES */}
+        <div className="p-4 space-y-2 border border-gray-600 rounded-lg bg-gray-900">
+          <h3 className="text-sm font-semibold text-gray-300">
+            Existing Categories
+          </h3>
+
+          {categories.length === 0 ? (
+            <p className="text-xs text-gray-500">No categories added yet.</p>
+          ) : (
+            categories.map((cat) => (
+              <div
+                key={cat._id}
+                className="flex items-center justify-between gap-3 p-2 bg-gray-800 rounded"
+              >
+                <div className="flex items-center min-w-0 gap-2">
+                  {cat.iconSvg && (
+                    <span
+                      className="flex items-center justify-center w-6 h-6 text-white shrink-0"
+                      dangerouslySetInnerHTML={{ __html: cat.iconSvg }}
+                    />
+                  )}
+
+                  <span className="text-sm text-gray-200 truncate">
+                    {cat.name}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => deleteCategory(cat._id)}
+                  className="px-2 py-1 text-xs text-white bg-red-600 rounded hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            ))
+          )}
         </div>
 
         <select

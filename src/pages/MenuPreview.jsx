@@ -8,12 +8,12 @@ import {
   Filter,
   X,
   UtensilsCrossed,
-  Coffee,
-  CakeSlice,
   LayoutGrid,
   Eye,
   ChevronUp,
 } from "lucide-react";
+
+const API_URL = "https://fooadash.onrender.com/api";
 
 const Divider = () => (
   <div className="flex items-center justify-center gap-2 my-1">
@@ -25,19 +25,23 @@ const Divider = () => (
 
 function MenuPreview() {
   const [menu, setMenu] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [category, setCategory] = useState("all");
   const [showFilter, setShowFilter] = useState(false);
   const [renderFilter, setRenderFilter] = useState(false);
   const [showScroll, setShowScroll] = useState(false);
   const [showHowModal, setShowHowModal] = useState(false);
   const [vegOnly, setVegOnly] = useState(false);
-  const [foodFilter, setFoodFilter] = useState("all");
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get("https://fooadash.onrender.com/api/menu").then((res) => {
+    axios.get(`${API_URL}/menu`).then((res) => {
       setMenu(res.data);
+    });
+
+    axios.get(`${API_URL}/categories`).then((res) => {
+      setCategories(res.data);
     });
   }, []);
 
@@ -47,40 +51,49 @@ function MenuPreview() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const categories = [
-    "all",
-    ...new Set(
-      menu
-        .map((item) => item.category)
-        .filter((cat) => cat && cat.trim() !== ""),
-    ),
+  const categoryTabs = [
+    {
+      _id: "all",
+      name: "all",
+      iconSvg: "",
+    },
+    ...categories,
   ];
 
   const filteredMenu = menu.filter((item) => {
     const categoryMatch = category === "all" || item.category === category;
-
     const vegMatch = !vegOnly || item.foodType === "veg";
 
     return categoryMatch && vegMatch;
   });
-
-  const filteredByFood =
-    foodFilter === "veg"
-      ? filteredMenu.filter((item) => item.foodType === "veg")
-      : filteredMenu;
 
   const countByCategory = (cat) => {
     if (cat === "all") return menu.length;
     return menu.filter((i) => i.category === cat).length;
   };
 
-  const getIcon = (cat) => {
-    const c = cat.toLowerCase();
-    if (c === "all") return <LayoutGrid size={15} />;
-    if (c.includes("drink") || c.includes("beverage"))
-      return <Coffee size={15} />;
-    if (c.includes("dessert")) return <CakeSlice size={15} />;
+  const renderCategoryIcon = (cat) => {
+    if (cat.name === "all") {
+      return <LayoutGrid size={15} />;
+    }
+
+    if (cat.iconSvg) {
+      return (
+        <span
+          className="flex items-center justify-center w-4 h-4 [&_svg]:w-4 [&_svg]:h-4"
+          dangerouslySetInnerHTML={{ __html: cat.iconSvg }}
+        />
+      );
+    }
+
     return <UtensilsCrossed size={15} />;
+  };
+
+  const getItemCategoryIcon = (item) => {
+    if (item.categoryIconSvg) return item.categoryIconSvg;
+
+    const matched = categories.find((cat) => cat.name === item.category);
+    return matched?.iconSvg || "";
   };
 
   const openFilter = () => {
@@ -94,7 +107,6 @@ function MenuPreview() {
   };
 
   return (
-    /* ── Entire page: warm creamy background ── */
     <div className="min-h-screen" style={{ backgroundColor: "#f5f0e8" }}>
       {/* ══════════════ HERO SECTION ══════════════ */}
       <div
@@ -102,13 +114,12 @@ function MenuPreview() {
         style={{ backgroundColor: "#f5f0e8" }}
       >
         <div className="flex flex-col items-center max-w-6xl gap-6 px-4 py-10 mx-auto md:flex-row sm:px-6 lg:px-8">
-          {/* Image FIRST on mobile */}
           <div
             className="flex-1 order-1 md:order-2 flex items-center justify-center relative select-none 
       min-h-[220px] sm:min-h-[280px] md:min-h-[320px] px-1"
           >
             <img
-              src={img} // or "/whitehouse_profile.jpg"
+              src={img}
               alt="The White House Cafe"
               className="
           w-[220px] 
@@ -123,7 +134,6 @@ function MenuPreview() {
             />
           </div>
 
-          {/* Text SECOND on mobile */}
           <div className="flex-1 order-2 text-center md:order-1 md:text-left">
             <p className="text-emerald-600 text-xs tracking-[0.3em] uppercase font-semibold">
               • Explore Our •
@@ -136,7 +146,6 @@ function MenuPreview() {
               Menu Preview
             </h1>
 
-            {/* Gold divider */}
             <div className="flex items-center justify-center gap-3 mt-3 md:justify-start">
               <div className="w-10 h-[1px] bg-amber-400" />
               <span className="text-lg text-amber-500">🌿</span>
@@ -148,9 +157,7 @@ function MenuPreview() {
               QR code.
             </p>
 
-            {/* Buttons */}
             <div className="flex flex-col items-center gap-3 mt-6 sm:flex-row sm:justify-center md:justify-start">
-              {/* Scan QR */}
               <button
                 onClick={() => navigate("/scan")}
                 className="flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-all duration-300 rounded-full shadow-md bg-emerald-500 hover:bg-emerald-600 hover:shadow-lg active:scale-95"
@@ -158,45 +165,34 @@ function MenuPreview() {
                 <QrCode size={18} />
                 Scan QR
               </button>
-
-              {/* Optional button (kept commented as you had) */}
-              {/*
-        <button
-          onClick={() => setShowHowModal(true)}
-          className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium transition-all duration-200 border-2 rounded-full border-emerald-600 text-emerald-700 hover:bg-emerald-600 hover:text-white"
-        >
-          <Eye size={16} />
-          How Ordering Works
-        </button>
-        */}
             </div>
           </div>
         </div>
       </div>
 
       {/* ══════════════ MENU SECTION ══════════════ */}
-      {/* Outer wrapper stays creamy; white container wraps menu content only */}
       <div className="px-4 py-6 pb-20 mx-auto max-w-7xl">
         <div className="p-5 bg-white shadow-xl rounded-3xl">
           {/* ── Category Tabs + Filter Button ── */}
           <div className="flex items-center justify-center mb-6 md:justify-between">
             {/* Desktop categories */}
             <div className="hidden md:flex flex-wrap gap-2">
-              {categories.map((cat) => (
+              {categoryTabs.map((cat) => (
                 <button
-                  key={cat}
-                  onClick={() => setCategory(cat)}
+                  key={cat._id}
+                  onClick={() => setCategory(cat.name)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
                   ${
-                    category === cat
+                    category === cat.name
                       ? "bg-emerald-500 text-white shadow-md"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                 >
-                  {getIcon(cat)}
-                  <span className="capitalize">{cat}</span>
+                  {renderCategoryIcon(cat)}
+                  <span className="capitalize">{cat.name}</span>
                 </button>
               ))}
+
               {/* Veg Filter */}
               <button
                 onClick={() => setVegOnly(!vegOnly)}
@@ -207,7 +203,6 @@ function MenuPreview() {
                   : "bg-white border-gray-200"
               }`}
               >
-                {/* moving pill */}
                 <span
                   className={`absolute top-1 left-1 w-[54px] h-[32px] rounded-full shadow transition-all duration-500
                 ${
@@ -217,7 +212,6 @@ function MenuPreview() {
                 }`}
                 />
 
-                {/* text */}
                 <span className="relative z-10 flex items-center justify-between h-full px-3 text-xs font-semibold">
                   <span className={!vegOnly ? "text-white" : "text-white/80"}>
                     All
@@ -242,7 +236,7 @@ function MenuPreview() {
             </button>
           </div>
 
-          {/* ── Drawer Filter (mobile + desktop) ── */}
+          {/* ── Drawer Filter ── */}
           {renderFilter && (
             <div
               className="fixed inset-0 z-50 flex bg-black/40"
@@ -262,28 +256,32 @@ function MenuPreview() {
                     <X size={20} />
                   </button>
                 </div>
+
                 <div className="flex flex-col gap-2">
-                  {categories.map((cat) => (
+                  {categoryTabs.map((cat) => (
                     <button
-                      key={cat}
+                      key={cat._id}
                       onClick={() => {
-                        setCategory(cat);
+                        setCategory(cat.name);
                         closeFilter();
                       }}
                       className={`flex items-center gap-2 px-3 py-2.5 rounded-xl capitalize text-sm transition
                                 ${
-                                  category === cat
+                                  category === cat.name
                                     ? "bg-emerald-500 text-white font-medium"
                                     : "hover:bg-gray-100 text-gray-600"
                                 }`}
                     >
-                      {getIcon(cat)}
-                      <span>{cat}</span>
+                      {renderCategoryIcon(cat)}
+
+                      <span>{cat.name}</span>
+
                       <span className="ml-auto text-xs opacity-60">
-                        ({countByCategory(cat)})
+                        ({countByCategory(cat.name)})
                       </span>
                     </button>
                   ))}
+
                   {/* Veg Filter */}
                   <button
                     onClick={() => setVegOnly(!vegOnly)}
@@ -294,7 +292,6 @@ function MenuPreview() {
                   : "bg-white border-gray-200"
               }`}
                   >
-                    {/* moving pill */}
                     <span
                       className={`absolute top-1 left-1 w-[54px] h-[32px] rounded-full shadow transition-all duration-500
                 ${
@@ -304,7 +301,6 @@ function MenuPreview() {
                 }`}
                     />
 
-                    {/* text */}
                     <span className="relative z-10 flex items-center justify-between h-full px-3 text-xs font-semibold">
                       <span
                         className={!vegOnly ? "text-white" : "text-white/80"}
@@ -333,6 +329,7 @@ function MenuPreview() {
               const isVeg = item.foodType === "veg";
               const isAvailable = item.available !== false;
               const badge = item.badge;
+              const itemCategoryIconSvg = getItemCategoryIcon(item);
 
               return (
                 <div
@@ -353,10 +350,9 @@ function MenuPreview() {
                       }`}
                     />
 
-                    {/* Richer gradient — stronger at bottom for text legibility */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent" />
 
-                    {/* ── BADGE ── */}
+                    {/* BADGE */}
                     {badge &&
                       badge !== "none" &&
                       isAvailable &&
@@ -420,7 +416,6 @@ function MenuPreview() {
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {/* Icon circle */}
                             <span
                               className="relative flex items-center justify-center rounded-full shrink-0"
                               style={{
@@ -431,7 +426,6 @@ function MenuPreview() {
                                 fontSize: 10,
                               }}
                             >
-                              {/* Ping ring for "new" only */}
                               {badge === "new" && (
                                 <span
                                   className="absolute inset-0 rounded-full animate-ping"
@@ -449,10 +443,9 @@ function MenuPreview() {
                         );
                       })()}
 
-                    {/* ── SOLD OUT overlay ── */}
+                    {/* SOLD OUT overlay */}
                     {!isAvailable && (
                       <>
-                        {/* Full overlay with diagonal text */}
                         <div className="absolute inset-0 flex items-center justify-center">
                           <div
                             className="px-5 py-1.5 bg-gray-900/80 backdrop-blur-sm border border-white/20 rounded-full shadow-xl"
@@ -463,16 +456,15 @@ function MenuPreview() {
                             </span>
                           </div>
                         </div>
-                        {/* Small badge stays top-left too */}
+
                         <span className="absolute top-2.5 left-2.5 px-2.5 py-1 text-[10px] font-bold text-white rounded-full bg-gray-900/80 backdrop-blur-md border border-white/10 shadow">
                           Sold Out
                         </span>
                       </>
                     )}
 
-                    {/* ── VEG / NON-VEG indicator ── */}
+                    {/* VEG / NON-VEG indicator */}
                     <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
-                      {/* Tooltip label on hover */}
                       <span
                         className={`
         hidden group-hover:flex
@@ -490,7 +482,6 @@ function MenuPreview() {
                         {isVeg ? "VEG" : "NON-VEG"}
                       </span>
 
-                      {/* The dot box */}
                       <span
                         className={`
         flex items-center justify-center w-6 h-6
@@ -500,14 +491,24 @@ function MenuPreview() {
       `}
                       >
                         <span
-                          className={`w-2.5 h-2.5 rounded-full ${isVeg ? "bg-emerald-500" : "bg-red-500"}`}
+                          className={`w-2.5 h-2.5 rounded-full ${
+                            isVeg ? "bg-emerald-500" : "bg-red-500"
+                          }`}
                         />
                       </span>
                     </div>
 
-                    {/* ── Item category pill (bottom-left over image) — optional ── */}
+                    {/* Category pill with SVG */}
                     {item.category && isAvailable && (
-                      <span className="absolute bottom-2.5 left-2.5 px-2.5 py-0.5 text-[9px] font-semibold tracking-widest uppercase text-white/80 bg-black/30 backdrop-blur-sm rounded-full border border-white/10">
+                      <span className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[9px] font-semibold tracking-widest uppercase text-white/90 bg-black/30 backdrop-blur-sm rounded-full border border-white/10">
+                        {itemCategoryIconSvg && (
+                          <span
+                            className="flex items-center justify-center w-3.5 h-3.5 [&_svg]:w-3.5 [&_svg]:h-3.5"
+                            dangerouslySetInnerHTML={{
+                              __html: itemCategoryIconSvg,
+                            }}
+                          />
+                        )}
                         {item.category}
                       </span>
                     )}
@@ -536,12 +537,9 @@ function MenuPreview() {
                       <Divider />
                     </div>
 
-                    {/* PRICE */}
-                    {/* price */}
                     <div className="mt-auto pt-3 flex flex-col items-center justify-end">
                       {item.salePrice ? (
                         <>
-                          {/* old + save in one row */}
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-sm text-gray-400 line-through">
                               ₹{item.price}
@@ -552,14 +550,12 @@ function MenuPreview() {
                             </span>
                           </div>
 
-                          {/* final price */}
                           <div className="text-2xl font-extrabold text-emerald-600 leading-none">
                             ₹{item.salePrice}
                           </div>
                         </>
                       ) : (
                         <>
-                          {/* invisible spacer keeps same alignment */}
                           <div className="mb-2 invisible text-sm">
                             placeholder
                           </div>
@@ -576,7 +572,6 @@ function MenuPreview() {
             })}
           </div>
 
-          {/* Empty state */}
           {filteredMenu.length === 0 && (
             <div className="py-24 text-center text-gray-400">
               <UtensilsCrossed size={40} className="mx-auto mb-3 opacity-30" />
@@ -613,11 +608,13 @@ function MenuPreview() {
             >
               How Ordering Works
             </h2>
+
             <div className="flex items-center justify-center gap-2 my-2">
               <div className="w-8 h-[1px] bg-amber-400" />
               <span className="text-amber-500">🌿</span>
               <div className="w-8 h-[1px] bg-amber-400" />
             </div>
+
             <ol className="mt-4 space-y-3 text-sm text-left text-gray-500">
               {[
                 "Scan the QR code on your table.",
@@ -633,6 +630,7 @@ function MenuPreview() {
                 </li>
               ))}
             </ol>
+
             <button
               onClick={() => setShowHowModal(false)}
               className="mt-6 w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full text-sm font-medium transition"
