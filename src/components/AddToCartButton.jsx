@@ -8,51 +8,90 @@ export default function AddToCartButton({
   removeItem,
 }) {
   const pillRef = useRef(null);
+  const knobRef = useRef(null);
+
+  const draggingRef = useRef(false);
+  const movedRef = useRef(false);
+  const dragXRef = useRef(4);
+  const ignoreClickRef = useRef(false);
 
   const [sliding, setSliding] = useState(false);
   const [returning, setReturning] = useState(false);
 
-  const [dragging, setDragging] = useState(false);
-  const [dragX, setDragX] = useState(4);
-
   const isStepperMode = qty > 0;
 
   const getCircleRight = () => {
-    if (!pillRef.current) return 999;
+    if (!pillRef.current) return 4;
     return pillRef.current.offsetWidth - 40;
   };
 
-  const circleRight = getCircleRight();
+  const moveKnob = (x, animate = false) => {
+    if (!knobRef.current) return;
 
-  /* ───────────────── Add ───────────────── */
+    knobRef.current.style.transition = animate
+      ? "left 0.45s cubic-bezier(0.22,1,0.36,1), background 0.3s, color 0.3s"
+      : "none";
+
+    knobRef.current.style.left = `${x}px`;
+  };
+
+  const resetKnob = () => {
+    dragXRef.current = 4;
+    moveKnob(4, true);
+  };
+
   const finishAdd = () => {
+    if (sliding || returning) return;
+
+    const right = getCircleRight();
+
     setSliding(true);
-    setDragX(circleRight);
+    dragXRef.current = right;
+    moveKnob(right, true);
 
     setTimeout(() => {
       addToCart(item);
       setSliding(false);
-      setDragging(false);
-      setDragX(4);
-    }, 600);
+      resetKnob();
+    }, 420);
   };
 
-  const handleAdd = () => {
+  const handleButtonClick = (e) => {
+    if (ignoreClickRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      ignoreClickRef.current = false;
+      return;
+    }
+
     if (isStepperMode) {
       addToCart(item);
       return;
     }
 
-    if (sliding || returning || dragging) return;
+    if (sliding || returning || draggingRef.current) return;
 
     finishAdd();
   };
 
-  /* ───────────────── Minus ───────────────── */
+  const handleKnobClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (movedRef.current) return;
+
+    if (isStepperMode) {
+      addToCart(item);
+      return;
+    }
+
+    finishAdd();
+  };
+
   const handleMinus = (e) => {
     e.stopPropagation();
 
-    if (sliding || returning || dragging) return;
+    if (sliding || returning || draggingRef.current) return;
 
     if (qty <= 1) {
       setReturning(true);
@@ -60,46 +99,66 @@ export default function AddToCartButton({
       setTimeout(() => {
         removeItem(item._id);
         setReturning(false);
-      }, 600);
+      }, 350);
     } else {
       removeItem(item._id);
     }
   };
 
-  /* ───────────────── Drag logic ───────────────── */
   const startDrag = (e) => {
     if (isStepperMode || sliding || returning) return;
 
+    e.preventDefault();
     e.stopPropagation();
-    setDragging(true);
+
+    draggingRef.current = true;
+    movedRef.current = false;
+
+    e.currentTarget.setPointerCapture?.(e.pointerId);
   };
 
   const onDrag = (e) => {
-    if (!dragging || !pillRef.current) return;
+    if (!draggingRef.current || !pillRef.current) return;
 
     const rect = pillRef.current.getBoundingClientRect();
-    const pointerX = e.clientX ?? e.touches?.[0]?.clientX;
+    const right = getCircleRight();
 
-    let next = pointerX - rect.left - 18;
-    next = Math.max(4, Math.min(next, circleRight));
+    let next = e.clientX - rect.left - 18;
+    next = Math.max(4, Math.min(next, right));
 
-    setDragX(next);
+    if (Math.abs(next - dragXRef.current) > 3) {
+      movedRef.current = true;
+    }
+
+    dragXRef.current = next;
+    moveKnob(next, false);
   };
 
-  const endDrag = () => {
-    if (!dragging) return;
+  const endDrag = (e) => {
+    if (!draggingRef.current) return;
 
-    const progress = dragX / circleRight;
+    e.preventDefault();
+    e.stopPropagation();
 
-    if (progress >= 0.5) {
+    draggingRef.current = false;
+
+    const right = getCircleRight();
+    const progress = dragXRef.current / right;
+
+    ignoreClickRef.current = true;
+
+    setTimeout(() => {
+      ignoreClickRef.current = false;
+      movedRef.current = false;
+    }, 250);
+
+    if (progress >= 0.45) {
       finishAdd();
     } else {
-      setDragging(false);
-      setDragX(4);
+      resetKnob();
     }
   };
 
-  /* ───────────────── Unavailable ───────────────── */
   if (!isAvailable) {
     return (
       <button
@@ -111,45 +170,26 @@ export default function AddToCartButton({
     );
   }
 
-  /* ───────────────── Styles ───────────────── */
-  const whiteMode = isStepperMode || sliding || dragging;
+  const green = "#16a34a";
+  const darkGreen = "#15803d";
+  const softGreen = "#ecfdf5";
 
-  const pillBg = whiteMode && !returning ? "#ffffff" : "#16a34a";
-  const pillBorder = whiteMode && !returning ? "1.5px solid #111111" : "none";
-
-  let circleLeft = 4;
-
-  if (dragging) circleLeft = dragX;
-  if (sliding) circleLeft = circleRight;
-  if (isStepperMode && !returning) circleLeft = circleRight;
-  if (returning) circleLeft = 4;
-
-  const circleBg = whiteMode && !returning ? "#111111" : "#ffffff";
-  const circleColor = whiteMode && !returning ? "#ffffff" : "#16a34a";
-
-  const dragProgress = dragging ? dragX / circleRight : 0;
-  const labelOpacity =
-    sliding || isStepperMode || returning
-      ? 0
-      : dragging
-        ? Math.max(0, 1 - dragProgress * 1.6)
-        : 1;
+  const knobLeft = isStepperMode && !returning ? getCircleRight() : 4;
 
   return (
     <div className="relative w-full" style={{ height: 44 }}>
       <button
         ref={pillRef}
-        onClick={handleAdd}
-        className="absolute inset-0 w-full h-full overflow-hidden"
+        type="button"
+        onClick={handleButtonClick}
+        className="absolute inset-0 w-full h-full overflow-hidden shadow-sm active:scale-[0.98]"
         style={{
           borderRadius: 999,
-          border: pillBorder,
-          background: pillBg,
+          border: `1.5px solid ${green}`,
+          background: isStepperMode && !returning ? softGreen : green,
           cursor: "pointer",
           padding: 0,
-          transition: dragging
-            ? "none"
-            : "background 0.55s cubic-bezier(0.22,1,0.36,1), border 0.55s",
+          transition: "all 0.35s cubic-bezier(0.22,1,0.36,1)",
         }}
       >
         {/* Add label */}
@@ -162,12 +202,12 @@ export default function AddToCartButton({
             justifyContent: "center",
             paddingLeft: 40,
             fontSize: 11,
-            fontWeight: 700,
+            fontWeight: 800,
             letterSpacing: "0.1em",
             textTransform: "uppercase",
             color: "#ffffff",
-            opacity: labelOpacity,
-            transition: dragging ? "none" : "opacity 0.22s",
+            opacity: isStepperMode || sliding || returning ? 0 : 1,
+            transition: "opacity 0.2s",
             pointerEvents: "none",
             userSelect: "none",
           }}
@@ -184,8 +224,8 @@ export default function AddToCartButton({
             alignItems: "center",
             justifyContent: "center",
             fontSize: 15,
-            fontWeight: 800,
-            color: "#111111",
+            fontWeight: 900,
+            color: darkGreen,
             opacity: isStepperMode && !returning ? 1 : 0,
             transition: "opacity 0.2s",
             pointerEvents: "none",
@@ -195,34 +235,37 @@ export default function AddToCartButton({
           {qty}
         </span>
 
-        {/* Draggable + knob */}
+        {/* Plus knob */}
         <span
+          ref={knobRef}
+          onClick={handleKnobClick}
           onPointerDown={startDrag}
           onPointerMove={onDrag}
           onPointerUp={endDrag}
-          onPointerLeave={endDrag}
+          onPointerCancel={endDrag}
           style={{
             position: "absolute",
             top: 4,
-            left: circleLeft,
+            left: knobLeft,
             width: 36,
             height: 36,
             borderRadius: "50%",
-            background: circleBg,
-            color: circleColor,
+            background: isStepperMode || sliding ? green : "#ffffff",
+            color: isStepperMode || sliding ? "#ffffff" : green,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 22,
-            fontWeight: 700,
-            lineHeight: 1,
+            fontSize: 24,
+            fontWeight: 800,
+            lineHeight: "36px",
+            paddingBottom: 2,
             zIndex: 5,
-            cursor: dragging ? "grabbing" : "grab",
+            cursor: isStepperMode ? "pointer" : "grab",
             userSelect: "none",
             touchAction: "none",
-            transition: dragging
-              ? "none"
-              : "left 0.58s cubic-bezier(0.22,1,0.36,1), background 0.55s, color 0.55s",
+            boxShadow: "0 8px 18px rgba(22,163,74,0.25)",
+            transition:
+              "left 0.45s cubic-bezier(0.22,1,0.36,1), background 0.3s, color 0.3s",
           }}
         >
           +
@@ -232,6 +275,7 @@ export default function AddToCartButton({
       {/* Minus */}
       {(isStepperMode || returning) && (
         <button
+          type="button"
           onClick={handleMinus}
           style={{
             position: "absolute",
@@ -240,19 +284,20 @@ export default function AddToCartButton({
             width: 36,
             height: 36,
             borderRadius: "50%",
-            background: "#111111",
+            background: green,
             color: "#ffffff",
             border: "none",
             cursor: "pointer",
-            fontSize: 22,
-            fontWeight: 700,
-
+            fontSize: 24,
+            fontWeight: 800,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            lineHeight: 1,
+            lineHeight: "36px",
+            paddingBottom: 3,
             zIndex: 6,
             opacity: returning ? 0 : 1,
+            boxShadow: "0 8px 18px rgba(22,163,74,0.25)",
             transition: "opacity 0.2s",
           }}
         >

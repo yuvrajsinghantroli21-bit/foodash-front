@@ -81,6 +81,30 @@ function Menu() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  useEffect(() => {
+    if (!token) {
+      toast.error("FoodDash: Please scan QR first");
+      setTimeout(() => navigate("/thank-you"), 1200);
+      return;
+    }
+    axios
+      .get(`https://fooadash.onrender.com/api/session/${token}`)
+      .then((res) => {
+        setTable(res.data.table);
+        if (tokenFromUrl) {
+          localStorage.setItem("table", res.data.table);
+          localStorage.setItem("token", token);
+        }
+      })
+      .catch(() => {
+        toast.error("Session expired. Please scan again.");
+        localStorage.removeItem("token");
+        localStorage.removeItem("table");
+        clearCart();
+        navigate("/thank-you");
+      });
+  }, [token]);
+
   /* ── Real-time session expiry ── */
   useEffect(() => {
     const handleSessionExpire = (data) => {
@@ -224,7 +248,7 @@ function Menu() {
         <div className="p-5 bg-white shadow-xl rounded-3xl">
           {/* Category Tabs + Filter Button */}
           <div className="flex items-center justify-center mb-6 md:justify-between">
-            <div className="hidden md:flex flex-wrap gap-2">
+            <div className="flex-wrap hidden gap-2 md:flex">
               {categories.map((cat) => {
                 const active = category === cat;
 
@@ -396,10 +420,10 @@ function Menu() {
               return (
                 <div
                   key={item._id}
-                  className="flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md group rounded-2xl hover:shadow-xl hover:-translate-y-1"
+                  className="flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md rounded-2xl hover:shadow-xl hover:-translate-y-1"
                 >
                   {/* IMAGE */}
-                  <div className="relative overflow-hidden h-48">
+                  <div className="relative h-48 overflow-hidden">
                     <img
                       src={image}
                       alt={item.name}
@@ -509,15 +533,11 @@ function Menu() {
                             className="px-5 py-1.5 bg-gray-900/80 backdrop-blur-sm border border-white/20 rounded-full shadow-xl"
                             style={{ transform: "rotate(-12deg)" }}
                           >
-                            <span className="text-xs font-black text-white tracking-widest uppercase">
-                              Sold Out
+                            <span className="text-xs font-black tracking-widest text-white uppercase">
+                              Unavailable
                             </span>
                           </div>
                         </div>
-
-                        <span className="absolute top-2.5 left-2.5 px-2.5 py-1 text-[10px] font-bold text-white rounded-full bg-gray-900/80 backdrop-blur-md border border-white/10 shadow">
-                          Sold Out
-                        </span>
                       </>
                     )}
 
@@ -594,7 +614,7 @@ function Menu() {
                     </div>
 
                     {/* PRICE */}
-                    <div className="mt-auto flex flex-col items-center justify-end">
+                    <div className="flex flex-col items-center justify-end mt-auto">
                       {item.salePrice ? (
                         <>
                           <div className="flex items-center gap-2 mb-2">
@@ -607,17 +627,17 @@ function Menu() {
                             </span>
                           </div>
 
-                          <div className="text-2xl font-extrabold text-emerald-600 leading-none">
+                          <div className="text-2xl font-extrabold leading-none text-emerald-600">
                             ₹{item.salePrice}
                           </div>
                         </>
                       ) : (
                         <>
-                          <div className="mb-2 invisible text-sm">
+                          <div className="invisible mb-2 text-sm">
                             placeholder
                           </div>
 
-                          <div className="text-2xl font-extrabold text-emerald-600 leading-none">
+                          <div className="text-2xl font-extrabold leading-none text-emerald-600">
                             ₹{item.price}
                           </div>
                         </>
