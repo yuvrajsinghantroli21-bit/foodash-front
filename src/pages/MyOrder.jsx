@@ -164,12 +164,12 @@ export default function MyOrder() {
 
   return (
     <>
-      <StickyHeader
+      {/* <StickyHeader
         table={table}
         showCart={false}
         actionLabel="Go to Menu"
         actionLink="/order"
-      />
+      /> */}
 
       <div
         className="min-h-screen pb-16"

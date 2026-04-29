@@ -201,7 +201,7 @@ function Menu() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f5f0e8" }}>
-      <StickyHeader table={table} totalItems={totalItems} />
+      {/* <StickyHeader table={table} totalItems={totalItems} /> */}
 
       {/* HERO SECTION */}
       <div

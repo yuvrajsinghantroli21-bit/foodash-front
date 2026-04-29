@@ -154,7 +154,7 @@ function Cart() {
         className="min-h-screen pb-16"
         style={{ backgroundColor: "#f5f0e8" }}
       >
-        <StickyHeader table={table} totalItems={cart.length} />
+        {/* <StickyHeader table={table} totalItems={cart.length} /> */}
         {/* ══ Gold top accent ══ */}
         <div className="" />
 
@@ -408,10 +408,10 @@ function Cart() {
             {TRUST_BADGES.map((b) => (
               <div
                 key={b.title}
-                className="flex flex-col items-center w-full gap-3 px-4 py-4 text-center transition-all bg-white border border-gray-100 shadow-sm  sm:flex-row sm:items-start sm:gap-4 sm:px-5 sm:py-5 sm:text-left rounded-xl sm:rounded-2xl hover:shadow-md"
+                className="flex flex-col items-center w-full gap-3 px-4 py-4 text-center transition-all bg-white border border-gray-100 shadow-sm sm:flex-row sm:items-start sm:gap-4 sm:px-5 sm:py-5 sm:text-left rounded-xl sm:rounded-2xl hover:shadow-md"
               >
                 {/* ICON */}
-                <div className="flex items-center justify-center rounded-full  w-11 h-11 sm:w-12 sm:h-12 bg-amber-50 text-amber-500 shrink-0">
+                <div className="flex items-center justify-center rounded-full w-11 h-11 sm:w-12 sm:h-12 bg-amber-50 text-amber-500 shrink-0">
                   {b.icon}
                 </div>
 
