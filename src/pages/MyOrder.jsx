@@ -112,7 +112,7 @@ export default function MyOrder() {
 
     socket.on("session-expired", (data) => {
       if (data.token === token) {
-        toast.error("Session expired. Thank you! 🙏");
+        toast.success("Session expired. Thank you! 🙏");
         localStorage.removeItem("token");
         localStorage.removeItem("table");
         setTimeout(() => navigate("/thank-you"), 1200);

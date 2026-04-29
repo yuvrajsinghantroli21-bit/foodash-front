@@ -334,7 +334,7 @@ function MenuPreview() {
               return (
                 <div
                   key={item._id}
-                  className={`flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md rounded-2xl hover:shadow-xl hover:-translate-y-1 ${
+                  className={`group flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md rounded-2xl hover:shadow-xl hover:-translate-y-1 ${
                     isAvailable
                       ? "hover:-translate-y-2 hover:shadow-2xl"
                       : "opacity-70 grayscale"
@@ -464,28 +464,91 @@ function MenuPreview() {
                     )}
 
                     {/* VEG / NON-VEG indicator */}
-                    <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+                    {/* PREMIUM VEG / NON-VEG */}
+                    <div className="absolute top-2.5 right-2.5 flex items-center gap-2 z-10">
+                      {/* TEXT BADGE */}
                       <span
-                        className={`hidden group-hover:flex px-2 py-0.5 text-[9px] font-bold rounded-full backdrop-blur border ${
-                          isVeg
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : "bg-red-50 text-red-600 border-red-200"
-                        }`}
-                      >
-                        {isVeg ? "VEG" : "NON-VEG"}
-                      </span>
-
-                      <span
-                        className={`flex items-center justify-center w-6 h-6 bg-white border-2 rounded-md shadow ${
-                          isVeg ? "border-emerald-400" : "border-red-400"
-                        }`}
+                        className={`
+      hidden sm:flex
+      items-center
+      overflow-hidden
+      backdrop-blur-xl
+      border
+      shadow-lg
+      rounded-full
+      px-0
+      max-w-0
+      opacity-0
+      group-hover:max-w-[90px]
+      group-hover:px-2.5
+      group-hover:opacity-100
+      transition-all
+      duration-500
+      ease-[cubic-bezier(0.22,1,0.36,1)]
+      text-[9px]
+      font-bold
+      tracking-[0.12em]
+      whitespace-nowrap
+      ${
+        isVeg
+          ? "bg-emerald-50/95 text-emerald-700 border-emerald-200/80"
+          : "bg-red-50/95 text-red-600 border-red-200/80"
+      }
+    `}
                       >
                         <span
-                          className={`w-2.5 h-2.5 rounded-full ${
+                          className={`mr-1.5 h-1.5 w-1.5 rounded-full animate-pulse ${
                             isVeg ? "bg-emerald-500" : "bg-red-500"
                           }`}
                         />
+
+                        {isVeg ? "VEG" : "NON VEG"}
                       </span>
+
+                      {/* MAIN ICON */}
+                      <div
+                        className={`
+      relative
+      flex items-center justify-center
+      w-7 h-7
+      rounded-xl
+      border
+      shadow-xl
+      backdrop-blur-xl
+      transition-all
+      duration-500
+      group-hover:scale-110
+      group-hover:rotate-3
+      ${isVeg ? "bg-white/95 border-emerald-300" : "bg-white/95 border-red-300"}
+    `}
+                      >
+                        {/* Glow */}
+                        <div
+                          className={`
+        absolute inset-0 rounded-xl blur-[10px] opacity-0
+        group-hover:opacity-40 transition duration-500
+        ${isVeg ? "bg-emerald-400" : "bg-red-400"}
+      `}
+                        />
+
+                        {/* Inner border */}
+                        <div
+                          className={`
+        relative flex items-center justify-center
+        w-4 h-4 rounded-md border
+        ${isVeg ? "border-emerald-500" : "border-red-500"}
+      `}
+                        >
+                          <span
+                            className={`
+          w-2 h-2 rounded-full
+          transition-all duration-300
+          group-hover:scale-125
+          ${isVeg ? "bg-emerald-500" : "bg-red-500"}
+        `}
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     {/* Category pill with SVG */}
