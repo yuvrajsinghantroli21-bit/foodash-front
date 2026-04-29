@@ -168,14 +168,14 @@ function Cart() {
               </p>
 
               <h1
-                className="text-3xl sm:text-5xl font-bold text-gray-900 leading-tight"
+                className="text-3xl font-bold leading-tight text-gray-900 sm:text-5xl"
                 style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
               >
                 Cart — Table {table || "…"}
               </h1>
 
               {/* Divider alignment fix */}
-              <div className="flex justify-center sm:justify-start mt-2">
+              <div className="flex justify-center mt-2 sm:justify-start">
                 <Divider />
               </div>
             </div>
@@ -184,11 +184,7 @@ function Cart() {
             <div className="flex justify-center w-full sm:w-auto sm:justify-end">
               <button
                 onClick={() => navigate(-1)}
-                className="flex items-center justify-center gap-2 
-                   px-6 py-3 text-base sm:text-lg font-semibold 
-                   text-white rounded-full bg-emerald-500 
-                   hover:bg-emerald-600 shadow-md 
-                   transition-all active:scale-95 whitespace-nowrap"
+                className="flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold text-white transition-all rounded-full shadow-md sm:text-lg bg-emerald-500 hover:bg-emerald-600 active:scale-95 whitespace-nowrap"
               >
                 <Plus size={18} />
                 Add Items
@@ -220,7 +216,7 @@ function Cart() {
               {/* ── LEFT: Cart Items ── */}
               <div className="flex-1 space-y-4">
                 {cart.map((item) => {
-                  const image = `https://fooadash.onrender.com/uploads/${item.image}`;
+                  const image = item.image;
                   const isVeg = item.isVeg ?? true;
 
                   return (
@@ -412,36 +408,20 @@ function Cart() {
             {TRUST_BADGES.map((b) => (
               <div
                 key={b.title}
-                className="
-        flex flex-col sm:flex-row items-center sm:items-start
-        gap-3 sm:gap-4
-        w-full
-        px-4 sm:px-5
-        py-4 sm:py-5
-        text-center sm:text-left
-        bg-white border border-gray-100
-        shadow-sm rounded-xl sm:rounded-2xl
-        hover:shadow-md transition-all
-      "
+                className="flex flex-col items-center w-full gap-3 px-4 py-4 text-center transition-all bg-white border border-gray-100 shadow-sm  sm:flex-row sm:items-start sm:gap-4 sm:px-5 sm:py-5 sm:text-left rounded-xl sm:rounded-2xl hover:shadow-md"
               >
                 {/* ICON */}
-                <div
-                  className="
-        flex items-center justify-center
-        w-11 h-11 sm:w-12 sm:h-12
-        rounded-full bg-amber-50 text-amber-500 shrink-0
-      "
-                >
+                <div className="flex items-center justify-center rounded-full  w-11 h-11 sm:w-12 sm:h-12 bg-amber-50 text-amber-500 shrink-0">
                   {b.icon}
                 </div>
 
                 {/* TEXT */}
                 <div className="space-y-0.5 sm:space-y-1">
-                  <p className="text-sm font-semibold text-gray-800 leading-tight">
+                  <p className="text-sm font-semibold leading-tight text-gray-800">
                     {b.title}
                   </p>
 
-                  <p className="text-xs text-gray-500 leading-snug">{b.sub}</p>
+                  <p className="text-xs leading-snug text-gray-500">{b.sub}</p>
                 </div>
               </div>
             ))}

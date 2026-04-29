@@ -176,7 +176,7 @@ function MenuPreview() {
           {/* ── Category Tabs + Filter Button ── */}
           <div className="flex items-center justify-center mb-6 md:justify-between">
             {/* Desktop categories */}
-            <div className="hidden md:flex flex-wrap gap-2">
+            <div className="flex-wrap hidden gap-2 md:flex">
               {categoryTabs.map((cat) => (
                 <button
                   key={cat._id}
@@ -325,7 +325,7 @@ function MenuPreview() {
           {/* ── Menu Grid ── */}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {filteredMenu.map((item) => {
-              const image = `https://fooadash.onrender.com/uploads/${item.image}`;
+              const image = item.image;
               const isVeg = item.foodType === "veg";
               const isAvailable = item.available !== false;
               const badge = item.badge;
@@ -341,7 +341,7 @@ function MenuPreview() {
                   }`}
                 >
                   {/* IMAGE */}
-                  <div className="relative overflow-hidden h-48">
+                  <div className="relative h-48 overflow-hidden">
                     <img
                       src={image}
                       alt={item.name}
@@ -451,7 +451,7 @@ function MenuPreview() {
                             className="px-5 py-1.5 bg-gray-900/80 backdrop-blur-sm border border-white/20 rounded-full shadow-xl"
                             style={{ transform: "rotate(-12deg)" }}
                           >
-                            <span className="text-xs font-black text-white tracking-widest uppercase">
+                            <span className="text-xs font-black tracking-widest text-white uppercase">
                               Sold Out
                             </span>
                           </div>
@@ -537,7 +537,7 @@ function MenuPreview() {
                       <Divider />
                     </div>
 
-                    <div className="mt-auto pt-3 flex flex-col items-center justify-end">
+                    <div className="flex flex-col items-center justify-end pt-3 mt-auto">
                       {item.salePrice ? (
                         <>
                           <div className="flex items-center gap-2 mb-2">
@@ -550,17 +550,17 @@ function MenuPreview() {
                             </span>
                           </div>
 
-                          <div className="text-2xl font-extrabold text-emerald-600 leading-none">
+                          <div className="text-2xl font-extrabold leading-none text-emerald-600">
                             ₹{item.salePrice}
                           </div>
                         </>
                       ) : (
                         <>
-                          <div className="mb-2 invisible text-sm">
+                          <div className="invisible mb-2 text-sm">
                             placeholder
                           </div>
 
-                          <div className="text-2xl font-extrabold text-emerald-600 leading-none">
+                          <div className="text-2xl font-extrabold leading-none text-emerald-600">
                             ₹{item.price}
                           </div>
                         </>

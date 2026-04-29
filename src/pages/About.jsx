@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 const Divider = () => (
   <div className="flex items-center justify-center gap-3 my-4">
     <div className="w-12 h-[1px] bg-amber-400" />
-    <span className="text-amber-500 text-lg">🌿</span>
+    <span className="text-lg text-amber-500">🌿</span>
     <div className="w-12 h-[1px] bg-amber-400" />
   </div>
 );
@@ -69,7 +69,7 @@ function About() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f5f0e8" }}>
       {/* Gold top accent */}
-      <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+      <div className="" />
 
       {/* ══════════ HERO ══════════ */}
       <section className="relative overflow-hidden">
@@ -83,13 +83,13 @@ function About() {
           }}
         />
 
-        <div className="max-w-4xl px-6 pt-16 pb-12 mx-auto text-center relative z-10">
+        <div className="relative z-10 max-w-4xl px-6 pt-16 pb-12 mx-auto text-center">
           <motion.div {...fadeUp(0)}>
             <p className="text-emerald-600 text-[11px] tracking-[0.3em] uppercase font-semibold mb-3">
               • Est. 2020 • Jaipur •
             </p>
             <h1
-              className="text-5xl font-bold text-gray-900 sm:text-6xl md:text-7xl leading-tight"
+              className="text-5xl font-bold leading-tight text-gray-900 sm:text-6xl md:text-7xl"
               style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
             >
               The White House
@@ -104,16 +104,16 @@ function About() {
         </div>
       </section>
 
-      <div className="max-w-5xl px-4 pb-20 mx-auto sm:px-6 space-y-10">
+      <div className="max-w-5xl px-4 pb-20 mx-auto space-y-10 sm:px-6">
         {/* ══════════ STORY CARD ══════════ */}
         <motion.div {...fadeUp(0.1)}>
-          <div className="relative overflow-hidden bg-white rounded-3xl shadow-xl border border-amber-100/60">
+          <div className="relative overflow-hidden bg-white border shadow-xl rounded-3xl border-amber-100/60">
             {/* Left green accent bar */}
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-400 rounded-l-3xl" />
+            <div className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-400 rounded-l-3xl" />
 
             <div className="px-8 py-10 sm:px-12 sm:py-12 md:flex md:items-center md:gap-12">
               {/* Big decorative letter */}
-              <div className="hidden md:flex items-center justify-center w-32 h-32 rounded-full bg-emerald-50 border-2 border-emerald-100 shrink-0 text-6xl select-none">
+              <div className="items-center justify-center hidden w-32 h-32 text-6xl border-2 rounded-full select-none md:flex bg-emerald-50 border-emerald-100 shrink-0">
                 ☕
               </div>
 
@@ -122,12 +122,12 @@ function About() {
                   Our Story
                 </p>
                 <h2
-                  className="text-2xl font-bold text-gray-900 mb-4 sm:text-3xl"
+                  className="mb-4 text-2xl font-bold text-gray-900 sm:text-3xl"
                   style={{ fontFamily: "Georgia, serif" }}
                 >
                   Where Good Food Meets Smart Dining
                 </h2>
-                <p className="text-sm leading-relaxed text-gray-500 mb-3">
+                <p className="mb-3 text-sm leading-relaxed text-gray-500">
                   At{" "}
                   <span className="font-semibold text-gray-800">
                     The White House Café
@@ -152,19 +152,19 @@ function About() {
 
         {/* ══════════ STATS STRIP ══════════ */}
         <motion.div {...fadeUp(0.15)}>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {VALUES.map((v, i) => (
               <div
                 key={i}
-                className="bg-white rounded-2xl shadow-md border border-gray-100 px-5 py-6 text-center"
+                className="px-5 py-6 text-center bg-white border border-gray-100 shadow-md rounded-2xl"
               >
                 <p
-                  className="text-3xl font-bold text-emerald-600 mb-1"
+                  className="mb-1 text-3xl font-bold text-emerald-600"
                   style={{ fontFamily: "Georgia, serif" }}
                 >
                   {v.number}
                 </p>
-                <p className="text-xs text-gray-400 tracking-wide">{v.label}</p>
+                <p className="text-xs tracking-wide text-gray-400">{v.label}</p>
               </div>
             ))}
           </div>
@@ -172,7 +172,7 @@ function About() {
 
         {/* ══════════ FEATURES ══════════ */}
         <div>
-          <motion.div {...fadeUp(0.1)} className="text-center mb-8">
+          <motion.div {...fadeUp(0.1)} className="mb-8 text-center">
             <p className="text-emerald-600 text-[11px] tracking-[0.25em] uppercase font-semibold mb-2">
               How It Works
             </p>
@@ -190,7 +190,7 @@ function About() {
               <motion.div
                 key={i}
                 {...fadeUp(i * 0.12)}
-                className="group relative overflow-hidden bg-white rounded-2xl shadow-md border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                className="relative p-6 overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md group rounded-2xl hover:shadow-xl hover:-translate-y-1"
               >
                 {/* Step number */}
                 <span
@@ -201,12 +201,12 @@ function About() {
                 </span>
 
                 {/* Emoji icon in circle */}
-                <div className="flex items-center justify-center w-12 h-12 mb-4 rounded-full bg-emerald-50 border border-emerald-100 text-2xl">
+                <div className="flex items-center justify-center w-12 h-12 mb-4 text-2xl border rounded-full bg-emerald-50 border-emerald-100">
                   {f.emoji}
                 </div>
 
                 <h3
-                  className="text-base font-bold text-gray-900 mb-2"
+                  className="mb-2 text-base font-bold text-gray-900"
                   style={{ fontFamily: "Georgia, serif" }}
                 >
                   {f.title}
@@ -224,7 +224,7 @@ function About() {
 
         {/* ══════════ TEAM ══════════ */}
         <div>
-          <motion.div {...fadeUp(0.1)} className="text-center mb-8">
+          <motion.div {...fadeUp(0.1)} className="mb-8 text-center">
             <p className="text-emerald-600 text-[11px] tracking-[0.25em] uppercase font-semibold mb-2">
               The People Behind It
             </p>
@@ -242,16 +242,16 @@ function About() {
               <motion.div
                 key={i}
                 {...fadeUp(i * 0.12)}
-                className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 text-center hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                className="p-6 text-center transition-all duration-300 bg-white border border-gray-100 shadow-md rounded-2xl hover:shadow-xl hover:-translate-y-1"
               >
-                <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-amber-50 border-2 border-amber-100 text-3xl">
+                <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 text-3xl border-2 rounded-full bg-amber-50 border-amber-100">
                   {t.emoji}
                 </div>
                 <p className="text-[10px] text-amber-500 tracking-widest uppercase font-semibold mb-1">
                   {t.role}
                 </p>
                 <h3
-                  className="text-base font-bold text-gray-900 mb-1"
+                  className="mb-1 text-base font-bold text-gray-900"
                   style={{ fontFamily: "Georgia, serif" }}
                 >
                   {t.name}
@@ -264,9 +264,9 @@ function About() {
 
         {/* ══════════ LOCATION CARD ══════════ */}
         <motion.div {...fadeUp(0.1)}>
-          <div className="bg-white rounded-3xl shadow-xl border border-amber-100/60 overflow-hidden">
-            <div className="px-8 py-8 sm:px-12 sm:py-10 flex flex-col sm:flex-row items-center gap-6">
-              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-emerald-50 border-2 border-emerald-100 text-3xl shrink-0">
+          <div className="overflow-hidden bg-white border shadow-xl rounded-3xl border-amber-100/60">
+            <div className="flex flex-col items-center gap-6 px-8 py-8 sm:px-12 sm:py-10 sm:flex-row">
+              <div className="flex items-center justify-center w-16 h-16 text-3xl border-2 rounded-full bg-emerald-50 border-emerald-100 shrink-0">
                 📍
               </div>
               <div>
@@ -274,7 +274,7 @@ function About() {
                   Find Us
                 </p>
                 <h3
-                  className="text-xl font-bold text-gray-900 mb-1"
+                  className="mb-1 text-xl font-bold text-gray-900"
                   style={{ fontFamily: "Georgia, serif" }}
                 >
                   The White House Café
@@ -298,9 +298,9 @@ function About() {
         </motion.div>
 
         {/* ══════════ FOOTER NOTE ══════════ */}
-        <motion.div {...fadeUp(0.1)} className="text-center pt-4 pb-2">
+        <motion.div {...fadeUp(0.1)} className="pt-4 pb-2 text-center">
           <Divider />
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="mt-2 text-xs text-gray-400">
             Built with 🤍 using{" "}
             <span className="font-semibold text-emerald-600">FoodDash</span> •
             Smart Dining Experience

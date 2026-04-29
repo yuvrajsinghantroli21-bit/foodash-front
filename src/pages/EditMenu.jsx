@@ -48,7 +48,7 @@ function EditMenu() {
         setBadge(item.badge || "none");
         setAvailable(item.available !== undefined ? item.available : true);
 
-        setPreview(`http://localhost:5000/uploads/${item.image}`);
+        setPreview(item.image);
       }
     });
   }, [id]);

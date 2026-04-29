@@ -411,7 +411,7 @@ function Menu() {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {filteredMenu.map((item) => {
               const qty = getQty(item._id);
-              const image = `${API.replace("/api", "")}/uploads/${item.image}`;
+              const image = item.image;
 
               const isVeg = item.foodType !== "nonveg";
               const badge = item.badge;

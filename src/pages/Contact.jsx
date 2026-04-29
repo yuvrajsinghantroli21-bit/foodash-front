@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 const Divider = () => (
   <div className="flex items-center justify-center gap-3 my-4">
     <div className="w-12 h-[1px] bg-amber-400" />
-    <span className="text-amber-500 text-lg">🌿</span>
+    <span className="text-lg text-amber-500">🌿</span>
     <div className="w-12 h-[1px] bg-amber-400" />
   </div>
 );
@@ -49,9 +49,9 @@ export default function Contact() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f5f0e8" }}>
       {/* Gold top accent */}
-      <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+      <div className="" />
 
-      <div className="max-w-6xl px-4 py-14 mx-auto sm:px-6 lg:px-8">
+      <div className="max-w-6xl px-4 mx-auto py-14 sm:px-6 lg:px-8">
         {/* ══ Page Title ══ */}
         <motion.div {...fadeUp(0)} className="mb-12 text-center">
           <p className="text-emerald-600 text-[11px] tracking-[0.3em] uppercase font-semibold mb-3">
@@ -64,7 +64,7 @@ export default function Contact() {
             Contact Us
           </h1>
           <Divider />
-          <p className="max-w-xl mx-auto text-sm text-gray-500 leading-relaxed">
+          <p className="max-w-xl mx-auto text-sm leading-relaxed text-gray-500">
             We'd love to hear from you. Visit us at Khatipura or drop us a
             message and we'll get back to you shortly.
           </p>
@@ -86,7 +86,7 @@ export default function Contact() {
                 {...fadeUp(i * 0.1)}
                 className="group flex items-center gap-5 bg-white rounded-2xl shadow-md border border-gray-100 px-6 py-5 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
               >
-                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-emerald-50 border border-emerald-100 text-2xl shrink-0">
+                <div className="flex items-center justify-center w-12 h-12 text-2xl border rounded-full bg-emerald-50 border-emerald-100 shrink-0">
                   {item.emoji}
                 </div>
                 <div>
@@ -104,11 +104,11 @@ export default function Contact() {
             {/* Map */}
             <motion.div
               {...fadeUp(0.3)}
-              className="overflow-hidden rounded-2xl shadow-md border border-gray-100"
+              className="overflow-hidden border border-gray-100 shadow-md rounded-2xl"
             >
               <iframe
                 src="https://www.google.com/maps?q=Khatipura,Jaipur&output=embed"
-                className="w-full border-0 block"
+                className="block w-full border-0"
                 height="240"
                 loading="lazy"
                 title="Google Map"
@@ -118,7 +118,7 @@ export default function Contact() {
             {/* Social / hours strip */}
             <motion.div
               {...fadeUp(0.35)}
-              className="bg-white rounded-2xl shadow-md border border-gray-100 px-6 py-4 flex items-center justify-between gap-4 flex-wrap"
+              className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 bg-white border border-gray-100 shadow-md rounded-2xl"
             >
               <div>
                 <p className="text-[10px] text-amber-500 tracking-widest uppercase font-semibold mb-0.5">
@@ -132,7 +132,7 @@ export default function Contact() {
                 {["📘", "📸", "🐦"].map((icon, i) => (
                   <button
                     key={i}
-                    className="w-9 h-9 flex items-center justify-center rounded-full bg-emerald-50 border border-emerald-100 text-lg hover:bg-emerald-100 transition"
+                    className="flex items-center justify-center text-lg transition border rounded-full w-9 h-9 bg-emerald-50 border-emerald-100 hover:bg-emerald-100"
                   >
                     {icon}
                   </button>
@@ -152,11 +152,11 @@ export default function Contact() {
               ease: [0.22, 1, 0.36, 1],
             }}
           >
-            <div className="relative bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+            <div className="relative overflow-hidden bg-white border border-gray-100 shadow-xl rounded-3xl">
               {/* Top emerald accent bar */}
-              <div className="h-1 w-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-amber-400" />
+              <div className="w-full h-1 bg-gradient-to-r from-emerald-400 via-emerald-500 to-amber-400" />
 
-              <div className="px-7 py-8 sm:px-9 sm:py-10">
+              <div className="py-8 px-7 sm:px-9 sm:py-10">
                 <div className="mb-7">
                   <p className="text-emerald-600 text-[10px] tracking-[0.25em] uppercase font-semibold mb-1">
                     Send a Message
@@ -236,7 +236,7 @@ export default function Contact() {
                   {/* Submit */}
                   <button
                     type="submit"
-                    className="w-full py-3 text-sm font-semibold text-white rounded-xl bg-emerald-500 hover:bg-emerald-600 shadow-md hover:shadow-lg transition-all duration-200 active:scale-95"
+                    className="w-full py-3 text-sm font-semibold text-white transition-all duration-200 shadow-md rounded-xl bg-emerald-500 hover:bg-emerald-600 hover:shadow-lg active:scale-95"
                     style={{ fontFamily: "Georgia, serif" }}
                   >
                     {sent ? "Message Sent! " : "Send Message "}
@@ -253,9 +253,9 @@ export default function Contact() {
         </div>
 
         {/* ══ Footer note ══ */}
-        <motion.div {...fadeUp(0.2)} className="mt-14 text-center">
+        <motion.div {...fadeUp(0.2)} className="text-center mt-14">
           <Divider />
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="mt-2 text-xs text-gray-400">
             Built with 🤍 using{" "}
             <span className="font-semibold text-emerald-600">FoodDash</span> •
             Smart Dining Experience

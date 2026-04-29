@@ -230,7 +230,7 @@ function AdminMenu() {
 
             <button
               onClick={() => setShowAddCategory(false)}
-              className="flex-1 py-2 text-sm font-semibold rounded-lg bg-gray-200 dark:bg-slate-700"
+              className="flex-1 py-2 text-sm font-semibold bg-gray-200 rounded-lg dark:bg-slate-700"
             >
               Cancel
             </button>
@@ -357,9 +357,9 @@ function AdminMenu() {
                   className="flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md group rounded-2xl hover:shadow-xl hover:-translate-y-1"
                 >
                   {/* IMAGE */}
-                  <div className="relative overflow-hidden h-48">
+                  <div className="relative h-48 overflow-hidden">
                     <img
-                      src={`https://fooadash.onrender.com/uploads/${item.image}`}
+                      src={item.image}
                       alt={item.name}
                       className={`object-cover w-full h-full transition-transform duration-700 group-hover:scale-110 ${
                         !isAvailable ? "opacity-50 grayscale" : ""
@@ -442,7 +442,7 @@ function AdminMenu() {
                               }}
                             >
                               {badge === "new" && (
-                                <span className="absolute inset-0 rounded-full animate-ping bg-green-300 opacity-50" />
+                                <span className="absolute inset-0 bg-green-300 rounded-full opacity-50 animate-ping" />
                               )}
                               {c.icon}
                             </span>
@@ -460,7 +460,7 @@ function AdminMenu() {
                             className="px-5 py-1.5 bg-gray-900/80 backdrop-blur-sm border border-white/20 rounded-full shadow-xl"
                             style={{ transform: "rotate(-12deg)" }}
                           >
-                            <span className="text-xs font-black text-white tracking-widest uppercase">
+                            <span className="text-xs font-black tracking-widest text-white uppercase">
                               Sold Out
                             </span>
                           </div>
@@ -535,7 +535,7 @@ function AdminMenu() {
                     </div>
 
                     {/* PRICE */}
-                    <div className="mt-auto flex flex-col items-center">
+                    <div className="flex flex-col items-center mt-auto">
                       {item.salePrice ? (
                         <>
                           <div className="flex items-center gap-2 mb-2">
@@ -562,14 +562,14 @@ function AdminMenu() {
                     <div className="grid grid-cols-2 gap-3 mt-5">
                       <Link
                         to={`/admin/menu/edit/${item._id}`}
-                        className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-white rounded-xl bg-blue-500 hover:bg-blue-600"
+                        className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-white bg-blue-500 rounded-xl hover:bg-blue-600"
                       >
                         Update
                       </Link>
 
                       <button
                         onClick={() => deleteItem(item._id)}
-                        className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-white rounded-xl bg-red-500 hover:bg-red-600"
+                        className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600"
                       >
                         Delete
                       </button>

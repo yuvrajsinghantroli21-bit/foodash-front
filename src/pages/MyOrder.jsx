@@ -26,7 +26,7 @@ const StatusBanner = ({ status }) => {
   if (status === "preparing" || status === "pending") {
     return (
       <div className="flex flex-col items-center justify-center gap-1 py-3 mt-4 rounded-xl bg-blue-50 animate-pulse">
-        <div className="flex items-center gap-2 text-blue-700 font-semibold text-sm">
+        <div className="flex items-center gap-2 text-sm font-semibold text-blue-700">
           <ChefHat size={16} />
           Preparing
         </div>
@@ -37,7 +37,7 @@ const StatusBanner = ({ status }) => {
   if (status === "served") {
     return (
       <div className="flex flex-col items-center justify-center gap-1 py-3 mt-4 rounded-xl bg-emerald-50">
-        <div className="flex items-center gap-2 text-emerald-700 font-semibold text-sm">
+        <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
           <CheckCircle2 size={16} />
           Served
         </div>
@@ -60,9 +60,7 @@ export default function MyOrder() {
   /* ── Look up image from menu by item name ── */
   const getImage = (itemName) => {
     const found = menu.find((m) => m.name === itemName);
-    return found?.image
-      ? `https://fooadash.onrender.com/uploads/${found.image}`
-      : null;
+    return found?.image ? `item.image` : null;
   };
 
   /* ── Fetch menu (for images) ── */
@@ -158,7 +156,7 @@ export default function MyOrder() {
         className="flex flex-col items-center justify-center h-screen gap-3"
         style={{ backgroundColor: "#f5f0e8" }}
       >
-        <div className="w-8 h-8 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 rounded-full border-emerald-400 border-t-transparent animate-spin" />
         <p className="text-sm text-gray-400">Loading your order…</p>
       </div>
     );
@@ -196,7 +194,7 @@ export default function MyOrder() {
 
           {/* ── No session ── */}
           {!token && (
-            <div className="p-10 text-center bg-white rounded-2xl shadow-md">
+            <div className="p-10 text-center bg-white shadow-md rounded-2xl">
               <p className="mb-4 text-gray-400">
                 No session found. Please scan QR.
               </p>
@@ -211,8 +209,8 @@ export default function MyOrder() {
 
           {/* ── Empty orders ── */}
           {token && orders.length === 0 && (
-            <div className="p-10 text-center bg-white rounded-2xl shadow-md">
-              <p className="text-4xl mb-3">🍽️</p>
+            <div className="p-10 text-center bg-white shadow-md rounded-2xl">
+              <p className="mb-3 text-4xl">🍽️</p>
               <p className="mb-4 text-gray-400">No active orders yet.</p>
               <button
                 onClick={() => navigate("/order")}
@@ -240,7 +238,7 @@ export default function MyOrder() {
                 return (
                   <div
                     key={order._id}
-                    className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden"
+                    className="overflow-hidden bg-white border border-gray-100 shadow-md rounded-2xl"
                   >
                     {/* Batch header */}
                     <div className="flex items-center justify-between px-4 pt-4 pb-3">
@@ -263,7 +261,7 @@ export default function MyOrder() {
                         return (
                           <div key={i} className="flex items-center gap-3 py-3">
                             {/* Thumbnail */}
-                            <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-gray-100 flex items-center justify-center">
+                            <div className="flex items-center justify-center overflow-hidden bg-gray-100 w-14 h-14 rounded-xl shrink-0">
                               {image ? (
                                 <img
                                   src={image}
@@ -277,11 +275,11 @@ export default function MyOrder() {
 
                             {/* Name + veg dot + qty */}
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-gray-800 leading-snug truncate">
+                              <p className="text-sm font-semibold leading-snug text-gray-800 truncate">
                                 {item.name}
                               </p>
                               <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
                                 <span className="text-xs text-gray-400">
                                   × {item.qty}
                                 </span>
@@ -303,7 +301,7 @@ export default function MyOrder() {
                     </div>
 
                     {/* Batch total */}
-                    <div className="flex justify-between items-center px-4 py-3 border-t border-gray-100">
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
                       <span className="text-sm font-bold text-gray-800">
                         Batch Total
                       </span>
@@ -324,11 +322,11 @@ export default function MyOrder() {
               })}
 
               {/* ── Grand Summary Card ── */}
-              <div className="relative overflow-hidden bg-white rounded-2xl shadow-md border border-amber-100 px-5 py-5">
+              <div className="relative px-5 py-5 overflow-hidden bg-white border shadow-md rounded-2xl border-amber-100">
                 <div className="absolute right-4 bottom-2 opacity-10 text-amber-400 pointer-events-none select-none text-[80px]">
                   🍽
                 </div>
-                <div className="grid grid-cols-3 gap-4 relative z-10">
+                <div className="relative z-10 grid grid-cols-3 gap-4">
                   <div>
                     <div className="flex items-center gap-1.5 text-amber-500 mb-1">
                       <ShoppingBag size={14} />
