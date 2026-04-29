@@ -423,7 +423,7 @@ function Menu() {
                   className="flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md rounded-2xl hover:shadow-xl hover:-translate-y-1"
                 >
                   {/* IMAGE */}
-                  <div className="relative h-48 overflow-hidden">
+                  <div className="relative overflow-hidden aspect-[4/3]">
                     <img
                       src={image}
                       alt={item.name}
@@ -544,29 +544,19 @@ function Menu() {
                     {/* VEG / NON-VEG */}
                     <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
                       <span
-                        className={`
-                        hidden group-hover:flex
-                        items-center px-2 py-0.5 rounded-full
-                        text-[9px] font-bold tracking-wide
-                        backdrop-blur-md border shadow-sm
-                        transition-all duration-200
-                        ${
+                        className={`hidden group-hover:flex px-2 py-0.5 text-[9px] font-bold rounded-full backdrop-blur border ${
                           isVeg
-                            ? "bg-emerald-50/90 text-emerald-700 border-emerald-200"
-                            : "bg-red-50/90 text-red-600 border-red-200"
-                        }
-                      `}
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-red-50 text-red-600 border-red-200"
+                        }`}
                       >
                         {isVeg ? "VEG" : "NON-VEG"}
                       </span>
 
                       <span
-                        className={`
-                        flex items-center justify-center w-6 h-6
-                        bg-white/95 backdrop-blur-md
-                        border-2 rounded-md shadow-md
-                        ${isVeg ? "border-emerald-400" : "border-red-400"}
-                      `}
+                        className={`flex items-center justify-center w-6 h-6 bg-white border-2 rounded-md shadow ${
+                          isVeg ? "border-emerald-400" : "border-red-400"
+                        }`}
                       >
                         <span
                           className={`w-2.5 h-2.5 rounded-full ${

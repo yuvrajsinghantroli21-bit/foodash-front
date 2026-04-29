@@ -357,7 +357,7 @@ function AdminMenu() {
                   className="flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-md group rounded-2xl hover:shadow-xl hover:-translate-y-1"
                 >
                   {/* IMAGE */}
-                  <div className="relative h-48 overflow-hidden">
+                  <div className="relative overflow-hidden aspect-[4/3]">
                     <img
                       src={item.image}
                       alt={item.name}

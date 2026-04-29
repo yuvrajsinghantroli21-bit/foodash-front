@@ -32,6 +32,11 @@ function EditMenu() {
         console.log("Category fetch error:", err);
       });
   }, []);
+  const getImageUrl = (img) => {
+    if (!img) return "";
+    if (img.startsWith("http")) return img;
+    return "";
+  };
 
   useEffect(() => {
     api.get("/menu").then((res) => {
@@ -48,7 +53,7 @@ function EditMenu() {
         setBadge(item.badge || "none");
         setAvailable(item.available !== undefined ? item.available : true);
 
-        setPreview(item.image);
+        setPreview(getImageUrl(item.image));
       }
     });
   }, [id]);
