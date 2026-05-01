@@ -264,7 +264,7 @@ export default function MyOrder() {
                             <div className="flex items-center justify-center overflow-hidden bg-gray-100 w-14 h-14 rounded-xl shrink-0">
                               {image ? (
                                 <img
-                                  src={image}
+                                  src={item.image}
                                   alt={item.name}
                                   className="object-cover w-full h-full"
                                 />

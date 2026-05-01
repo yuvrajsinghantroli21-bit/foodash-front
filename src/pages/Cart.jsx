@@ -128,7 +128,7 @@ function Cart() {
         setNotes({});
 
         setTimeout(() => {
-          navigate(`/order/${currentToken}`); // ✅ FIXED
+          navigate(`/my-order/${currentToken}`); // ✅ FIXED
         }, 1200);
       })
       .catch((err) => {
