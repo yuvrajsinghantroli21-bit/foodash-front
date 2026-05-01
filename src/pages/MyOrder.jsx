@@ -272,32 +272,36 @@ export default function MyOrder() {
                     <div className="px-4 divide-y divide-gray-100">
                       {order.items.map((item, i) => {
                         const image = getImage(item);
+
                         return (
                           <div key={i} className="flex items-center gap-3 py-3">
-                            {/* Thumbnail */}
                             <div className="flex items-center justify-center overflow-hidden bg-gray-100 w-14 h-14 rounded-xl shrink-0">
                               {image ? (
                                 <img
-                                  src={item}
+                                  src={image}
                                   alt={item.name}
                                   className="object-cover w-full h-full"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
                                 />
                               ) : (
                                 <span className="text-2xl">🍽</span>
                               )}
                             </div>
 
-                            {/* Name + veg dot + qty */}
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold leading-snug text-gray-800 truncate">
                                 {item.name}
                               </p>
+
                               <div className="flex items-center gap-1.5 mt-0.5">
                                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
                                 <span className="text-xs text-gray-400">
                                   × {item.qty}
                                 </span>
                               </div>
+
                               {item.note && (
                                 <p className="text-[11px] text-gray-400 mt-0.5 italic">
                                   "{item.note}"
@@ -305,7 +309,6 @@ export default function MyOrder() {
                               )}
                             </div>
 
-                            {/* Price */}
                             <p className="text-sm font-semibold text-gray-800 shrink-0">
                               ₹{item.price * item.qty}
                             </p>

@@ -19,6 +19,8 @@ import {
   X,
   CreditCard,
   Utensils,
+  Bell,
+  BellOff,
 } from "lucide-react";
 
 /* ───────────────── HELPERS ───────────────── */
@@ -210,7 +212,7 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    socket.on("new-order", (order) => {
+    const handleNewOrder = (order) => {
       setOrders((prev) => [order, ...prev]);
       setOrderToasts((prev) => [...prev, order]);
 
@@ -218,22 +220,28 @@ export default function AdminDashboard() {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(() => {});
       }
-    });
+    };
 
-    socket.on("orderUpdated", (updated) => {
+    const handleOrderUpdated = (updated) => {
       setOrders((prev) =>
         prev.map((o) => (o._id === updated._id ? updated : o)),
       );
-    });
+    };
 
-    socket.on("order-deleted", (id) => {
+    const handleOrderDeleted = (id) => {
       setOrders((prev) => prev.filter((o) => o._id !== id));
-    });
+    };
+
+    socket.on("new-order", handleNewOrder);
+    socket.on("orderUpdated", handleOrderUpdated);
+    socket.on("order-updated", handleOrderUpdated);
+    socket.on("order-deleted", handleOrderDeleted);
 
     return () => {
-      socket.off("new-order");
-      socket.off("orderUpdated");
-      socket.off("order-deleted");
+      socket.off("new-order", handleNewOrder);
+      socket.off("orderUpdated", handleOrderUpdated);
+      socket.off("order-updated", handleOrderUpdated);
+      socket.off("order-deleted", handleOrderDeleted);
     };
   }, [soundEnabled]);
 
@@ -390,13 +398,32 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <Clock size={16} />
-              <span>
-                Auto-refresh:{" "}
-                <strong className="font-bold text-emerald-600">On</strong>
-              </span>
-            </div>
+            <button
+              onClick={() => {
+                if (!soundEnabled && audioRef.current) {
+                  audioRef.current
+                    .play()
+                    .then(() => {
+                      audioRef.current.pause();
+                      audioRef.current.currentTime = 0;
+                      setSoundEnabled(true);
+                    })
+                    .catch(() => {
+                      setSoundEnabled(true);
+                    });
+                } else {
+                  setSoundEnabled(false);
+                }
+              }}
+              className={`inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold border rounded shadow-sm transition ${
+                soundEnabled
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : "bg-white text-slate-600 border-gray-200"
+              }`}
+            >
+              {soundEnabled ? <Bell size={18} /> : <BellOff size={18} />}
+              {soundEnabled ? "Sound On" : "Enable Sound"}
+            </button>
 
             <Link
               to="/admin/dashboard"
@@ -619,7 +646,7 @@ export default function AdminDashboard() {
                                 <div key={i}>
                                   <div className="flex flex-col gap-3 rounded-lg sm:flex-row sm:items-center">
                                     <div className="flex items-center flex-1 min-w-0 gap-3">
-                                      <div className="w-10 h-10 overflow-hidden bg-gray-100 rounded-md shrink-0">
+                                      <div className="flex items-center justify-center w-10 h-10 overflow-hidden bg-gray-100 rounded-md shrink-0">
                                         {itemImage ? (
                                           <img
                                             src={itemImage}
@@ -628,9 +655,13 @@ export default function AdminDashboard() {
                                             onError={(e) => {
                                               e.currentTarget.style.display =
                                                 "none";
+                                              e.currentTarget.parentElement.innerHTML =
+                                                '<span style="font-size:20px">🍽</span>';
                                             }}
                                           />
-                                        ) : null}
+                                        ) : (
+                                          <span className="text-xl">🍽</span>
+                                        )}
                                       </div>
 
                                       <p className="text-sm font-semibold truncate text-slate-700">
