@@ -58,9 +58,23 @@ export default function MyOrder() {
   const token = localStorage.getItem("token");
 
   /* ── Look up image from menu by item name ── */
-  const getImage = (itemName) => {
-    const found = menu.find((m) => m.name === itemName);
-    return found?.image ? `item.image` : null;
+  const getImage = (item) => {
+    const directImage = item?.image;
+
+    if (directImage) {
+      if (directImage.startsWith("http")) return directImage;
+      return `https://fooadash.onrender.com/uploads/${directImage}`;
+    }
+
+    const found = menu.find(
+      (m) => m.name?.toLowerCase() === item.name?.toLowerCase(),
+    );
+
+    if (!found?.image) return null;
+
+    if (found.image.startsWith("http")) return found.image;
+
+    return `https://fooadash.onrender.com/uploads/${found.image}`;
   };
 
   /* ── Fetch menu (for images) ── */
@@ -257,14 +271,14 @@ export default function MyOrder() {
                     {/* Items */}
                     <div className="px-4 divide-y divide-gray-100">
                       {order.items.map((item, i) => {
-                        const image = getImage(item.name);
+                        const image = getImage(item);
                         return (
                           <div key={i} className="flex items-center gap-3 py-3">
                             {/* Thumbnail */}
                             <div className="flex items-center justify-center overflow-hidden bg-gray-100 w-14 h-14 rounded-xl shrink-0">
                               {image ? (
                                 <img
-                                  src={item.image}
+                                  src={item}
                                   alt={item.name}
                                   className="object-cover w-full h-full"
                                 />

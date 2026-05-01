@@ -109,35 +109,47 @@ function Cart() {
 
     const order = {
       table,
-      sessionId: currentToken, // ✅ FIXED
+      sessionId: currentToken,
+      token: currentToken,
+
       total: subtotal,
+
       items: cart.map((item) => ({
         name: item.name,
-        price: item.price,
-        qty: item.qty,
+        price: Number(item.price || 0),
+        qty: Number(item.qty || 1),
         note: notes[item._id] || "",
+
+        // ✅ IMPORTANT: send image to backend
+        image: item.image || "",
       })),
-      status: "pending",
+
+      // ✅ default for now
+      paymentMode: "counter",
+      paymentStatus: "due",
+
+      status: "preparing",
     };
 
     api
       .post("/orders", order)
       .then(() => {
         toast.success("Order placed successfully! 🎉");
+
         clearCart();
         setNotes({});
 
         setTimeout(() => {
-          navigate(`/my-order/${currentToken}`); // ✅ FIXED
+          navigate("/my-order");
         }, 1200);
       })
       .catch((err) => {
-        // ✅ HANDLE EXPIRED SESSION FROM BACKEND
         if (err.response?.status === 401) {
           toast.error("Session expired");
 
           localStorage.removeItem("token");
           localStorage.removeItem("table");
+
           clearCart();
 
           navigate("/thank-you");
