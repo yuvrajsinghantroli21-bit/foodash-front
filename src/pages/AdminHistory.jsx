@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../api/api";
+import { Link } from "react-router-dom";
 import {
   Download,
   Search,
@@ -20,6 +21,11 @@ import {
   Wallet,
   CheckCircle2,
   AlertCircle,
+  Utensils,
+  Flame,
+  QrCode,
+  Activity,
+  History,
 } from "lucide-react";
 
 /* ───────────────── HELPERS ───────────────── */
@@ -48,10 +54,23 @@ const fmtTime = (d) =>
     hour12: true,
   });
 
-const getItemImage = (item) => {
-  if (!item?.image) return "";
-  if (item.image.startsWith("http")) return item.image;
-  return `https://fooadash.onrender.com/uploads/${item.image}`;
+const getItemImage = (item, menu = []) => {
+  // 1. New orders: image saved inside order item
+  if (item?.image) {
+    if (item.image.startsWith("http")) return item.image;
+    return `https://fooadash.onrender.com/uploads/${item.image}`;
+  }
+
+  // 2. Old orders: find image from menu by item name
+  const found = menu.find(
+    (m) => m.name?.toLowerCase() === item.name?.toLowerCase(),
+  );
+
+  if (!found?.image) return "";
+
+  if (found.image.startsWith("http")) return found.image;
+
+  return `https://fooadash.onrender.com/uploads/${found.image}`;
 };
 
 const getOrderTotal = (order) =>
@@ -199,7 +218,7 @@ function StatCard({ icon, label, value, sub, tone }) {
 
 /* ───────────────── ORDER CARD ───────────────── */
 
-function OrderHistoryCard({ sessionOrders, orderNo, deleteOrder }) {
+function OrderHistoryCard({ sessionOrders, orderNo, deleteOrder, menu }) {
   const table = sessionOrders[0]?.table || sessionOrders[0]?.tableId || "—";
   const totalBatches = sessionOrders.length;
   const totalItemCount = getSessionItemCount(sessionOrders);
@@ -281,21 +300,27 @@ function OrderHistoryCard({ sessionOrders, orderNo, deleteOrder }) {
 
             <div className="space-y-2">
               {order.items.map((item, i) => {
-                const img = getItemImage(item);
+                const img = getItemImage(item, menu);
 
                 return (
                   <div key={i} className="flex items-center gap-3">
                     <div className="flex items-center justify-center w-10 h-10 overflow-hidden bg-gray-100 rounded-lg shrink-0">
-                      {img ? (
-                        <img
-                          src={img}
-                          alt={item.name}
-                          className="object-cover w-full h-full"
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                          }}
-                        />
-                      ) : null}
+                      <div className="flex items-center justify-center w-10 h-10 overflow-hidden bg-gray-100 rounded-lg shrink-0">
+                        {img ? (
+                          <img
+                            src={img}
+                            alt={item.name}
+                            className="object-cover w-full h-full"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                              e.currentTarget.parentElement.innerHTML =
+                                '<span style="font-size:20px">🍽</span>';
+                            }}
+                          />
+                        ) : (
+                          <span className="text-xl">🍽</span>
+                        )}
+                      </div>
                     </div>
 
                     <p className="flex-1 text-sm font-semibold truncate text-slate-700">
@@ -391,6 +416,7 @@ function OrderHistoryCard({ sessionOrders, orderNo, deleteOrder }) {
 
 export default function AdminHistory() {
   const [orders, setOrders] = useState([]);
+  const [menu, setMenu] = useState([]);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [quick, setQuick] = useState("all");
@@ -413,6 +439,13 @@ export default function AdminHistory() {
 
   useEffect(() => {
     fetchOrders();
+  }, []);
+
+  useEffect(() => {
+    api
+      .get("/menu")
+      .then((res) => setMenu(res.data))
+      .catch((err) => console.log(err));
   }, []);
 
   const allSessionsOldestFirst = useMemo(() => {
@@ -700,12 +733,46 @@ export default function AdminHistory() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 text-sm font-semibold text-slate-500">
-            <Home size={17} className="text-[#111936]" />
-            <span>/</span>
-            <span>History</span>
-            <span>/</span>
-            <span className="text-slate-700">Order History</span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <Link
+              to="/admin/dashboard"
+              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold text-white bg-[#071832] shadow-[0_8px_20px_rgba(7,24,50,0.20)] rounded"
+            >
+              <Utensils size={18} />
+              Active Orders
+            </Link>
+
+            <Link
+              to="/admin/history"
+              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
+            >
+              <History size={18} />
+              History
+            </Link>
+
+            <Link
+              to="/admin/kitchen"
+              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
+            >
+              <Flame size={18} />
+              Kitchen
+            </Link>
+
+            <Link
+              to="/admin/tables/manage"
+              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
+            >
+              <QrCode size={18} />
+              Tables
+            </Link>
+
+            <Link
+              to="/admin/tables/current"
+              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
+            >
+              <Activity size={18} />
+              Current Tables
+            </Link>
           </div>
         </div>
 
@@ -850,6 +917,7 @@ export default function AdminHistory() {
                 sessionOrders={sessionOrders}
                 orderNo={getOrderNumber(sessionOrders)}
                 deleteOrder={deleteOrder}
+                menu={menu}
               />
             ))}
           </div>

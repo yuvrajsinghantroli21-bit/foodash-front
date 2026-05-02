@@ -215,7 +215,7 @@ function Cart() {
                 Your cart is empty. Add something delicious!
               </p>
               <button
-                onClick={() => navigate(-1)}
+                onClick={() => navigate("/order")}
                 className="mt-5 px-6 py-2.5 bg-emerald-500 text-white rounded-full text-sm font-semibold hover:bg-emerald-600 transition"
               >
                 Browse Menu

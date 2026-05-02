@@ -22,6 +22,9 @@ import AdminMenu from "./pages/AdminMenu";
 import AdminHistory from "./pages/AdminHistory";
 import AddMenu from "./pages/AddMenu";
 import EditMenu from "./pages/EditMenu";
+import KitchenDisplay from "./pages/KitchenDisplay";
+import AdminTablesManage from "./pages/AdminTablesManage";
+import AdminCurrentTables from "./pages/AdminCurrentTables";
 import ThankYou from "./pages/ThankYou";
 import SessionGate from "./pages/SessionGate.jsx";
 import MenuPreview from "./pages/MenuPreview.jsx";
@@ -86,6 +89,15 @@ function App() {
               <Route path="/admin/menu" element={<AdminMenu />} />
               <Route path="/admin/history" element={<AdminHistory />} />
               <Route path="/admin/menu/add" element={<AddMenu />} />
+              <Route path="/admin/kitchen" element={<KitchenDisplay />} />
+              <Route
+                path="/admin/tables/manage"
+                element={<AdminTablesManage />}
+              />
+              <Route
+                path="/admin/tables/current"
+                element={<AdminCurrentTables />}
+              />
               <Route path="/admin/menu/edit/:id" element={<EditMenu />} />
             </Route>
           </Routes>

@@ -21,6 +21,9 @@ import {
   Utensils,
   Bell,
   BellOff,
+  Flame,
+  QrCode,
+  Activity,
 } from "lucide-react";
 
 /* ───────────────── HELPERS ───────────────── */
@@ -439,6 +442,30 @@ export default function AdminDashboard() {
             >
               <History size={18} />
               History
+            </Link>
+
+            <Link
+              to="/admin/kitchen"
+              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
+            >
+              <Flame size={18} />
+              Kitchen
+            </Link>
+
+            <Link
+              to="/admin/tables/manage"
+              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
+            >
+              <QrCode size={18} />
+              Tables
+            </Link>
+
+            <Link
+              to="/admin/tables/current"
+              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
+            >
+              <Activity size={18} />
+              Current Tables
             </Link>
           </div>
         </div>

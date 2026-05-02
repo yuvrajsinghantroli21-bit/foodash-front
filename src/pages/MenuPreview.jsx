@@ -452,7 +452,7 @@ function MenuPreview() {
                             style={{ transform: "rotate(-12deg)" }}
                           >
                             <span className="text-xs font-black tracking-widest text-white uppercase">
-                              Sold Out
+                              Unavailable
                             </span>
                           </div>
                         </div>

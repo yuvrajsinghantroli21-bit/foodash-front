@@ -163,6 +163,12 @@ function Menu() {
         .filter((cat) => cat && cat.trim() !== ""),
     ),
   ];
+  const getItemCategoryIcon = (item) => {
+    if (item.categoryIconSvg) return item.categoryIconSvg;
+
+    const matched = categories.find((cat) => cat.name === item.category);
+    return matched?.iconSvg || "";
+  };
 
   const dbCategoryNames = dbCategories.map((cat) => cat.name);
 
@@ -412,7 +418,7 @@ function Menu() {
             {filteredMenu.map((item) => {
               const qty = getQty(item._id);
               const image = item.image;
-
+              const itemCategoryIconSvg = getItemCategoryIcon(item);
               const isVeg = item.foodType !== "nonveg";
               const badge = item.badge;
               const isAvailable = item.available !== false;
@@ -525,7 +531,7 @@ function Menu() {
                         );
                       })()}
 
-                    {/* SOLD OUT */}
+                    {/* SOLD OUT overlay */}
                     {!isAvailable && (
                       <>
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -538,43 +544,112 @@ function Menu() {
                             </span>
                           </div>
                         </div>
+
+                        <span className="absolute top-2.5 left-2.5 px-2.5 py-1 text-[10px] font-bold text-white rounded-full bg-gray-900/80 backdrop-blur-md border border-white/10 shadow">
+                          Sold Out
+                        </span>
                       </>
                     )}
 
-                    {/* VEG / NON-VEG */}
-                    <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+                    {/* VEG / NON-VEG indicator */}
+                    {/* PREMIUM VEG / NON-VEG */}
+                    <div className="absolute top-2.5 right-2.5 flex items-center gap-2 z-10">
+                      {/* TEXT BADGE */}
                       <span
-                        className={`hidden group-hover:flex px-2 py-0.5 text-[9px] font-bold rounded-full backdrop-blur border ${
-                          isVeg
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : "bg-red-50 text-red-600 border-red-200"
-                        }`}
-                      >
-                        {isVeg ? "VEG" : "NON-VEG"}
-                      </span>
-
-                      <span
-                        className={`flex items-center justify-center w-6 h-6 bg-white border-2 rounded-md shadow ${
-                          isVeg ? "border-emerald-400" : "border-red-400"
-                        }`}
+                        className={`
+      hidden sm:flex
+      items-center
+      overflow-hidden
+      backdrop-blur-xl
+      border
+      shadow-lg
+      rounded-full
+      px-0
+      max-w-0
+      opacity-0
+      group-hover:max-w-[90px]
+      group-hover:px-2.5
+      group-hover:opacity-100
+      transition-all
+      duration-500
+      ease-[cubic-bezier(0.22,1,0.36,1)]
+      text-[9px]
+      font-bold
+      tracking-[0.12em]
+      whitespace-nowrap
+      ${
+        isVeg
+          ? "bg-emerald-50/95 text-emerald-700 border-emerald-200/80"
+          : "bg-red-50/95 text-red-600 border-red-200/80"
+      }
+    `}
                       >
                         <span
-                          className={`w-2.5 h-2.5 rounded-full ${
+                          className={`mr-1.5 h-1.5 w-1.5 rounded-full animate-pulse ${
                             isVeg ? "bg-emerald-500" : "bg-red-500"
                           }`}
                         />
+
+                        {isVeg ? "VEG" : "NON VEG"}
                       </span>
+
+                      {/* MAIN ICON */}
+                      <div
+                        className={`
+      relative
+      flex items-center justify-center
+      w-7 h-7
+      rounded-xl
+      border
+      shadow-xl
+      backdrop-blur-xl
+      transition-all
+      duration-500
+      group-hover:scale-110
+      group-hover:rotate-3
+      ${isVeg ? "bg-white/95 border-emerald-300" : "bg-white/95 border-red-300"}
+    `}
+                      >
+                        {/* Glow */}
+                        <div
+                          className={`
+        absolute inset-0 rounded-xl blur-[10px] opacity-0
+        group-hover:opacity-40 transition duration-500
+        ${isVeg ? "bg-emerald-400" : "bg-red-400"}
+      `}
+                        />
+
+                        {/* Inner border */}
+                        <div
+                          className={`
+        relative flex items-center justify-center
+        w-4 h-4 rounded-md border
+        ${isVeg ? "border-emerald-500" : "border-red-500"}
+      `}
+                        >
+                          <span
+                            className={`
+          w-2 h-2 rounded-full
+          transition-all duration-300
+          group-hover:scale-125
+          ${isVeg ? "bg-emerald-500" : "bg-red-500"}
+        `}
+                          />
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Dynamic category pill */}
+                    {/* Category pill with SVG */}
                     {item.category && isAvailable && (
-                      <span className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-semibold tracking-widest uppercase text-white/90 bg-black/35 backdrop-blur-sm rounded-full border border-white/10">
-                        <CategoryIcon
-                          cat={item.category}
-                          categoryIcons={categoryIcons}
-                          active
-                          small
-                        />
+                      <span className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[9px] font-semibold tracking-widest uppercase text-white/90 bg-black/30 backdrop-blur-sm rounded-full border border-white/10">
+                        {itemCategoryIconSvg && (
+                          <span
+                            className="flex items-center justify-center w-3.5 h-3.5 [&_svg]:w-3.5 [&_svg]:h-3.5"
+                            dangerouslySetInnerHTML={{
+                              __html: itemCategoryIconSvg,
+                            }}
+                          />
+                        )}
                         {item.category}
                       </span>
                     )}
