@@ -25,6 +25,7 @@ import EditMenu from "./pages/EditMenu";
 import KitchenDisplay from "./pages/KitchenDisplay";
 import AdminTablesManage from "./pages/AdminTablesManage";
 import AdminCurrentTables from "./pages/AdminCurrentTables";
+import AdminAnalytics from "./pages/AdminAnalytics";
 import ThankYou from "./pages/ThankYou";
 import SessionGate from "./pages/SessionGate.jsx";
 import MenuPreview from "./pages/MenuPreview.jsx";
@@ -98,6 +99,7 @@ function App() {
                 path="/admin/tables/current"
                 element={<AdminCurrentTables />}
               />
+              <Route path="/admin/analytics" element={<AdminAnalytics />} />
               <Route path="/admin/menu/edit/:id" element={<EditMenu />} />
             </Route>
           </Routes>

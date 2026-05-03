@@ -24,23 +24,33 @@ import {
   Flame,
   QrCode,
   Activity,
+  Printer,
+  BarChart3,
 } from "lucide-react";
 
 /* ───────────────── HELPERS ───────────────── */
 
-const fmt = (d) =>
-  new Date(d).toLocaleTimeString([], {
+const fmt = (d) => {
+  if (!d) return "—";
+
+  return new Date(d).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
   });
+};
 
 const elapsed = (d) => {
+  if (!d) return "—";
+
   const mins = Math.floor((Date.now() - new Date(d)) / 60000);
   return mins < 1 ? "< 1 min" : `${mins} min`;
 };
 
-const isDelayed = (d, threshold = 10) =>
-  Math.floor((Date.now() - new Date(d)) / 60000) >= threshold;
+const isDelayed = (d, threshold = 10) => {
+  if (!d) return false;
+
+  return Math.floor((Date.now() - new Date(d)) / 60000) >= threshold;
+};
 
 const getItemImage = (item) => {
   if (!item?.image) return "";
@@ -48,7 +58,7 @@ const getItemImage = (item) => {
   return `https://fooadash.onrender.com/uploads/${item.image}`;
 };
 
-const getTablePaymentMode = (tableOrders) => {
+const getTablePaymentMode = (tableOrders = []) => {
   const mode =
     tableOrders?.[0]?.paymentMode ||
     tableOrders?.[0]?.payment?.mode ||
@@ -69,7 +79,7 @@ const getTablePaymentMode = (tableOrders) => {
   return "Pay at Counter";
 };
 
-const getTablePaymentStatus = (tableOrders) => {
+const getTablePaymentStatus = (tableOrders = []) => {
   const status =
     tableOrders?.[0]?.paymentStatus ||
     tableOrders?.[0]?.payment?.status ||
@@ -78,11 +88,12 @@ const getTablePaymentStatus = (tableOrders) => {
   return String(status).toLowerCase() === "paid" ? "paid" : "due";
 };
 
-const getOrderTotal = (order) =>
-  order.items.reduce(
+const getOrderTotal = (order) => {
+  return (order?.items || []).reduce(
     (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1),
     0,
   );
+};
 
 /* ───────────────── STAT CARD ───────────────── */
 
@@ -110,7 +121,7 @@ function StatCard({ icon, value, label, tone }) {
     },
   };
 
-  const t = tones[tone];
+  const t = tones[tone] || tones.brown;
 
   return (
     <div className="flex items-center gap-4 px-4 py-4 bg-white border border-gray-100 shadow-[0_8px_26px_rgba(15,23,42,0.08)] rounded-2xl sm:gap-5 sm:px-6 sm:py-5">
@@ -152,9 +163,12 @@ function TimeStatusPill({ createdAt }) {
   );
 }
 
-function CollapsedTableStatus({ tableOrders }) {
-  const anyDelayed = tableOrders.some((o) => isDelayed(o.createdAt));
-  const anyPreparing = tableOrders.some(
+function CollapsedTableStatus({ tableOrders = [] }) {
+  const safeOrders = tableOrders.filter(Boolean);
+
+  const anyDelayed = safeOrders.some((o) => isDelayed(o.createdAt));
+
+  const anyPreparing = safeOrders.some(
     (o) => o.status === "preparing" || o.status === "pending" || !o.status,
   );
 
@@ -189,25 +203,523 @@ export default function AdminDashboard() {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [collapsed, setCollapsed] = useState({});
   const [tick, setTick] = useState(0);
+
   const audioRef = useRef(null);
+
+  const printBill = (tableOrders = [], tableKey) => {
+    const safeTableOrders = tableOrders.filter(Boolean);
+
+    if (safeTableOrders.length === 0) return;
+
+    const table = tableKey === "Unknown" ? "N/A" : tableKey;
+
+    const sessionId =
+      safeTableOrders[0]?.sessionId ||
+      safeTableOrders[0]?.token ||
+      safeTableOrders[0]?._id?.slice(-6)?.toUpperCase() ||
+      "—";
+
+    const paymentMode = getTablePaymentMode(safeTableOrders);
+    const paymentStatus = getTablePaymentStatus(safeTableOrders);
+
+    const total = safeTableOrders.reduce(
+      (sum, order) => sum + getOrderTotal(order),
+      0,
+    );
+
+    const totalItems = safeTableOrders.reduce(
+      (sum, order) =>
+        sum +
+        (order?.items || []).reduce(
+          (itemSum, item) => itemSum + Number(item.qty || 1),
+          0,
+        ),
+      0,
+    );
+
+    const billDate = new Date().toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    const orderNo =
+      safeTableOrders[0]?._id?.slice(-5)?.toUpperCase() || "ACTIVE";
+
+    const batchHtml = safeTableOrders
+      .map((order, batchIndex) => {
+        const batchTotal = getOrderTotal(order);
+
+        const itemsHtml = (order?.items || [])
+          .map(
+            (item) => `
+          <tr>
+            <td>
+              <div class="item-name">${item.name || "Item"}</div>
+              ${
+                item.note && item.note.trim() !== ""
+                  ? `<div class="item-note">📝 ${item.note}</div>`
+                  : ""
+              }
+            </td>
+            <td class="center">${item.qty || 1}</td>
+            <td class="right">₹${Number(item.price || 0)}</td>
+            <td class="right strong">₹${
+              Number(item.price || 0) * Number(item.qty || 1)
+            }</td>
+          </tr>
+        `,
+          )
+          .join("");
+
+        return `
+      <div class="batch">
+        <div class="batch-head">
+          <div>
+            <h3>Batch #${batchIndex + 1}</h3>
+            <p>Received: ${new Date(order.createdAt).toLocaleString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            })}</p>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th class="center">Qty</th>
+              <th class="right">Price</th>
+              <th class="right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+
+        <div class="batch-total">
+          <span>Batch Total</span>
+          <strong>₹${batchTotal}</strong>
+        </div>
+      </div>
+    `;
+      })
+      .join("");
+
+    const printWindow = window.open("", "_blank");
+
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+  <html>
+    <head>
+      <title>Table ${table} Bill</title>
+
+      <style>
+        * {
+          box-sizing: border-box;
+        }
+
+        body {
+          margin: 0;
+          padding: 24px;
+          background: #f8f5ef;
+          color: #111827;
+          font-family: Arial, sans-serif;
+        }
+
+        .bill {
+          max-width: 520px;
+          margin: 0 auto;
+          background: #ffffff;
+          border-radius: 22px;
+          overflow: hidden;
+          border: 1px solid #eee7dc;
+          box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+        }
+
+        .top-strip {
+          height: 8px;
+          background: linear-gradient(90deg, #0f172a, #d4a74f, #0f172a);
+        }
+
+        .header {
+          padding: 26px 26px 18px;
+          text-align: center;
+          background: linear-gradient(180deg, #fffaf2, #ffffff);
+          border-bottom: 1px solid #f1ede5;
+        }
+
+        .brand {
+          font-family: Georgia, serif;
+          font-size: 30px;
+          font-weight: 900;
+          margin-bottom: 6px;
+        }
+
+        .sub {
+          font-size: 12px;
+          color: #6b7280;
+          font-weight: 600;
+        }
+
+        .badge {
+          display: inline-block;
+          margin-top: 14px;
+          padding: 7px 12px;
+          border-radius: 999px;
+          background: #0f172a;
+          color: white;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .meta {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+          padding: 18px 22px 10px;
+        }
+
+        .meta-card {
+          background: #faf7f1;
+          border: 1px solid #efe9de;
+          border-radius: 14px;
+          padding: 11px 12px;
+        }
+
+        .label {
+          display: block;
+          font-size: 10px;
+          text-transform: uppercase;
+          color: #8a8f98;
+          font-weight: 800;
+          letter-spacing: 0.07em;
+          margin-bottom: 4px;
+        }
+
+        .value {
+          font-size: 13px;
+          font-weight: 900;
+          color: #111827;
+          word-break: break-word;
+        }
+
+        .summary {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 10px;
+          padding: 10px 22px 16px;
+        }
+
+        .summary-box {
+          text-align: center;
+          border-radius: 14px;
+          padding: 11px 8px;
+          border: 1px solid #edf0f3;
+          background: #ffffff;
+        }
+
+        .summary-box.gold {
+          background: #fff8eb;
+          border-color: #f4e1b5;
+        }
+
+        .summary-box.green {
+          background: #edfdf3;
+          border-color: #bfe8cd;
+        }
+
+        .summary-title {
+          font-size: 10px;
+          font-weight: 800;
+          color: #7b818a;
+          text-transform: uppercase;
+          margin-bottom: 5px;
+        }
+
+        .summary-value {
+          font-size: 15px;
+          font-weight: 900;
+          text-transform: capitalize;
+        }
+
+        .content {
+          padding: 0 22px 18px;
+        }
+
+        .batch {
+          border: 1px solid #ebeef2;
+          border-radius: 16px;
+          padding: 14px;
+          margin-bottom: 14px;
+          background: #fcfcfd;
+        }
+
+        .batch-head {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 10px;
+        }
+
+        .batch h3 {
+          margin: 0;
+          font-size: 14px;
+          font-weight: 900;
+        }
+
+        .batch p {
+          margin: 3px 0 0;
+          font-size: 11px;
+          color: #6b7280;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 12px;
+        }
+
+        th {
+          color: #7b818a;
+          font-size: 10px;
+          text-transform: uppercase;
+          padding: 8px 0;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        td {
+          padding: 9px 0;
+          border-bottom: 1px solid #f1f5f9;
+          vertical-align: top;
+        }
+
+        .item-name {
+          font-weight: 800;
+        }
+
+        .item-note {
+          font-size: 10px;
+          color: #b45309;
+          margin-top: 3px;
+          font-style: italic;
+        }
+
+        .center {
+          text-align: center;
+        }
+
+        .right {
+          text-align: right;
+        }
+
+        .strong {
+          font-weight: 900;
+        }
+
+        .batch-total {
+          display: flex;
+          justify-content: space-between;
+          padding-top: 10px;
+          margin-top: 10px;
+          border-top: 1px dashed #d1d5db;
+          font-size: 13px;
+        }
+
+        .grand-total {
+          margin: 6px 22px 20px;
+          padding: 18px;
+          border-radius: 18px;
+          background: linear-gradient(135deg, #0f172a, #1f2937);
+          color: white;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .grand-label {
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          opacity: 0.8;
+          font-weight: 800;
+        }
+
+        .grand-value {
+          font-family: Georgia, serif;
+          font-size: 32px;
+          font-weight: 900;
+        }
+
+        .payment {
+          font-size: 12px;
+          text-align: right;
+          color: rgba(255, 255, 255, 0.85);
+          line-height: 1.6;
+          text-transform: capitalize;
+        }
+
+        .footer {
+          padding: 0 24px 24px;
+          text-align: center;
+        }
+
+        .footer-inner {
+          border-top: 1px dashed #d1d5db;
+          padding-top: 16px;
+        }
+
+        .thanks {
+          font-family: Georgia, serif;
+          font-size: 17px;
+          font-weight: 900;
+          margin-bottom: 5px;
+        }
+
+        .footer-sub {
+          font-size: 11px;
+          color: #6b7280;
+          line-height: 1.5;
+        }
+
+        @media print {
+          body {
+            background: white;
+            padding: 0;
+          }
+
+          .bill {
+            border: none;
+            box-shadow: none;
+            max-width: 100%;
+            border-radius: 0;
+          }
+        }
+      </style>
+    </head>
+
+    <body>
+      <div class="bill">
+        <div class="top-strip"></div>
+
+        <div class="header">
+          <div class="brand">The White House Café</div>
+          <div class="sub">Jaipur • FoodDash Smart Ordering Receipt</div>
+          <div class="badge">Active Table Bill</div>
+        </div>
+
+        <div class="meta">
+          <div class="meta-card">
+            <span class="label">Bill No</span>
+            <span class="value">#${orderNo}</span>
+          </div>
+
+          <div class="meta-card">
+            <span class="label">Table</span>
+            <span class="value">${table}</span>
+          </div>
+
+          <div class="meta-card">
+            <span class="label">Session</span>
+            <span class="value">${sessionId}</span>
+          </div>
+
+          <div class="meta-card">
+            <span class="label">Printed At</span>
+            <span class="value">${billDate}</span>
+          </div>
+        </div>
+
+        <div class="summary">
+          <div class="summary-box gold">
+            <div class="summary-title">Batches</div>
+            <div class="summary-value">${safeTableOrders.length}</div>
+          </div>
+
+          <div class="summary-box">
+            <div class="summary-title">Items</div>
+            <div class="summary-value">${totalItems}</div>
+          </div>
+
+          <div class="summary-box green">
+            <div class="summary-title">Payment</div>
+            <div class="summary-value">${paymentStatus}</div>
+          </div>
+        </div>
+
+        <div class="content">
+          ${batchHtml}
+        </div>
+
+        <div class="grand-total">
+          <div>
+            <div class="grand-label">Grand Total</div>
+            <div class="grand-value">₹${total}</div>
+          </div>
+
+          <div class="payment">
+            ${paymentMode}<br/>
+            ${paymentStatus === "paid" ? "Paid" : "Due"}
+          </div>
+        </div>
+
+        <div class="footer">
+          <div class="footer-inner">
+            <div class="thanks">Thank you for dining with us</div>
+            <div class="footer-sub">
+              Please keep this bill for your reference.<br/>
+              Powered by FoodDash
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        window.onload = function() {
+          window.print();
+        };
+      </script>
+    </body>
+  </html>
+`);
+
+    printWindow.document.close();
+  };
 
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 60000);
     return () => clearInterval(id);
   }, []);
 
-  const fetchOrders = async () => {
-    try {
-      const res = await api.get("/orders");
+  const fetchOrders = () => {
+    api
+      .get("/orders")
+      .then((res) => {
+        const data = Array.isArray(res.data) ? res.data : [];
 
-      setOrders(
-        res.data.filter(
-          (o) => !o.status || o.status.toLowerCase() !== "completed",
-        ),
-      );
-    } catch (err) {
-      console.log(err);
-    }
+        setOrders(
+          data
+            .filter(Boolean)
+            .filter(
+              (o) =>
+                !o.status || String(o.status).toLowerCase() !== "completed",
+            ),
+        );
+      })
+      .catch((err) => {
+        console.log(err);
+      });
   };
 
   useEffect(() => {
@@ -216,7 +728,19 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const handleNewOrder = (order) => {
-      setOrders((prev) => [order, ...prev]);
+      if (!order || !order._id) return;
+
+      if (String(order.status || "").toLowerCase() === "completed") return;
+
+      setOrders((prev) => {
+        const cleanPrev = prev.filter(Boolean);
+        const exists = cleanPrev.some((o) => o?._id === order._id);
+
+        if (exists) return cleanPrev;
+
+        return [order, ...cleanPrev];
+      });
+
       setOrderToasts((prev) => [...prev, order]);
 
       if (soundEnabled && audioRef.current) {
@@ -226,13 +750,34 @@ export default function AdminDashboard() {
     };
 
     const handleOrderUpdated = (updated) => {
-      setOrders((prev) =>
-        prev.map((o) => (o._id === updated._id ? updated : o)),
-      );
+      if (!updated || !updated._id) return;
+
+      setOrders((prev) => {
+        const cleanPrev = prev.filter(Boolean);
+
+        if (String(updated.status || "").toLowerCase() === "completed") {
+          return cleanPrev.filter((o) => o?._id !== updated._id);
+        }
+
+        const exists = cleanPrev.some((o) => o?._id === updated._id);
+
+        if (!exists) {
+          return [updated, ...cleanPrev];
+        }
+
+        return cleanPrev.map((o) => (o?._id === updated._id ? updated : o));
+      });
     };
 
-    const handleOrderDeleted = (id) => {
-      setOrders((prev) => prev.filter((o) => o._id !== id));
+    const handleOrderDeleted = (payload) => {
+      const deleteId =
+        typeof payload === "object" ? payload?._id || payload?.id : payload;
+
+      if (!deleteId) return;
+
+      setOrders((prev) =>
+        prev.filter(Boolean).filter((o) => o?._id !== deleteId),
+      );
     };
 
     socket.on("new-order", handleNewOrder);
@@ -248,130 +793,235 @@ export default function AdminDashboard() {
     };
   }, [soundEnabled]);
 
-  const grouped = orders.reduce((acc, order) => {
+  const grouped = orders.filter(Boolean).reduce((acc, order) => {
     const key = order.table || order.tableId || "Unknown";
+
     if (!acc[key]) acc[key] = [];
+
     acc[key].push(order);
+
     return acc;
   }, {});
 
   const tableKeys = Object.keys(grouped).sort((a, b) => {
     if (a === "Unknown") return 1;
     if (b === "Unknown") return -1;
-    return Number(a) - Number(b);
+
+    const numA = Number(a);
+    const numB = Number(b);
+
+    if (Number.isNaN(numA) || Number.isNaN(numB)) {
+      return String(a).localeCompare(String(b));
+    }
+
+    return numA - numB;
   });
 
   const activeTables = tableKeys.length;
-  const activeOrders = orders.length;
+  const activeOrders = orders.filter(Boolean).length;
 
   const preparing = orders.filter(
-    (o) => o.status === "preparing" || o.status === "pending" || !o.status,
+    (o) => o?.status === "preparing" || o?.status === "pending" || !o?.status,
   ).length;
 
-  const served = orders.filter((o) => o.status === "served").length;
-  const delayed = orders.filter((o) => isDelayed(o.createdAt)).length;
+  const served = orders.filter((o) => o?.status === "served").length;
 
-  const updateBatchStatus = async (id, status) => {
-    try {
-      const res = await api.put(`/order/${id}`, { status });
-      setOrders((prev) => prev.map((o) => (o._id === id ? res.data : o)));
-    } catch (err) {
-      console.log(err);
-    }
+  const delayed = orders.filter((o) => isDelayed(o?.createdAt)).length;
+
+  const updateBatchStatus = (id, status) => {
+    if (!id) return;
+
+    api
+      .put(`/order/${id}`, { status })
+      .then((res) => {
+        const updated = res.data;
+
+        if (!updated || !updated._id) return;
+
+        setOrders((prev) => {
+          const cleanPrev = prev.filter(Boolean);
+
+          if (String(updated.status || "").toLowerCase() === "completed") {
+            return cleanPrev.filter((o) => o?._id !== updated._id);
+          }
+
+          return cleanPrev.map((o) => (o?._id === id ? updated : o));
+        });
+      })
+      .catch((err) => {
+        console.log(err);
+      });
   };
 
-  const serveOrder = async (id) => {
-    try {
-      await api.put(`/orders/${id}/serve`);
-    } catch (err) {
-      console.log(err);
-    }
+  const serveOrder = (id) => {
+    if (!id) return;
+
+    api
+      .put(`/orders/${id}/serve`)
+      .then((res) => {
+        const updated = res.data;
+
+        if (!updated || !updated._id) return;
+
+        setOrders((prev) =>
+          prev
+            .filter(Boolean)
+            .map((o) => (o?._id === updated._id ? updated : o)),
+        );
+      })
+      .catch((err) => {
+        console.log(err);
+      });
   };
 
-  const deleteBatch = async (id) => {
-    try {
-      await api.delete(`/order/${id}`);
-      setOrders((prev) => prev.filter((o) => o._id !== id));
-    } catch (err) {
-      console.log(err);
-    }
+  const deleteBatch = (id) => {
+    if (!id) return;
+
+    api
+      .delete(`/order/${id}`)
+      .then(() => {
+        setOrders((prev) => prev.filter(Boolean).filter((o) => o?._id !== id));
+      })
+      .catch((err) => {
+        console.log(err);
+      });
   };
 
-  const deleteItem = async (order, index) => {
-    try {
-      const newItems = [...order.items];
-      newItems.splice(index, 1);
+  const deleteItem = (order, index) => {
+    if (!order || !order._id) return;
 
-      const res = await api.put(`/order/${order._id}`, { items: newItems });
+    const currentItems = Array.isArray(order.items) ? order.items : [];
 
-      setOrders((prev) =>
-        prev.map((o) => (o._id === order._id ? res.data : o)),
-      );
-    } catch (err) {
-      console.log(err);
-    }
+    const newItems = [...currentItems];
+    newItems.splice(index, 1);
+
+    api
+      .put(`/order/${order._id}`, { items: newItems })
+      .then((res) => {
+        const updated = res.data;
+
+        if (!updated || !updated._id) return;
+
+        setOrders((prev) =>
+          prev.filter(Boolean).map((o) => (o?._id === order._id ? updated : o)),
+        );
+      })
+      .catch((err) => {
+        console.log(err);
+      });
   };
 
-  const updateQty = async (order, index, qty) => {
-    try {
-      const newItems = [...order.items];
-      newItems[index].qty = Number(qty);
+  const updateQty = (order, index, qty) => {
+    if (!order || !order._id) return;
 
-      const res = await api.put(`/order/${order._id}`, { items: newItems });
+    const currentItems = Array.isArray(order.items) ? order.items : [];
 
-      setOrders((prev) =>
-        prev.map((o) => (o._id === order._id ? res.data : o)),
-      );
-    } catch (err) {
-      console.log(err);
-    }
+    if (!currentItems[index]) return;
+
+    const newItems = [...currentItems];
+
+    newItems[index] = {
+      ...newItems[index],
+      qty: Number(qty),
+    };
+
+    api
+      .put(`/order/${order._id}`, { items: newItems })
+      .then((res) => {
+        const updated = res.data;
+
+        if (!updated || !updated._id) return;
+
+        setOrders((prev) =>
+          prev.filter(Boolean).map((o) => (o?._id === order._id ? updated : o)),
+        );
+      })
+      .catch((err) => {
+        console.log(err);
+      });
   };
 
-  const updateTablePaymentStatus = async (tableOrders, paymentStatus) => {
-    try {
-      const updatedOrders = await Promise.all(
-        tableOrders.map(async (order) => {
-          const res = await api.put(`/order/${order._id}`, {
+  const updateTablePaymentStatus = (tableOrders = [], paymentStatus) => {
+    const safeTableOrders = tableOrders.filter((order) => order && order._id);
+
+    if (safeTableOrders.length === 0) return;
+
+    Promise.all(
+      safeTableOrders.map((order) =>
+        api
+          .put(`/order/${order._id}`, {
             paymentStatus,
-          });
+          })
+          .then((res) => res.data)
+          .catch((err) => {
+            console.log(err);
+            return null;
+          }),
+      ),
+    )
+      .then((updatedOrders) => {
+        const validUpdatedOrders = updatedOrders.filter(
+          (order) => order && order._id,
+        );
 
-          return res.data;
-        }),
-      );
+        if (validUpdatedOrders.length === 0) return;
 
-      setOrders((prev) =>
-        prev.map((oldOrder) => {
-          const updated = updatedOrders.find((u) => u._id === oldOrder._id);
-          return updated || oldOrder;
-        }),
-      );
-    } catch (err) {
-      console.log(err);
-    }
+        setOrders((prev) =>
+          prev.filter(Boolean).map((oldOrder) => {
+            if (!oldOrder || !oldOrder._id) return oldOrder;
+
+            const updated = validUpdatedOrders.find(
+              (u) => u && u._id === oldOrder._id,
+            );
+
+            return updated || oldOrder;
+          }),
+        );
+      })
+      .catch((err) => {
+        console.log(err);
+      });
   };
 
-  const completeTable = async (tableOrders) => {
-    try {
-      const token = tableOrders[0]?.token;
-      if (!token) return;
+  const completeTable = (tableOrders = []) => {
+    const safeTableOrders = tableOrders.filter(Boolean);
 
-      await api.put(`/table/complete/${token}`);
-      fetchOrders();
-    } catch (err) {
-      console.log(err);
-    }
+    const token =
+      safeTableOrders[0]?.token ||
+      safeTableOrders[0]?.sessionId ||
+      safeTableOrders[0]?.tableSessionToken;
+
+    if (!token) return;
+
+    api
+      .put(`/table/complete/${token}`)
+      .then(() => {
+        fetchOrders();
+      })
+      .catch((err) => {
+        console.log(err);
+      });
   };
 
-  const deleteTable = async (tableOrders) => {
-    try {
-      for (let o of tableOrders) {
-        await api.delete(`/order/${o._id}`);
-      }
+  const deleteTable = (tableOrders = []) => {
+    const safeTableOrders = tableOrders.filter((order) => order && order._id);
 
-      fetchOrders();
-    } catch (err) {
-      console.log(err);
-    }
+    if (safeTableOrders.length === 0) return;
+
+    Promise.all(
+      safeTableOrders.map((order) =>
+        api.delete(`/order/${order._id}`).catch((err) => {
+          console.log(err);
+          return null;
+        }),
+      ),
+    )
+      .then(() => {
+        fetchOrders();
+      })
+      .catch((err) => {
+        console.log(err);
+      });
   };
 
   const toggleCollapse = (key) =>
@@ -467,6 +1117,14 @@ export default function AdminDashboard() {
               <Activity size={18} />
               Current Tables
             </Link>
+
+            <Link
+              to="/admin/analytics"
+              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
+            >
+              <BarChart3 size={18} />
+              Analytics
+            </Link>
           </div>
         </div>
 
@@ -518,9 +1176,9 @@ export default function AdminDashboard() {
         {/* TABLE GRID */}
         <div className="grid gap-5 xl:grid-cols-2 2xl:grid-cols-3">
           {tableKeys.map((tableKey, index) => {
-            const tableOrders = grouped[tableKey].sort(
-              (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
-            );
+            const tableOrders = (grouped[tableKey] || [])
+              .filter(Boolean)
+              .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
             const total = tableOrders.reduce(
               (sum, order) => sum + getOrderTotal(order),
@@ -537,7 +1195,7 @@ export default function AdminDashboard() {
             const firstReceived = fmt(tableOrders[0]?.createdAt);
             const paymentMode = getTablePaymentMode(tableOrders);
             const paymentStatus = getTablePaymentStatus(tableOrders);
-            const isPaid = paymentStatus === "paid";
+            const paidTable = paymentStatus === "paid";
 
             return (
               <section
@@ -604,6 +1262,8 @@ export default function AdminDashboard() {
                 {!isCollapsed && (
                   <div className="px-4 pb-4 sm:px-5">
                     {tableOrders.map((order, idx) => {
+                      if (!order || !order._id) return null;
+
                       return (
                         <div
                           key={order._id}
@@ -630,6 +1290,7 @@ export default function AdminDashboard() {
                                 <p className="text-[11px] font-bold text-slate-400">
                                   Received
                                 </p>
+
                                 <p className="text-xs font-bold text-slate-700">
                                   {fmt(order.createdAt)}
                                 </p>
@@ -653,6 +1314,7 @@ export default function AdminDashboard() {
                                 <p className="text-[11px] font-bold text-slate-400">
                                   Elapsed
                                 </p>
+
                                 <p className="text-xs font-bold text-slate-700">
                                   {elapsed(order.createdAt)}
                                 </p>
@@ -666,22 +1328,23 @@ export default function AdminDashboard() {
 
                           {/* ITEMS */}
                           <div className="space-y-3">
-                            {order.items.map((item, i) => {
+                            {(order.items || []).map((item, i) => {
                               const itemImage = getItemImage(item);
 
                               return (
-                                <div key={i}>
+                                <div key={`${order._id}-${i}`}>
                                   <div className="flex flex-col gap-3 rounded-lg sm:flex-row sm:items-center">
                                     <div className="flex items-center flex-1 min-w-0 gap-3">
                                       <div className="flex items-center justify-center w-10 h-10 overflow-hidden bg-gray-100 rounded-md shrink-0">
                                         {itemImage ? (
                                           <img
                                             src={itemImage}
-                                            alt={item.name}
+                                            alt={item.name || "Item"}
                                             className="object-cover w-full h-full"
                                             onError={(e) => {
                                               e.currentTarget.style.display =
                                                 "none";
+
                                               e.currentTarget.parentElement.innerHTML =
                                                 '<span style="font-size:20px">🍽</span>';
                                             }}
@@ -692,7 +1355,7 @@ export default function AdminDashboard() {
                                       </div>
 
                                       <p className="text-sm font-semibold truncate text-slate-700">
-                                        {item.name}
+                                        {item.name || "Item"}
                                       </p>
                                     </div>
 
@@ -703,7 +1366,10 @@ export default function AdminDashboard() {
                                             updateQty(
                                               order,
                                               i,
-                                              Math.max(1, item.qty - 1),
+                                              Math.max(
+                                                1,
+                                                Number(item.qty || 1) - 1,
+                                              ),
                                             )
                                           }
                                           className="flex items-center justify-center w-8 h-8 text-slate-500 hover:bg-gray-50"
@@ -712,12 +1378,16 @@ export default function AdminDashboard() {
                                         </button>
 
                                         <span className="w-10 text-sm font-bold text-center text-slate-700">
-                                          {item.qty}
+                                          {item.qty || 1}
                                         </span>
 
                                         <button
                                           onClick={() =>
-                                            updateQty(order, i, item.qty + 1)
+                                            updateQty(
+                                              order,
+                                              i,
+                                              Number(item.qty || 1) + 1,
+                                            )
                                           }
                                           className="flex items-center justify-center w-8 h-8 text-slate-500 hover:bg-gray-50"
                                         >
@@ -818,7 +1488,7 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-3">
                           <span
                             className={`w-2.5 h-2.5 rounded-full ${
-                              isPaid ? "bg-emerald-500" : "bg-red-500"
+                              paidTable ? "bg-emerald-500" : "bg-red-500"
                             }`}
                           />
 
@@ -831,7 +1501,7 @@ export default function AdminDashboard() {
                               )
                             }
                             className={`h-9 px-3 text-sm font-extrabold bg-white border rounded-md outline-none ${
-                              isPaid
+                              paidTable
                                 ? "text-emerald-600 border-emerald-200"
                                 : "text-red-500 border-red-200"
                             }`}
@@ -844,7 +1514,15 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* TABLE ACTIONS */}
-                    <div className="grid grid-cols-1 gap-3 pt-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 pt-4 sm:grid-cols-3">
+                      <button
+                        onClick={() => printBill(tableOrders, tableKey)}
+                        className="flex min-h-[46px] items-center justify-center gap-2 px-3 py-3 text-sm font-extrabold text-slate-700 bg-white border border-gray-200 rounded-md"
+                      >
+                        <Printer size={17} />
+                        Print Bill
+                      </button>
+
                       <button
                         onClick={() => completeTable(tableOrders)}
                         className="flex min-h-[46px] items-center justify-center gap-2 px-3 py-3 text-sm font-extrabold text-white bg-[#071832] rounded-md shadow-[0_8px_18px_rgba(7,24,50,0.18)]"
@@ -894,9 +1572,9 @@ export default function AdminDashboard() {
 
       {/* TOASTS */}
       <div className="fixed z-50 space-y-3 top-6 right-6">
-        {orderToasts.map((t, i) => (
+        {orderToasts.filter(Boolean).map((t, i) => (
           <OrderToast
-            key={i}
+            key={t?._id || i}
             order={t}
             onClose={() =>
               setOrderToasts((prev) => prev.filter((_, idx) => idx !== i))

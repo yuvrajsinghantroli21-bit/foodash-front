@@ -216,9 +216,496 @@ function StatCard({ icon, label, value, sub, tone }) {
   );
 }
 
+const printBill = (tableOrders, tableKey) => {
+  const table = tableKey === "Unknown" ? "N/A" : tableKey;
+
+  const sessionId =
+    tableOrders[0]?.sessionId ||
+    tableOrders[0]?.token ||
+    tableOrders[0]?._id?.slice(-6)?.toUpperCase() ||
+    "—";
+
+  const paymentMode = getTablePaymentMode(tableOrders);
+  const paymentStatus = getTablePaymentStatus(tableOrders);
+
+  const total = tableOrders.reduce(
+    (sum, order) => sum + getOrderTotal(order),
+    0,
+  );
+
+  const totalItems = tableOrders.reduce(
+    (sum, order) =>
+      sum +
+      order.items.reduce((itemSum, item) => itemSum + Number(item.qty || 1), 0),
+    0,
+  );
+
+  const billDate = new Date().toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  const orderNo = tableOrders[0]?._id?.slice(-5)?.toUpperCase() || "ACTIVE";
+
+  const batchHtml = tableOrders
+    .map((order, batchIndex) => {
+      const batchTotal = getOrderTotal(order);
+
+      const itemsHtml = order.items
+        .map(
+          (item) => `
+          <tr>
+            <td>
+              <div class="item-name">${item.name}</div>
+              ${
+                item.note && item.note.trim() !== ""
+                  ? `<div class="item-note">📝 ${item.note}</div>`
+                  : ""
+              }
+            </td>
+            <td class="center">${item.qty}</td>
+            <td class="right">₹${Number(item.price || 0)}</td>
+            <td class="right strong">₹${
+              Number(item.price || 0) * Number(item.qty || 1)
+            }</td>
+          </tr>
+        `,
+        )
+        .join("");
+
+      return `
+      <div class="batch">
+        <div class="batch-head">
+          <div>
+            <h3>Batch #${batchIndex + 1}</h3>
+            <p>Received: ${new Date(order.createdAt).toLocaleString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            })}</p>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th class="center">Qty</th>
+              <th class="right">Price</th>
+              <th class="right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+
+        <div class="batch-total">
+          <span>Batch Total</span>
+          <strong>₹${batchTotal}</strong>
+        </div>
+      </div>
+    `;
+    })
+    .join("");
+
+  const printWindow = window.open("", "_blank");
+
+  printWindow.document.write(`
+  <html>
+    <head>
+      <title>Table ${table} Bill</title>
+
+      <style>
+        * {
+          box-sizing: border-box;
+        }
+
+        body {
+          margin: 0;
+          padding: 24px;
+          background: #f8f5ef;
+          color: #111827;
+          font-family: Arial, sans-serif;
+        }
+
+        .bill {
+          max-width: 520px;
+          margin: 0 auto;
+          background: #ffffff;
+          border-radius: 22px;
+          overflow: hidden;
+          border: 1px solid #eee7dc;
+          box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+        }
+
+        .top-strip {
+          height: 8px;
+          background: linear-gradient(90deg, #0f172a, #d4a74f, #0f172a);
+        }
+
+        .header {
+          padding: 26px 26px 18px;
+          text-align: center;
+          background: linear-gradient(180deg, #fffaf2, #ffffff);
+          border-bottom: 1px solid #f1ede5;
+        }
+
+        .brand {
+          font-family: Georgia, serif;
+          font-size: 30px;
+          font-weight: 900;
+          margin-bottom: 6px;
+        }
+
+        .sub {
+          font-size: 12px;
+          color: #6b7280;
+          font-weight: 600;
+        }
+
+        .badge {
+          display: inline-block;
+          margin-top: 14px;
+          padding: 7px 12px;
+          border-radius: 999px;
+          background: #0f172a;
+          color: white;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .meta {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+          padding: 18px 22px 10px;
+        }
+
+        .meta-card {
+          background: #faf7f1;
+          border: 1px solid #efe9de;
+          border-radius: 14px;
+          padding: 11px 12px;
+        }
+
+        .label {
+          display: block;
+          font-size: 10px;
+          text-transform: uppercase;
+          color: #8a8f98;
+          font-weight: 800;
+          letter-spacing: 0.07em;
+          margin-bottom: 4px;
+        }
+
+        .value {
+          font-size: 13px;
+          font-weight: 900;
+          color: #111827;
+          word-break: break-word;
+        }
+
+        .summary {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 10px;
+          padding: 10px 22px 16px;
+        }
+
+        .summary-box {
+          text-align: center;
+          border-radius: 14px;
+          padding: 11px 8px;
+          border: 1px solid #edf0f3;
+          background: #ffffff;
+        }
+
+        .summary-box.gold {
+          background: #fff8eb;
+          border-color: #f4e1b5;
+        }
+
+        .summary-box.green {
+          background: #edfdf3;
+          border-color: #bfe8cd;
+        }
+
+        .summary-title {
+          font-size: 10px;
+          font-weight: 800;
+          color: #7b818a;
+          text-transform: uppercase;
+          margin-bottom: 5px;
+        }
+
+        .summary-value {
+          font-size: 15px;
+          font-weight: 900;
+          text-transform: capitalize;
+        }
+
+        .content {
+          padding: 0 22px 18px;
+        }
+
+        .batch {
+          border: 1px solid #ebeef2;
+          border-radius: 16px;
+          padding: 14px;
+          margin-bottom: 14px;
+          background: #fcfcfd;
+        }
+
+        .batch-head {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 10px;
+        }
+
+        .batch h3 {
+          margin: 0;
+          font-size: 14px;
+          font-weight: 900;
+        }
+
+        .batch p {
+          margin: 3px 0 0;
+          font-size: 11px;
+          color: #6b7280;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 12px;
+        }
+
+        th {
+          color: #7b818a;
+          font-size: 10px;
+          text-transform: uppercase;
+          padding: 8px 0;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        td {
+          padding: 9px 0;
+          border-bottom: 1px solid #f1f5f9;
+          vertical-align: top;
+        }
+
+        .item-name {
+          font-weight: 800;
+        }
+
+        .item-note {
+          font-size: 10px;
+          color: #b45309;
+          margin-top: 3px;
+          font-style: italic;
+        }
+
+        .center {
+          text-align: center;
+        }
+
+        .right {
+          text-align: right;
+        }
+
+        .strong {
+          font-weight: 900;
+        }
+
+        .batch-total {
+          display: flex;
+          justify-content: space-between;
+          padding-top: 10px;
+          margin-top: 10px;
+          border-top: 1px dashed #d1d5db;
+          font-size: 13px;
+        }
+
+        .grand-total {
+          margin: 6px 22px 20px;
+          padding: 18px;
+          border-radius: 18px;
+          background: linear-gradient(135deg, #0f172a, #1f2937);
+          color: white;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .grand-label {
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          opacity: 0.8;
+          font-weight: 800;
+        }
+
+        .grand-value {
+          font-family: Georgia, serif;
+          font-size: 32px;
+          font-weight: 900;
+        }
+
+        .payment {
+          font-size: 12px;
+          text-align: right;
+          color: rgba(255, 255, 255, 0.85);
+          line-height: 1.6;
+          text-transform: capitalize;
+        }
+
+        .footer {
+          padding: 0 24px 24px;
+          text-align: center;
+        }
+
+        .footer-inner {
+          border-top: 1px dashed #d1d5db;
+          padding-top: 16px;
+        }
+
+        .thanks {
+          font-family: Georgia, serif;
+          font-size: 17px;
+          font-weight: 900;
+          margin-bottom: 5px;
+        }
+
+        .footer-sub {
+          font-size: 11px;
+          color: #6b7280;
+          line-height: 1.5;
+        }
+
+        @media print {
+          body {
+            background: white;
+            padding: 0;
+          }
+
+          .bill {
+            border: none;
+            box-shadow: none;
+            max-width: 100%;
+            border-radius: 0;
+          }
+        }
+      </style>
+    </head>
+
+    <body>
+      <div class="bill">
+        <div class="top-strip"></div>
+
+        <div class="header">
+          <div class="brand">The White House Café</div>
+          <div class="sub">Jaipur • FoodDash Smart Ordering Receipt</div>
+          <div class="badge">Active Table Bill</div>
+        </div>
+
+        <div class="meta">
+          <div class="meta-card">
+            <span class="label">Bill No</span>
+            <span class="value">#${orderNo}</span>
+          </div>
+
+          <div class="meta-card">
+            <span class="label">Table</span>
+            <span class="value">${table}</span>
+          </div>
+
+          <div class="meta-card">
+            <span class="label">Session</span>
+            <span class="value">${sessionId}</span>
+          </div>
+
+          <div class="meta-card">
+            <span class="label">Printed At</span>
+            <span class="value">${billDate}</span>
+          </div>
+        </div>
+
+        <div class="summary">
+          <div class="summary-box gold">
+            <div class="summary-title">Batches</div>
+            <div class="summary-value">${tableOrders.length}</div>
+          </div>
+
+          <div class="summary-box">
+            <div class="summary-title">Items</div>
+            <div class="summary-value">${totalItems}</div>
+          </div>
+
+          <div class="summary-box green">
+            <div class="summary-title">Payment</div>
+            <div class="summary-value">${paymentStatus}</div>
+          </div>
+        </div>
+
+        <div class="content">
+          ${batchHtml}
+        </div>
+
+        <div class="grand-total">
+          <div>
+            <div class="grand-label">Grand Total</div>
+            <div class="grand-value">₹${total}</div>
+          </div>
+
+          <div class="payment">
+            ${paymentMode}<br/>
+            ${paymentStatus === "paid" ? "Paid" : "Due"}
+          </div>
+        </div>
+
+        <div class="footer">
+          <div class="footer-inner">
+            <div class="thanks">Thank you for dining with us</div>
+            <div class="footer-sub">
+              Please keep this bill for your reference.<br/>
+              Powered by FoodDash
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        window.onload = function() {
+          window.print();
+        };
+      </script>
+    </body>
+  </html>
+`);
+
+  printWindow.document.close();
+};
+
 /* ───────────────── ORDER CARD ───────────────── */
 
-function OrderHistoryCard({ sessionOrders, orderNo, deleteOrder, menu }) {
+function OrderHistoryCard({
+  sessionOrders,
+  orderNo,
+  deleteOrder,
+  menu,
+  printBill,
+}) {
   const table = sessionOrders[0]?.table || sessionOrders[0]?.tableId || "—";
   const totalBatches = sessionOrders.length;
   const totalItemCount = getSessionItemCount(sessionOrders);
@@ -381,30 +868,39 @@ function OrderHistoryCard({ sessionOrders, orderNo, deleteOrder, menu }) {
       </div>
 
       {/* FOOTER */}
-      <div className="flex items-end justify-between px-5 py-4 border-t border-gray-100">
-        <div className="flex items-center gap-6 text-xs font-bold text-slate-500">
-          <span className="inline-flex items-center gap-2">
-            <Package size={17} />
-            {totalBatches} {totalBatches === 1 ? "Batch" : "Batches"}
-          </span>
+      <div className="px-5 py-4 border-t border-gray-100">
+        <div className="flex items-end justify-between gap-4">
+          <div className="flex items-center gap-6 text-xs font-bold text-slate-500">
+            <span className="inline-flex items-center gap-2">
+              <Package size={17} />
+              {totalBatches} {totalBatches === 1 ? "Batch" : "Batches"}
+            </span>
 
-          <span className="inline-flex items-center gap-2">
-            <List size={17} />
-            {totalItemCount} Items
-          </span>
+            <span className="inline-flex items-center gap-2">
+              <List size={17} />
+              {totalItemCount} Items
+            </span>
+          </div>
+
+          <div className="text-right">
+            <p className="mb-1 text-[11px] font-bold text-slate-400">
+              Total Amount
+            </p>
+            <p
+              className="text-2xl font-black text-emerald-700"
+              style={{ fontFamily: "Georgia, serif" }}
+            >
+              ₹{sessionTotal}
+            </p>
+          </div>
         </div>
 
-        <div className="text-right">
-          <p className="mb-1 text-[11px] font-bold text-slate-400">
-            Total Amount
-          </p>
-          <p
-            className="text-2xl font-black text-emerald-700"
-            style={{ fontFamily: "Georgia, serif" }}
-          >
-            ₹{sessionTotal}
-          </p>
-        </div>
+        <button
+          onClick={() => printBill(sessionOrders, orderNo)}
+          className="flex items-center justify-center w-full gap-2 py-2.5 mt-4 text-sm font-extrabold text-white bg-[#071832] rounded-lg shadow-[0_8px_18px_rgba(7,24,50,0.18)]"
+        >
+          Print Bill
+        </button>
       </div>
 
       <div className="h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
@@ -918,6 +1414,7 @@ export default function AdminHistory() {
                 orderNo={getOrderNumber(sessionOrders)}
                 deleteOrder={deleteOrder}
                 menu={menu}
+                printBill={printBill}
               />
             ))}
           </div>
