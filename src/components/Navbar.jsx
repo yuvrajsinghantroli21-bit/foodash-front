@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { Menu, X, ShoppingCart } from "lucide-react";
+import {
+  Menu,
+  X,
+  ShoppingCart,
+  Home,
+  Info,
+  Phone,
+  Utensils,
+} from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import img from "../../public/whitehouse_profile.jpg";
 
@@ -26,10 +34,26 @@ function Navbar({ totalItems = 0 }) {
   };
 
   const navItems = [
-    { name: "Home", path: "/" },
-    { name: "Menu", action: handleMenuClick },
-    { name: "About", path: "/about" },
-    { name: "Contact", path: "/contact" },
+    {
+      name: "Home",
+      path: "/",
+      icon: <Home size={16} />,
+    },
+    {
+      name: "Menu",
+      action: handleMenuClick,
+      icon: <Utensils size={16} />,
+    },
+    {
+      name: "About",
+      path: "/about",
+      icon: <Info size={16} />,
+    },
+    {
+      name: "Contact",
+      path: "/contact",
+      icon: <Phone size={16} />,
+    },
   ];
 
   /* ACTIVE NAV */
@@ -41,14 +65,31 @@ function Navbar({ totalItems = 0 }) {
     return location.pathname === item.path;
   };
 
+  const desktopLinkClass = (active) =>
+    `inline-flex items-center gap-2 px-4 py-2 text-[14px] font-semibold rounded-xl transition-all duration-300 whitespace-nowrap ${
+      active
+        ? "bg-[#d97707] text-white shadow-sm shadow-orange-200"
+        : "text-[#514739] hover:text-[#d97707] hover:bg-orange-50"
+    }`;
+
+  const mobileLinkClass = (active) =>
+    `flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-300 ${
+      active
+        ? "bg-[#d97707] text-white shadow-sm shadow-orange-200"
+        : "text-[#514739] hover:text-[#d97707] hover:bg-orange-50"
+    }`;
+
   return (
-    <header className="sticky top-0 z-50 w-full bg-[#faf6ee] shadow-[0_1px_10px_0_#d4a84b18] relative">
+    <header
+      className="sticky top-0 z-50 w-full bg-[#fbf7ef]/95 border-b border-orange-100 shadow-sm backdrop-blur-md"
+      style={{ fontFamily: "'Inter', sans-serif" }}
+    >
       {/* MAIN NAV */}
-      <div className="flex items-center justify-between min-h-[72px] px-3 py-3 mx-auto max-w-7xl sm:px-5 lg:px-8">
-        {/* ═════════════ LEFT ═════════════ */}
-        <Link to="/" className="flex items-center gap-2 sm:gap-3 shrink-0">
+      <div className="flex items-center justify-between min-h-[76px] px-3 py-3 mx-auto max-w-7xl sm:px-5 lg:px-8">
+        {/* LEFT BRAND */}
+        <Link to="/" className="flex items-center gap-3 shrink-0">
           {/* LOGO */}
-          <div className="flex items-center justify-center overflow-hidden bg-white border rounded-full w-12 h-12 sm:w-14 sm:h-14 border-[#c9952a]">
+          <div className="flex items-center justify-center w-12 h-12 overflow-hidden bg-white border border-orange-200 rounded-full shadow-sm sm:w-14 sm:h-14">
             <img
               src={img}
               alt="White House Cafe"
@@ -57,31 +98,35 @@ function Navbar({ totalItems = 0 }) {
           </div>
 
           {/* TEXT */}
-          <div className="leading-tight">
+          <div className="leading-none">
             <h1
-              className="text-[15px] sm:text-lg font-bold text-[#2d2416] whitespace-nowrap"
-              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+              className="text-[16px] sm:text-xl font-bold tracking-tight text-[#2d2416] whitespace-nowrap"
+              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
             >
               The White House
             </h1>
 
-            <div className="flex items-center gap-2 mt-1">
-              <p className="text-[10px] sm:text-xs tracking-[0.22em] text-[#c9952a]">
-                CAFÉ
+            <div className="flex items-center gap-2 mt-1.5">
+              <p className="text-[10px] sm:text-[11px] font-semibold tracking-[0.24em] text-[#d97707] uppercase">
+                Café
               </p>
 
               {/* TABLE */}
               {hasSession && table && (
-                <span className="px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-white rounded-full bg-[#c9952a]">
-                  Table {table}
-                </span>
+                <>
+                  <span className="hidden w-1 h-1 bg-orange-200 rounded-full sm:block" />
+
+                  <span className="px-2 py-0.5 text-[9px] sm:text-[10px] font-semibold text-white rounded-full bg-[#d97707]">
+                    Table {table}
+                  </span>
+                </>
               )}
             </div>
           </div>
         </Link>
 
-        {/* ═════════════ CENTER LINKS ═════════════ */}
-        <nav className="absolute items-center hidden gap-10 text-sm font-medium -translate-x-1/2 lg:flex left-1/2 text-[#4b4438]">
+        {/* CENTER LINKS */}
+        <nav className="absolute items-center hidden gap-2 -translate-x-1/2 lg:flex left-1/2">
           {navItems.map((item) => {
             const active = isActive(item);
 
@@ -89,35 +134,25 @@ function Navbar({ totalItems = 0 }) {
               <button
                 key={item.name}
                 onClick={item.action}
-                className={`relative transition duration-200 ${
-                  active ? "text-[#c9952a]" : "hover:text-[#c9952a]"
-                }`}
+                className={desktopLinkClass(active)}
               >
+                {item.icon}
                 {item.name}
-
-                {active && (
-                  <span className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-6 h-[2px] bg-[#c9952a] rounded-full" />
-                )}
               </button>
             ) : (
               <Link
                 key={item.name}
                 to={item.path}
-                className={`relative transition duration-200 ${
-                  active ? "text-[#c9952a]" : "hover:text-[#c9952a]"
-                }`}
+                className={desktopLinkClass(active)}
               >
+                {item.icon}
                 {item.name}
-
-                {active && (
-                  <span className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-6 h-[2px] bg-[#c9952a] rounded-full" />
-                )}
               </Link>
             );
           })}
         </nav>
 
-        {/* ═════════════ RIGHT ═════════════ */}
+        {/* RIGHT */}
         <div className="flex items-center gap-2 shrink-0">
           {/* CART + ORDER */}
           {hasSession && (
@@ -125,19 +160,19 @@ function Navbar({ totalItems = 0 }) {
               {/* CART */}
               <Link
                 to="/cart"
-                className="flex items-center gap-1.5 px-2.5 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-[#c9952a55] text-[#3f3526] text-[11px] sm:text-sm bg-[#faf6ee] hover:bg-[#fffaf0] transition whitespace-nowrap"
+                className="flex items-center gap-1.5 px-2.5 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-orange-200 text-[#4b3b25] text-[11px] sm:text-sm bg-white hover:bg-orange-50 hover:text-[#d97707] transition-all duration-300 shadow-sm whitespace-nowrap"
               >
                 <ShoppingCart size={15} />
 
-                <span className="hidden sm:inline">Cart</span>
+                <span className="hidden font-semibold sm:inline">Cart</span>
 
-                <span>({totalItems})</span>
+                <span className="font-semibold">({totalItems})</span>
               </Link>
 
               {/* MY ORDER */}
               <Link
                 to="/my-order"
-                className="hidden sm:flex px-4 py-2.5 text-xs sm:text-sm font-semibold text-white rounded-xl bg-gradient-to-br from-[#d4a030] via-[#c9952a] to-[#a87420] shadow-md hover:shadow-lg transition whitespace-nowrap"
+                className="hidden sm:flex px-4 py-2.5 text-xs sm:text-sm font-semibold text-white rounded-xl bg-[#d97707] shadow-sm shadow-orange-200 hover:bg-[#b86405] transition-all duration-300 whitespace-nowrap"
               >
                 My Order →
               </Link>
@@ -146,7 +181,7 @@ function Navbar({ totalItems = 0 }) {
 
           {/* MOBILE MENU BTN */}
           <button
-            className="flex items-center justify-center w-10 h-10 rounded-full border border-[#c9952a55] text-[#7a5520] lg:hidden"
+            className="flex items-center justify-center w-10 h-10 transition-all duration-300 bg-white border border-orange-100 shadow-sm rounded-xl lg:hidden text-[#5b4b36] hover:text-[#d97707] hover:bg-orange-50"
             onClick={() => setOpen(!open)}
           >
             {open ? <X size={20} /> : <Menu size={20} />}
@@ -154,21 +189,20 @@ function Navbar({ totalItems = 0 }) {
         </div>
       </div>
 
-      {/* ═════════════ MOBILE MENU ═════════════ */}
+      {/* MOBILE MENU */}
       {open && (
-        <div className="px-4 pb-5 border-t lg:hidden bg-[#faf6ee] border-[#d4a84b33]">
+        <div className="px-4 pb-5 border-t lg:hidden bg-[#fbf7ef] border-orange-100 shadow-lg">
           <div className="flex flex-col gap-2 pt-4">
-            {navItems.map((item) =>
-              item.action ? (
+            {navItems.map((item) => {
+              const active = isActive(item);
+
+              return item.action ? (
                 <button
                   key={item.name}
                   onClick={item.action}
-                  className={`px-4 py-3 text-left rounded-xl transition ${
-                    isActive(item)
-                      ? "bg-[#c9952a12] text-[#c9952a]"
-                      : "text-[#4b4438] hover:bg-[#c9952a12]"
-                  }`}
+                  className={mobileLinkClass(active)}
                 >
+                  {item.icon}
                   {item.name}
                 </button>
               ) : (
@@ -176,33 +210,41 @@ function Navbar({ totalItems = 0 }) {
                   key={item.name}
                   to={item.path}
                   onClick={() => setOpen(false)}
-                  className={`px-4 py-3 rounded-xl transition ${
-                    isActive(item)
-                      ? "bg-[#c9952a12] text-[#c9952a]"
-                      : "text-[#4b4438] hover:bg-[#c9952a12]"
-                  }`}
+                  className={mobileLinkClass(active)}
                 >
+                  {item.icon}
                   {item.name}
                 </Link>
-              ),
-            )}
+              );
+            })}
 
-            {/* MOBILE ORDER BTN */}
+            {/* MOBILE CART + ORDER */}
             {hasSession && (
-              <Link
-                to="/my-order"
-                onClick={() => setOpen(false)}
-                className="flex justify-center px-4 py-3 mt-2 text-sm font-semibold text-white rounded-xl sm:hidden bg-gradient-to-br from-[#d4a030] via-[#c9952a] to-[#a87420]"
-              >
-                My Order →
-              </Link>
+              <div className="grid grid-cols-1 gap-2 pt-2 sm:hidden">
+                <Link
+                  to="/cart"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition bg-white border border-orange-100 rounded-xl text-[#4b3b25] hover:text-[#d97707] hover:bg-orange-50"
+                >
+                  <ShoppingCart size={16} />
+                  Cart ({totalItems})
+                </Link>
+
+                <Link
+                  to="/my-order"
+                  onClick={() => setOpen(false)}
+                  className="flex justify-center px-4 py-3 text-sm font-semibold text-white rounded-xl bg-[#d97707] hover:bg-[#b86405] transition"
+                >
+                  My Order →
+                </Link>
+              </div>
             )}
           </div>
         </div>
       )}
 
-      {/* ═════════════ GOLD LINE ═════════════ */}
-      <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-[#d4a030] via-[#e0b85c] to-[#d4a030]" />
+      {/* GOLD LINE */}
+      <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-[#d97707] via-[#e6b85c] to-[#d97707]" />
     </header>
   );
 }

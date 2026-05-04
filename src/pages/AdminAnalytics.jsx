@@ -33,44 +33,32 @@ import {
 
 /* ───────────────── HELPERS ───────────────── */
 
-const fmtDateTime = (d) =>
-  new Date(d).toLocaleString("en-IN", {
+const fmtDate = (d) =>
+  new Date(d).toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
   });
 
 const getOrderTotal = (order) => {
-  if (order.total !== undefined && order.total !== null) {
+  if (order?.total !== undefined && order?.total !== null) {
     return Number(order.total || 0);
   }
 
-  return (order.items || []).reduce(
+  return (order?.items || []).reduce(
     (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1),
     0,
   );
 };
 
 const getItemsCount = (order) =>
-  (order.items || []).reduce((sum, item) => sum + Number(item.qty || 1), 0);
+  (order?.items || []).reduce((sum, item) => sum + Number(item.qty || 1), 0);
 
 const normalize = (v) => String(v || "").toLowerCase();
 
-const isPaid = (order) => normalize(order.paymentStatus) === "paid";
+const isPaid = (order) => normalize(order?.paymentStatus) === "paid";
 
-const isOnline = (order) => {
-  const mode = normalize(order.paymentMode);
-
-  return (
-    mode === "online" ||
-    mode === "razorpay" ||
-    mode === "upi" ||
-    mode === "card"
-  );
-};
+const isOnline = (order) =>
+  ["online", "razorpay", "upi", "card"].includes(normalize(order?.paymentMode));
 
 const formatDuration = (minutes) => {
   if (!minutes || minutes <= 0) return "—";
@@ -90,129 +78,110 @@ const chartColors = {
   red: "#ef4444",
   blue: "#3b82f6",
   purple: "#8b5cf6",
-  orange: "#f97316",
+  orange: "#f59e0b",
   slate: "#64748b",
 };
 
-/* ───────────────── CUSTOM TOOLTIP ───────────────── */
+/* ───────────────── TOOLTIP ───────────────── */
 
-function CustomTooltip({ active, payload, label }) {
-  if (!active || !payload || !payload.length) return null;
+function ChartTip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
 
   return (
-    <div className="rounded-2xl border border-amber-100 bg-white px-4 py-3 shadow-[0_14px_34px_rgba(15,23,42,0.14)]">
+    <div className="rounded-2xl border border-amber-100 bg-white px-4 py-3 text-xs font-bold shadow-[0_12px_32px_rgba(15,23,42,0.14)]">
       {label && (
-        <p className="mb-1 text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+        <p className="mb-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">
           {label}
         </p>
       )}
 
-      {payload.map((item, index) => (
-        <p
-          key={index}
-          className="text-sm font-extrabold"
-          style={{ color: item.color }}
-        >
-          {item.name}: {item.name?.toLowerCase().includes("revenue") ? "₹" : ""}
-          {Number(item.value || 0).toLocaleString("en-IN")}
+      {payload.map((p, i) => (
+        <p key={i} style={{ color: p.color || "#111936" }}>
+          {p.name}: {p.name?.toLowerCase().includes("revenue") ? "₹" : ""}
+          {Number(p.value || 0).toLocaleString("en-IN")}
         </p>
       ))}
     </div>
   );
 }
 
-/* ───────────────── STAT CARD ───────────────── */
+/* ───────────────── KPI CARD ───────────────── */
 
-function StatCard({ icon, label, value, sub, tone = "gold" }) {
-  const tones = {
-    gold: "from-amber-50 to-white text-amber-700 border-amber-100",
-    green: "from-emerald-50 to-white text-emerald-700 border-emerald-100",
-    blue: "from-blue-50 to-white text-blue-700 border-blue-100",
-    red: "from-red-50 to-white text-red-600 border-red-100",
-    purple: "from-violet-50 to-white text-violet-700 border-violet-100",
-    slate: "from-slate-50 to-white text-slate-700 border-slate-100",
-  };
-
+function KPI({ icon, label, value, sub, accent = "#d4a74f" }) {
   return (
-    <div className="group relative overflow-hidden rounded-[26px] border border-amber-100 bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(15,23,42,0.11)]">
-      <div className="absolute rounded-full -right-10 -top-10 h-28 w-28 bg-amber-100/50 blur-2xl" />
+    <div className="flex min-w-0 items-center gap-4 rounded-[22px] border border-amber-100 bg-white p-4 shadow-[0_8px_26px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_38px_rgba(15,23,42,0.09)] sm:p-5">
+      <div
+        className="flex items-center justify-center w-12 h-12 shrink-0 rounded-2xl"
+        style={{
+          background: `${accent}18`,
+          color: accent,
+        }}
+      >
+        {icon}
+      </div>
 
-      <div className="relative flex items-center gap-4">
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+          {label}
+        </p>
+
+        <p className="mt-1 truncate text-2xl font-bold leading-tight tracking-tight text-[#111936] sm:text-[25px]">
+          {value}
+        </p>
+
+        {sub && (
+          <p className="mt-1 truncate text-[11px] font-medium text-slate-400">
+            {sub}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+/* ───────────────── PANEL ───────────────── */
+
+function Panel({ title, sub, icon, children, accent = "#d4a74f" }) {
+  return (
+    <section className="overflow-hidden rounded-[26px] border border-amber-100 bg-white shadow-[0_10px_34px_rgba(15,23,42,0.06)]">
+      <div className="flex items-start gap-3 px-4 py-4 border-b border-amber-100 bg-gradient-to-r from-white via-amber-50/70 to-white sm:px-5">
         <div
-          className={`flex h-14 w-14 items-center justify-center rounded-2xl border bg-gradient-to-br shadow-sm ${
-            tones[tone] || tones.gold
-          }`}
+          className="flex items-center justify-center w-10 h-10 shrink-0 rounded-2xl"
+          style={{
+            background: `${accent}18`,
+            color: accent,
+          }}
         >
           {icon}
         </div>
 
         <div className="min-w-0">
-          <p className="text-sm font-black uppercase tracking-[0.08em] text-slate-400">
-            {label}
-          </p>
-
-          <h3
-            className="mt-1 truncate text-3xl font-black text-[#111936]"
+          <h2
+            className="truncate text-base font-black text-[#111936]"
             style={{ fontFamily: "Georgia, serif" }}
           >
-            {value}
-          </h3>
+            {title}
+          </h2>
 
           {sub && (
-            <p className="mt-1 text-xs font-bold text-slate-400">{sub}</p>
+            <p className="mt-1 text-xs font-semibold text-slate-400">{sub}</p>
           )}
         </div>
       </div>
-    </div>
-  );
-}
 
-/* ───────────────── PANEL ───────────────── */
-
-function Panel({ title, subtitle, icon, children, className = "" }) {
-  return (
-    <section
-      className={`overflow-hidden rounded-[28px] border border-amber-100 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.07)] ${className}`}
-    >
-      <div className="flex items-start justify-between gap-4 px-5 py-5 border-b border-amber-100/70 bg-gradient-to-r from-white via-amber-50/60 to-white">
-        <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#111936] text-amber-300 shadow-lg shadow-slate-900/10">
-            {icon}
-          </div>
-
-          <div>
-            <h2
-              className="text-xl font-black text-[#111936]"
-              style={{ fontFamily: "Georgia, serif" }}
-            >
-              {title}
-            </h2>
-
-            {subtitle && (
-              <p className="mt-1 text-sm font-semibold text-slate-400">
-                {subtitle}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="p-5">{children}</div>
+      <div className="p-4 sm:p-5">{children}</div>
     </section>
   );
 }
 
-/* ───────────────── EMPTY ───────────────── */
-
-function EmptyChart({ text }) {
+function Empty({ text = "No data for this period" }) {
   return (
-    <div className="flex h-[280px] items-center justify-center rounded-3xl border border-dashed border-amber-200 bg-amber-50/40 text-sm font-bold text-slate-400">
+    <div className="flex h-[260px] items-center justify-center rounded-3xl border border-dashed border-amber-200 bg-amber-50/40 px-4 text-center text-sm font-bold text-slate-400">
       {text}
     </div>
   );
 }
 
-/* ───────────────── MAIN PAGE ───────────────── */
+/* ───────────────── MAIN ───────────────── */
 
 export default function AdminAnalytics() {
   const [orders, setOrders] = useState([]);
@@ -226,7 +195,7 @@ export default function AdminAnalytics() {
     api
       .get("/orders")
       .then((res) => {
-        setOrders(Array.isArray(res.data) ? res.data : []);
+        setOrders(Array.isArray(res.data) ? res.data.filter(Boolean) : []);
       })
       .catch((err) => {
         console.log(err);
@@ -241,7 +210,7 @@ export default function AdminAnalytics() {
 
   /* ───────────────── DATE FILTER ───────────────── */
 
-  const filteredOrders = useMemo(() => {
+  const filtered = useMemo(() => {
     const now = new Date();
     let result = [...orders];
 
@@ -276,7 +245,7 @@ export default function AdminAnalytics() {
   const tableOptions = useMemo(() => {
     const tables = new Set();
 
-    filteredOrders.forEach((order) => {
+    filtered.forEach((order) => {
       const table = order.table || order.tableId || "Unknown";
       tables.add(String(table));
     });
@@ -294,38 +263,32 @@ export default function AdminAnalytics() {
 
       return numA - numB;
     });
-  }, [filteredOrders]);
+  }, [filtered]);
 
-  /* ───────────────── MAIN ANALYTICS FILTER ───────────────── */
+  /* ───────────────── ACTIVE ANALYTICS ORDERS ───────────────── */
 
   const analyticsOrders = useMemo(() => {
-    if (selectedTable === "all") return filteredOrders;
+    if (selectedTable === "all") return filtered;
 
-    return filteredOrders.filter((order) => {
+    return filtered.filter((order) => {
       const table = String(order.table || order.tableId || "Unknown");
       return table === selectedTable;
     });
-  }, [filteredOrders, selectedTable]);
+  }, [filtered, selectedTable]);
 
-  const analyticsTitle =
+  const currentView =
     selectedTable === "all" ? "All Tables" : `Table ${selectedTable}`;
 
-  /* ───────────────── MAIN ANALYTICS ───────────────── */
+  /* ───────────────── KPI DATA ───────────────── */
 
-  const analytics = useMemo(() => {
-    const totalOrders = analyticsOrders.length;
-
-    const completedOrders = analyticsOrders.filter(
-      (order) => order.status === "completed",
-    );
-
-    const activeOrders = analyticsOrders.filter(
-      (order) => order.status !== "completed",
-    );
-
+  const kpi = useMemo(() => {
     const totalRevenue = analyticsOrders.reduce(
       (sum, order) => sum + getOrderTotal(order),
       0,
+    );
+
+    const completedOrders = analyticsOrders.filter(
+      (order) => normalize(order.status) === "completed",
     );
 
     const completedRevenue = completedOrders.reduce(
@@ -338,47 +301,158 @@ export default function AdminAnalytics() {
       0,
     );
 
-    const paidOrders = analyticsOrders.filter((order) => isPaid(order)).length;
+    const paid = analyticsOrders.filter((order) => isPaid(order)).length;
+    const due = analyticsOrders.filter((order) => !isPaid(order)).length;
 
-    const dueOrders = analyticsOrders.filter((order) => !isPaid(order)).length;
+    const online = analyticsOrders.filter((order) => isOnline(order)).length;
+    const counter = analyticsOrders.filter((order) => !isOnline(order)).length;
 
-    const onlineOrders = analyticsOrders.filter((order) =>
-      isOnline(order),
+    const preparing = analyticsOrders.filter(
+      (order) =>
+        normalize(order.status) === "preparing" ||
+        normalize(order.status) === "pending" ||
+        !order.status,
     ).length;
 
-    const counterOrders = analyticsOrders.filter(
-      (order) => !isOnline(order),
+    const served = analyticsOrders.filter(
+      (order) => normalize(order.status) === "served",
     ).length;
 
-    const preparingOrders = analyticsOrders.filter(
-      (order) => order.status === "preparing" || order.status === "pending",
+    const active = analyticsOrders.filter(
+      (order) => normalize(order.status) !== "completed",
     ).length;
 
-    const servedOrders = analyticsOrders.filter(
-      (order) => order.status === "served",
-    ).length;
-
-    const averageOrderValue =
-      totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+    const avgOrder =
+      analyticsOrders.length > 0
+        ? Math.round(totalRevenue / analyticsOrders.length)
+        : 0;
 
     return {
-      totalOrders,
-      completedOrders: completedOrders.length,
-      activeOrders: activeOrders.length,
       totalRevenue,
       completedRevenue,
       totalItems,
-      paidOrders,
-      dueOrders,
-      onlineOrders,
-      counterOrders,
-      preparingOrders,
-      servedOrders,
-      averageOrderValue,
+      paid,
+      due,
+      online,
+      counter,
+      preparing,
+      served,
+      active,
+      avgOrder,
+      totalOrders: analyticsOrders.length,
+      completedCount: completedOrders.length,
     };
   }, [analyticsOrders]);
 
-  /* ───────────────── TOP ITEMS ───────────────── */
+  /* ───────────────── SESSION ANALYTICS ───────────────── */
+
+  const sessionStats = useMemo(() => {
+    const map = {};
+
+    analyticsOrders.forEach((order) => {
+      const key =
+        order.sessionId ||
+        order.token ||
+        `${order.table || "unknown"}-${order._id}`;
+
+      if (!map[key]) {
+        map[key] = {
+          session: key,
+          table: order.table || order.tableId || "Unknown",
+          orders: [],
+          revenue: 0,
+          items: 0,
+        };
+      }
+
+      map[key].orders.push(order);
+      map[key].revenue += getOrderTotal(order);
+      map[key].items += getItemsCount(order);
+    });
+
+    const sessions = Object.values(map).map((session, index) => {
+      const sorted = [...session.orders].sort(
+        (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
+      );
+
+      const first = sorted[0];
+      const last = sorted[sorted.length - 1];
+
+      const start = new Date(first?.createdAt);
+      const end = new Date(
+        last?.completedAt || last?.updatedAt || last?.createdAt,
+      );
+
+      const durationMinutes = Math.max(
+        0,
+        Math.round((end - start) / 1000 / 60),
+      );
+
+      return {
+        name:
+          selectedTable === "all"
+            ? `T${session.table}`
+            : `Session ${index + 1}`,
+        session: session.session,
+        table: session.table,
+        orders: session.orders.length,
+        revenue: session.revenue,
+        items: session.items,
+        durationMinutes,
+        durationText: formatDuration(durationMinutes),
+      };
+    });
+
+    const avgMinutes =
+      sessions.length > 0
+        ? Math.round(
+            sessions.reduce(
+              (sum, session) => sum + session.durationMinutes,
+              0,
+            ) / sessions.length,
+          )
+        : 0;
+
+    const longest =
+      sessions.length > 0
+        ? Math.max(...sessions.map((session) => session.durationMinutes))
+        : 0;
+
+    return {
+      sessions: sessions.slice(-10),
+      count: sessions.length,
+      avgMinutes,
+      avgText: formatDuration(avgMinutes),
+      longestText: formatDuration(longest),
+    };
+  }, [analyticsOrders, selectedTable]);
+
+  /* ───────────────── CHART DATA ───────────────── */
+
+  const revenueByDay = useMemo(() => {
+    const map = {};
+
+    analyticsOrders.forEach((order) => {
+      const rawDate = new Date(order.createdAt);
+      const sortKey = rawDate.toISOString().split("T")[0];
+
+      if (!map[sortKey]) {
+        map[sortKey] = {
+          sortKey,
+          date: fmtDate(order.createdAt),
+          revenue: 0,
+          orders: 0,
+        };
+      }
+
+      map[sortKey].revenue += getOrderTotal(order);
+      map[sortKey].orders += 1;
+    });
+
+    return Object.values(map)
+      .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+      .slice(-14);
+  }, [analyticsOrders]);
 
   const topItems = useMemo(() => {
     const map = {};
@@ -405,247 +479,97 @@ export default function AdminAnalytics() {
       .slice(0, 8);
   }, [analyticsOrders]);
 
-  /* ───────────────── TABLE PERFORMANCE ONLY FOR ALL TABLES ───────────────── */
-
   const tableStats = useMemo(() => {
     const map = {};
 
-    filteredOrders.forEach((order) => {
+    filtered.forEach((order) => {
       const table = order.table || order.tableId || "Unknown";
 
       if (!map[table]) {
         map[table] = {
-          table: `Table ${table}`,
+          table: `T${table}`,
           orders: 0,
           revenue: 0,
-          items: 0,
         };
       }
 
       map[table].orders += 1;
       map[table].revenue += getOrderTotal(order);
-      map[table].items += getItemsCount(order);
     });
 
     return Object.values(map)
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 8);
-  }, [filteredOrders]);
+  }, [filtered]);
 
-  /* ───────────────── REVENUE BY DAY ───────────────── */
-
-  const revenueByDay = useMemo(() => {
-    const map = {};
-
-    analyticsOrders.forEach((order) => {
-      const rawDate = new Date(order.createdAt);
-      const sortKey = rawDate.toISOString().split("T")[0];
-
-      const displayDate = rawDate.toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-      });
-
-      if (!map[sortKey]) {
-        map[sortKey] = {
-          sortKey,
-          date: displayDate,
-          revenue: 0,
-          orders: 0,
-          items: 0,
-        };
-      }
-
-      map[sortKey].revenue += getOrderTotal(order);
-      map[sortKey].orders += 1;
-      map[sortKey].items += getItemsCount(order);
-    });
-
-    return Object.values(map)
-      .sort((a, b) => new Date(a.sortKey) - new Date(b.sortKey))
-      .slice(-10);
-  }, [analyticsOrders]);
-
-  /* ───────────────── SESSION STATS ───────────────── */
-
-  const sessionStats = useMemo(() => {
-    const map = {};
-
-    analyticsOrders.forEach((order) => {
-      const sessionKey =
-        order.sessionId ||
-        order.token ||
-        `${order.table || "unknown"}-${order._id}`;
-
-      if (!map[sessionKey]) {
-        map[sessionKey] = {
-          session: sessionKey,
-          orders: [],
-          revenue: 0,
-          items: 0,
-        };
-      }
-
-      map[sessionKey].orders.push(order);
-      map[sessionKey].revenue += getOrderTotal(order);
-      map[sessionKey].items += getItemsCount(order);
-    });
-
-    const sessions = Object.values(map).map((session, index) => {
-      const sortedOrders = [...session.orders].sort(
-        (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
-      );
-
-      const firstOrder = sortedOrders[0];
-      const lastOrder = sortedOrders[sortedOrders.length - 1];
-
-      const startTime = new Date(firstOrder?.createdAt);
-
-      const endTime = new Date(
-        lastOrder?.completedAt ||
-          lastOrder?.updatedAt ||
-          lastOrder?.createdAt ||
-          firstOrder?.createdAt,
-      );
-
-      const durationMinutes = Math.max(
-        0,
-        Math.round((endTime - startTime) / 1000 / 60),
-      );
-
-      return {
-        name: `Session ${index + 1}`,
-        session: session.session,
-        orders: session.orders.length,
-        revenue: session.revenue,
-        items: session.items,
-        durationMinutes,
-        durationText: formatDuration(durationMinutes),
-      };
-    });
-
-    const avgSessionMinutes =
-      sessions.length > 0
-        ? Math.round(
-            sessions.reduce(
-              (sum, session) => sum + session.durationMinutes,
-              0,
-            ) / sessions.length,
-          )
-        : 0;
-
-    return {
-      sessions: sessions.slice(-8),
-      totalSessions: sessions.length,
-      avgSessionMinutes,
-      avgSessionText: formatDuration(avgSessionMinutes),
-    };
-  }, [analyticsOrders]);
-
-  /* ───────────────── CHART DATA ───────────────── */
-
-  const paymentChart = useMemo(
+  const paymentPie = useMemo(
     () => [
-      {
-        name: "Paid",
-        value: analytics.paidOrders,
-        color: chartColors.emerald,
-      },
-      {
-        name: "Due",
-        value: analytics.dueOrders,
-        color: chartColors.red,
-      },
+      { name: "Paid", value: kpi.paid, color: chartColors.emerald },
+      { name: "Due", value: kpi.due, color: chartColors.red },
     ],
-    [analytics],
+    [kpi.paid, kpi.due],
   );
 
-  const paymentModeChart = useMemo(
+  const modePie = useMemo(
     () => [
-      {
-        name: "Counter",
-        value: analytics.counterOrders,
-        color: chartColors.gold,
-      },
-      {
-        name: "Online",
-        value: analytics.onlineOrders,
-        color: chartColors.blue,
-      },
+      { name: "Counter", value: kpi.counter, color: chartColors.gold },
+      { name: "Online", value: kpi.online, color: chartColors.blue },
     ],
-    [analytics],
+    [kpi.counter, kpi.online],
   );
 
-  const orderStatusChart = useMemo(
+  const statusBar = useMemo(
     () => [
-      {
-        name: "Preparing",
-        value: analytics.preparingOrders,
-      },
-      {
-        name: "Served",
-        value: analytics.servedOrders,
-      },
+      { name: "Preparing", value: kpi.preparing, fill: chartColors.orange },
+      { name: "Served", value: kpi.served, fill: chartColors.blue },
       {
         name: "Completed",
-        value: analytics.completedOrders,
+        value: kpi.completedCount,
+        fill: chartColors.emerald,
       },
     ],
-    [analytics],
+    [kpi.preparing, kpi.served, kpi.completedCount],
   );
 
-  const recentCompleted = useMemo(() => {
-    return analyticsOrders
-      .filter((order) => order.status === "completed")
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 6);
-  }, [analyticsOrders]);
+  const QUICK_OPTS = [
+    { value: "today", label: "Today" },
+    { value: "week", label: "7 Days" },
+    { value: "month", label: "Month" },
+    { value: "all", label: "All Time" },
+  ];
 
   return (
     <div
-      className="min-h-screen bg-[#f8f3e7] text-[#111827]"
-      style={{ fontFamily: "'DM Sans', sans-serif" }}
+      className="min-h-screen bg-[#f8f5ef] text-[#111936]"
+      style={{ fontFamily: "'Inter', sans-serif" }}
     >
-      <main className="mx-auto max-w-[1800px] px-4 py-7 sm:px-6">
-        {/* HERO */}
-        <div className="relative mb-7 overflow-hidden rounded-[34px] border border-amber-100 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
-          <div className="absolute rounded-full -right-20 -top-20 h-72 w-72 bg-amber-200/50 blur-3xl" />
-          <div className="absolute bg-yellow-100 rounded-full -bottom-24 -left-16 h-72 w-72 blur-3xl" />
-
-          <div className="relative flex flex-col gap-6 p-6 lg:flex-row lg:items-center lg:justify-between lg:p-8">
-            <div>
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-amber-700">
-                <BarChart3 size={15} />
-                Premium Business Insights
+      <main className="mx-auto max-w-[1600px] px-3 py-5 sm:px-5 lg:px-6">
+        {/* FILTER BAR - NO HEADER */}
+        <div className="mb-5 rounded-[26px] border border-amber-100 bg-white p-4 shadow-[0_8px_28px_rgba(15,23,42,0.06)] sm:p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 rounded-full bg-[#111936] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-amber-400">
+                <BarChart3 size={12} />
+                Business Analytics
               </div>
 
-              <h1
-                className="text-4xl font-black tracking-tight text-[#111936] sm:text-5xl"
-                style={{ fontFamily: "Georgia, serif" }}
-              >
-                Analytics Dashboard
-              </h1>
-
-              <p className="max-w-2xl mt-3 text-sm font-semibold leading-6 text-slate-500 sm:text-base">
-                Currently showing analytics for{" "}
-                <span className="font-black text-amber-700">
-                  {analyticsTitle}
-                </span>
-                . Change table selection to see revenue, orders, payments,
-                items, and session activity for a specific table.
+              <p className="mt-3 text-sm font-bold text-slate-500">
+                Showing data for{" "}
+                <span className="font-black text-amber-700">{currentView}</span>
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                  View Analytics For
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:items-end">
+              {/* TABLE SELECT */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                  Table
                 </label>
 
                 <select
                   value={selectedTable}
                   onChange={(e) => setSelectedTable(e.target.value)}
-                  className="min-w-[220px] rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm font-black text-[#111936] outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                  className="h-11 min-w-[190px] rounded-2xl border border-amber-200 bg-white px-4 text-sm font-black text-[#111936] outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
                 >
                   <option value="all">All Tables</option>
 
@@ -657,274 +581,298 @@ export default function AdminAnalytics() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 sm:flex">
-                {[
-                  { value: "today", label: "Today" },
-                  { value: "week", label: "7 Days" },
-                  { value: "month", label: "This Month" },
-                  { value: "all", label: "All Time" },
-                ].map((q) => (
-                  <button
-                    key={q.value}
-                    onClick={() => setQuick(q.value)}
-                    className={`rounded-2xl border px-4 py-3 text-sm font-black transition ${
-                      quick === q.value
-                        ? "border-[#111936] bg-[#111936] text-amber-300 shadow-lg shadow-slate-900/15"
-                        : "border-amber-100 bg-white text-slate-600 hover:border-amber-300 hover:bg-amber-50"
-                    }`}
-                  >
-                    {q.label}
-                  </button>
-                ))}
+              {/* QUICK FILTER */}
+              <div className="flex flex-col gap-1.5 sm:col-span-2 xl:col-span-1">
+                <label className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                  Period
+                </label>
+
+                <div className="grid grid-cols-2 overflow-hidden bg-white border rounded-2xl border-amber-200 sm:flex">
+                  {QUICK_OPTS.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setQuick(option.value)}
+                      className={`h-11 px-4 text-xs font-black transition ${
+                        quick === option.value
+                          ? "bg-[#111936] text-amber-400"
+                          : "bg-white text-slate-500 hover:bg-amber-50"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
+              {/* REFRESH BUTTON */}
               <button
                 onClick={fetchOrders}
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-black transition bg-white border shadow-sm rounded-2xl border-amber-100 text-slate-600 hover:border-amber-300 hover:bg-amber-50"
+                disabled={loading}
+                className="flex items-center justify-center gap-2 px-5 text-sm font-black transition bg-white border h-11 rounded-2xl border-amber-200 text-slate-600 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2 xl:col-span-1"
               >
-                <RefreshCw size={17} />
+                <RefreshCw
+                  size={16}
+                  className={loading ? "animate-spin" : ""}
+                />
                 Refresh
               </button>
             </div>
           </div>
         </div>
 
-        {/* LOADING */}
         {loading ? (
-          <div className="flex items-center justify-center rounded-[30px] border border-amber-100 bg-white py-28 text-sm font-bold text-slate-400 shadow-sm">
+          <div className="flex h-[260px] items-center justify-center rounded-[26px] border border-amber-100 bg-white text-sm font-bold text-slate-400 shadow-sm">
             Loading analytics...
           </div>
         ) : (
           <>
-            {/* MAIN STATS */}
-            <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard
-                icon={<IndianRupee size={28} />}
+            {/* KPI ROW 1 */}
+            <div className="grid grid-cols-1 gap-4 mb-4 sm:grid-cols-2 xl:grid-cols-5">
+              <KPI
+                icon={<IndianRupee size={22} />}
                 label={
                   selectedTable === "all" ? "Total Revenue" : "Table Revenue"
                 }
-                value={`₹${analytics.totalRevenue.toLocaleString("en-IN")}`}
-                sub={`Completed: ₹${analytics.completedRevenue.toLocaleString(
-                  "en-IN",
-                )}`}
-                tone="gold"
+                value={`₹${kpi.totalRevenue.toLocaleString("en-IN")}`}
+                sub={`Completed ₹${kpi.completedRevenue.toLocaleString("en-IN")}`}
+                accent={chartColors.gold}
               />
 
-              <StatCard
-                icon={<ShoppingBag size={28} />}
+              <KPI
+                icon={<ShoppingBag size={22} />}
                 label={
                   selectedTable === "all" ? "Total Orders" : "Table Orders"
                 }
-                value={analytics.totalOrders}
-                sub={`${analytics.activeOrders} active now`}
-                tone="blue"
+                value={kpi.totalOrders}
+                sub={`${kpi.active} active now`}
+                accent={chartColors.blue}
               />
 
-              <StatCard
-                icon={<Utensils size={28} />}
+              <KPI
+                icon={<Utensils size={22} />}
                 label="Items Sold"
-                value={analytics.totalItems}
-                sub={
-                  selectedTable === "all"
-                    ? "All ordered items"
-                    : `From Table ${selectedTable}`
-                }
-                tone="green"
+                value={kpi.totalItems}
+                sub="Total qty ordered"
+                accent={chartColors.emerald}
               />
 
-              <StatCard
-                icon={<Clock size={28} />}
-                label="Avg Session Time"
-                value={sessionStats.avgSessionText}
-                sub={`${sessionStats.totalSessions} sessions tracked`}
-                tone="purple"
+              <KPI
+                icon={<Clock size={22} />}
+                label="Avg Session"
+                value={sessionStats.avgText}
+                sub={`${sessionStats.count} sessions`}
+                accent={chartColors.purple}
+              />
+
+              <KPI
+                icon={<CreditCard size={22} />}
+                label="Avg Order Value"
+                value={`₹${kpi.avgOrder.toLocaleString("en-IN")}`}
+                sub={`${kpi.paid} paid · ${kpi.due} due`}
+                accent={kpi.due > 0 ? chartColors.red : chartColors.emerald}
               />
             </div>
 
-            {/* SECONDARY STATS */}
+            {/* KPI ROW 2 */}
             <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard
-                icon={<CreditCard size={28} />}
-                label="Average Order"
-                value={`₹${analytics.averageOrderValue.toLocaleString(
-                  "en-IN",
-                )}`}
-                sub={`${analytics.paidOrders} paid • ${analytics.dueOrders} due`}
-                tone={analytics.dueOrders > 0 ? "red" : "green"}
-              />
-
-              <StatCard
-                icon={<CheckCircle2 size={28} />}
+              <KPI
+                icon={<CheckCircle2 size={20} />}
                 label="Completed"
-                value={analytics.completedOrders}
+                value={kpi.completedCount}
                 sub="Finished orders"
-                tone="green"
+                accent={chartColors.emerald}
               />
 
-              <StatCard
-                icon={<Wallet size={28} />}
-                label="Counter Payments"
-                value={analytics.counterOrders}
-                sub={`${analytics.onlineOrders} online`}
-                tone="slate"
+              <KPI
+                icon={<Activity size={20} />}
+                label="Serving Now"
+                value={kpi.served}
+                sub="Served, not completed"
+                accent={chartColors.blue}
               />
 
-              <StatCard
-                icon={<Activity size={28} />}
-                label="Served"
-                value={analytics.servedOrders}
-                sub="Served but not completed"
-                tone="purple"
+              <KPI
+                icon={<Wallet size={20} />}
+                label="Counter Pay"
+                value={kpi.counter}
+                sub={`${kpi.online} online`}
+                accent={chartColors.slate}
+              />
+
+              <KPI
+                icon={<Trophy size={20} />}
+                label="Top Item"
+                value={topItems[0]?.name || "—"}
+                sub={topItems[0] ? `${topItems[0].qty} sold` : "No item data"}
+                accent={chartColors.gold}
               />
             </div>
 
-            {/* TOP CHARTS */}
-            <div className="grid gap-6 mb-6 xl:grid-cols-3">
-              {/* REVENUE AREA CHART */}
-              <Panel
-                title={
-                  selectedTable === "all"
-                    ? "Revenue Growth"
-                    : `Table ${selectedTable} Revenue Growth`
-                }
-                subtitle="Daily revenue and order movement"
-                icon={<BarChart3 size={20} />}
-                className="xl:col-span-2"
-              >
-                {revenueByDay.length > 0 ? (
-                  <div className="h-[340px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={revenueByDay}>
-                        <defs>
-                          <linearGradient
-                            id="goldRevenue"
-                            x1="0"
-                            y1="0"
-                            x2="0"
-                            y2="1"
-                          >
-                            <stop
-                              offset="5%"
-                              stopColor={chartColors.gold}
-                              stopOpacity={0.75}
-                            />
-
-                            <stop
-                              offset="95%"
-                              stopColor={chartColors.gold}
-                              stopOpacity={0.04}
-                            />
-                          </linearGradient>
-                        </defs>
-
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          vertical={false}
-                          stroke="#f1e4c7"
-                        />
-
-                        <XAxis
-                          dataKey="date"
-                          tick={{ fill: "#64748b", fontSize: 12 }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-
-                        <YAxis
-                          tick={{ fill: "#64748b", fontSize: 12 }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-
-                        <Tooltip content={<CustomTooltip />} />
-
-                        <Area
-                          type="monotone"
-                          dataKey="revenue"
-                          name="Revenue"
-                          stroke={chartColors.goldDark}
-                          strokeWidth={4}
-                          fill="url(#goldRevenue)"
-                          activeDot={{
-                            r: 7,
-                            fill: chartColors.goldDark,
-                            stroke: "#fff",
-                            strokeWidth: 3,
-                          }}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <EmptyChart text="No revenue data found." />
-                )}
-              </Panel>
-
-              {/* PAYMENT STATUS PIE */}
-              <Panel
-                title={
-                  selectedTable === "all"
-                    ? "Payment Status"
-                    : `Payment Status - Table ${selectedTable}`
-                }
-                subtitle="Paid vs due orders"
-                icon={<CreditCard size={20} />}
-              >
-                {analytics.totalOrders > 0 ? (
-                  <div className="h-[340px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={paymentChart}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={70}
-                          outerRadius={105}
-                          paddingAngle={5}
+            {/* CHARTS ROW 1 */}
+            <div className="grid grid-cols-1 gap-5 mb-5 xl:grid-cols-3">
+              <div className="xl:col-span-2">
+                <Panel
+                  title={
+                    selectedTable === "all"
+                      ? "Revenue Over Time"
+                      : `Revenue Over Time - Table ${selectedTable}`
+                  }
+                  sub="Daily revenue trend"
+                  icon={<BarChart3 size={16} />}
+                  accent={chartColors.gold}
+                >
+                  {revenueByDay.length > 0 ? (
+                    <div className="h-[280px] sm:h-[320px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart
+                          data={revenueByDay}
+                          margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
                         >
-                          {paymentChart.map((entry) => (
-                            <Cell key={entry.name} fill={entry.color} />
-                          ))}
-                        </Pie>
+                          <defs>
+                            <linearGradient
+                              id="rev"
+                              x1="0"
+                              y1="0"
+                              x2="0"
+                              y2="1"
+                            >
+                              <stop
+                                offset="5%"
+                                stopColor={chartColors.gold}
+                                stopOpacity={0.35}
+                              />
+                              <stop
+                                offset="95%"
+                                stopColor={chartColors.gold}
+                                stopOpacity={0}
+                              />
+                            </linearGradient>
+                          </defs>
 
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <EmptyChart text="No payment data found." />
-                )}
-              </Panel>
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            vertical={false}
+                            stroke="#f0ece3"
+                          />
+
+                          <XAxis
+                            dataKey="date"
+                            tick={{ fill: "#9ca3af", fontSize: 11 }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+
+                          <YAxis
+                            tick={{ fill: "#9ca3af", fontSize: 11 }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+
+                          <Tooltip content={<ChartTip />} />
+
+                          <Area
+                            type="monotone"
+                            dataKey="revenue"
+                            name="Revenue"
+                            stroke={chartColors.goldDark}
+                            strokeWidth={2.8}
+                            fill="url(#rev)"
+                            dot={false}
+                            activeDot={{
+                              r: 5,
+                              fill: chartColors.goldDark,
+                              stroke: "#fff",
+                              strokeWidth: 2,
+                            }}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <Empty />
+                  )}
+                </Panel>
+              </div>
+
+              <div className="xl:col-span-1">
+                <Panel
+                  title={
+                    selectedTable === "all"
+                      ? "Payment Status"
+                      : `Payment Status - Table ${selectedTable}`
+                  }
+                  sub="Paid vs due"
+                  icon={<CreditCard size={16} />}
+                  accent={chartColors.emerald}
+                >
+                  {kpi.totalOrders > 0 ? (
+                    <div className="h-[280px] sm:h-[320px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={paymentPie}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={95}
+                            paddingAngle={4}
+                          >
+                            {paymentPie.map((entry) => (
+                              <Cell key={entry.name} fill={entry.color} />
+                            ))}
+                          </Pie>
+
+                          <Tooltip content={<ChartTip />} />
+
+                          <Legend
+                            iconType="circle"
+                            iconSize={8}
+                            wrapperStyle={{
+                              fontSize: 12,
+                              fontWeight: 700,
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <Empty />
+                  )}
+                </Panel>
+              </div>
             </div>
 
-            {/* MIDDLE CHARTS */}
-            <div className="grid gap-6 mb-6 xl:grid-cols-2">
-              {/* TOP ITEMS */}
+            {/* CHARTS ROW 2 */}
+            <div className="grid grid-cols-1 gap-5 mb-5 xl:grid-cols-2">
               <Panel
                 title={
                   selectedTable === "all"
                     ? "Top Selling Items"
                     : `Top Items - Table ${selectedTable}`
                 }
-                subtitle="Most ordered menu items by quantity"
-                icon={<Trophy size={20} />}
+                sub="By quantity ordered"
+                icon={<Trophy size={16} />}
+                accent={chartColors.gold}
               >
                 {topItems.length > 0 ? (
-                  <div className="h-[390px]">
+                  <div className="h-[320px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={topItems} layout="vertical">
+                      <BarChart
+                        data={topItems}
+                        layout="vertical"
+                        margin={{ left: 0, right: 12, top: 4, bottom: 4 }}
+                      >
                         <CartesianGrid
                           strokeDasharray="3 3"
                           horizontal={false}
-                          stroke="#f1e4c7"
+                          stroke="#f0ece3"
                         />
 
                         <XAxis
                           type="number"
-                          tick={{ fill: "#64748b", fontSize: 12 }}
+                          tick={{ fill: "#9ca3af", fontSize: 11 }}
                           axisLine={false}
                           tickLine={false}
                         />
@@ -932,312 +880,282 @@ export default function AdminAnalytics() {
                         <YAxis
                           dataKey="name"
                           type="category"
-                          width={120}
-                          tick={{ fill: "#334155", fontSize: 12 }}
+                          width={105}
+                          tick={{ fill: "#374151", fontSize: 11 }}
                           axisLine={false}
                           tickLine={false}
                         />
 
-                        <Tooltip content={<CustomTooltip />} />
+                        <Tooltip content={<ChartTip />} />
 
                         <Bar
                           dataKey="qty"
                           name="Sold"
-                          radius={[0, 14, 14, 0]}
+                          radius={[0, 10, 10, 0]}
                           fill={chartColors.gold}
-                          barSize={18}
+                          barSize={16}
                         />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <EmptyChart text="No item data found." />
+                  <Empty />
                 )}
               </Panel>
 
-              {/* TABLE PERFORMANCE OR SESSION DURATION */}
-              <Panel
-                title={
-                  selectedTable === "all"
-                    ? "Table Performance"
-                    : "Session Duration"
-                }
-                subtitle={
-                  selectedTable === "all"
-                    ? "Revenue generated by each table"
-                    : `Approx active session time for Table ${selectedTable}`
-                }
-                icon={
-                  selectedTable === "all" ? (
-                    <Table2 size={20} />
-                  ) : (
-                    <Clock size={20} />
-                  )
-                }
-              >
-                {selectedTable === "all" ? (
-                  tableStats.length > 0 ? (
-                    <div className="h-[390px]">
+              {selectedTable === "all" ? (
+                <Panel
+                  title="Table Performance"
+                  sub="Revenue by table"
+                  icon={<Table2 size={16} />}
+                  accent={chartColors.navy}
+                >
+                  {tableStats.length > 0 ? (
+                    <div className="h-[320px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={tableStats}>
+                        <BarChart
+                          data={tableStats}
+                          margin={{ top: 4, right: 12, left: -12, bottom: 4 }}
+                        >
                           <CartesianGrid
                             strokeDasharray="3 3"
                             vertical={false}
-                            stroke="#f1e4c7"
+                            stroke="#f0ece3"
                           />
 
                           <XAxis
                             dataKey="table"
-                            tick={{ fill: "#64748b", fontSize: 12 }}
+                            tick={{ fill: "#9ca3af", fontSize: 11 }}
                             axisLine={false}
                             tickLine={false}
                           />
 
                           <YAxis
-                            tick={{ fill: "#64748b", fontSize: 12 }}
+                            tick={{ fill: "#9ca3af", fontSize: 11 }}
                             axisLine={false}
                             tickLine={false}
                           />
 
-                          <Tooltip content={<CustomTooltip />} />
+                          <Tooltip content={<ChartTip />} />
 
                           <Bar
                             dataKey="revenue"
                             name="Revenue"
-                            radius={[14, 14, 0, 0]}
+                            radius={[10, 10, 0, 0]}
                             fill={chartColors.navy}
-                            barSize={32}
+                            barSize={28}
                           />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   ) : (
-                    <EmptyChart text="No table data found." />
-                  )
-                ) : sessionStats.sessions.length > 0 ? (
-                  <div className="h-[390px]">
+                    <Empty />
+                  )}
+                </Panel>
+              ) : (
+                <Panel
+                  title={`Session Time - Table ${selectedTable}`}
+                  sub={`Avg ${sessionStats.avgText} · Longest ${sessionStats.longestText}`}
+                  icon={<Clock size={16} />}
+                  accent={chartColors.purple}
+                >
+                  {sessionStats.sessions.length > 0 ? (
+                    <div className="h-[320px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={sessionStats.sessions}
+                          margin={{ top: 4, right: 12, left: -12, bottom: 4 }}
+                        >
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            vertical={false}
+                            stroke="#f0ece3"
+                          />
+
+                          <XAxis
+                            dataKey="name"
+                            tick={{ fill: "#9ca3af", fontSize: 11 }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+
+                          <YAxis
+                            tick={{ fill: "#9ca3af", fontSize: 11 }}
+                            axisLine={false}
+                            tickLine={false}
+                            allowDecimals={false}
+                          />
+
+                          <Tooltip content={<ChartTip />} />
+
+                          <Bar
+                            dataKey="durationMinutes"
+                            name="Session Minutes"
+                            radius={[10, 10, 0, 0]}
+                            fill={chartColors.purple}
+                            barSize={28}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <Empty text="No session time found for this table" />
+                  )}
+                </Panel>
+              )}
+            </div>
+
+            {/* CHARTS ROW 3 */}
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+              <Panel
+                title="Daily Orders Volume"
+                sub="Number of orders per day"
+                icon={<ShoppingBag size={16} />}
+                accent={chartColors.slate}
+              >
+                {revenueByDay.length > 0 ? (
+                  <div className="h-[260px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={sessionStats.sessions}>
+                      <BarChart
+                        data={revenueByDay}
+                        margin={{ top: 4, right: 12, left: -12, bottom: 4 }}
+                      >
                         <CartesianGrid
                           strokeDasharray="3 3"
                           vertical={false}
-                          stroke="#f1e4c7"
+                          stroke="#f0ece3"
                         />
 
                         <XAxis
-                          dataKey="name"
-                          tick={{ fill: "#64748b", fontSize: 12 }}
+                          dataKey="date"
+                          tick={{ fill: "#9ca3af", fontSize: 11 }}
                           axisLine={false}
                           tickLine={false}
                         />
 
                         <YAxis
-                          tick={{ fill: "#64748b", fontSize: 12 }}
+                          tick={{ fill: "#9ca3af", fontSize: 11 }}
                           axisLine={false}
                           tickLine={false}
+                          allowDecimals={false}
                         />
 
-                        <Tooltip content={<CustomTooltip />} />
+                        <Tooltip content={<ChartTip />} />
 
                         <Bar
-                          dataKey="durationMinutes"
-                          name="Session Minutes"
-                          radius={[14, 14, 0, 0]}
-                          fill={chartColors.purple}
-                          barSize={32}
+                          dataKey="orders"
+                          name="Orders"
+                          radius={[8, 8, 0, 0]}
+                          fill={chartColors.slate}
+                          barSize={24}
                         />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <EmptyChart text="No session data found for this table." />
+                  <Empty />
                 )}
               </Panel>
-            </div>
 
-            {/* SMALL CHARTS */}
-            <div className="grid gap-6 mb-6 xl:grid-cols-2">
-              {/* ORDER STATUS */}
+              <Panel
+                title="Payment Mode Split"
+                sub="Counter vs online payments"
+                icon={<Wallet size={16} />}
+                accent={chartColors.blue}
+              >
+                {kpi.totalOrders > 0 ? (
+                  <div className="h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={modePie}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={90}
+                          paddingAngle={3}
+                        >
+                          {modePie.map((entry) => (
+                            <Cell key={entry.name} fill={entry.color} />
+                          ))}
+                        </Pie>
+
+                        <Tooltip content={<ChartTip />} />
+
+                        <Legend
+                          iconType="circle"
+                          iconSize={8}
+                          wrapperStyle={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <Empty />
+                )}
+              </Panel>
+
               <Panel
                 title={
                   selectedTable === "all"
                     ? "Order Status Breakdown"
                     : `Order Status - Table ${selectedTable}`
                 }
-                subtitle="Preparing, served, and completed orders"
-                icon={<Activity size={20} />}
+                sub="Preparing · Served · Completed"
+                icon={<Activity size={16} />}
+                accent={chartColors.orange}
               >
-                {analytics.totalOrders > 0 ? (
-                  <div className="h-[330px]">
+                {kpi.totalOrders > 0 ? (
+                  <div className="h-[260px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={orderStatusChart}>
+                      <BarChart
+                        data={statusBar}
+                        margin={{ top: 4, right: 12, left: -12, bottom: 4 }}
+                      >
                         <CartesianGrid
                           strokeDasharray="3 3"
                           vertical={false}
-                          stroke="#f1e4c7"
+                          stroke="#f0ece3"
                         />
 
                         <XAxis
                           dataKey="name"
-                          tick={{ fill: "#64748b", fontSize: 12 }}
+                          tick={{ fill: "#9ca3af", fontSize: 11 }}
                           axisLine={false}
                           tickLine={false}
                         />
 
                         <YAxis
-                          tick={{ fill: "#64748b", fontSize: 12 }}
+                          tick={{ fill: "#9ca3af", fontSize: 11 }}
                           axisLine={false}
                           tickLine={false}
+                          allowDecimals={false}
                         />
 
-                        <Tooltip content={<CustomTooltip />} />
+                        <Tooltip content={<ChartTip />} />
 
                         <Bar
                           dataKey="value"
                           name="Orders"
-                          radius={[16, 16, 0, 0]}
-                          barSize={44}
+                          radius={[8, 8, 0, 0]}
+                          barSize={30}
                         >
-                          <Cell fill={chartColors.orange} />
-                          <Cell fill={chartColors.blue} />
-                          <Cell fill={chartColors.emerald} />
+                          {statusBar.map((entry) => (
+                            <Cell key={entry.name} fill={entry.fill} />
+                          ))}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <EmptyChart text="No order status data found." />
-                )}
-              </Panel>
-
-              {/* PAYMENT MODE */}
-              <Panel
-                title={
-                  selectedTable === "all"
-                    ? "Payment Mode"
-                    : `Payment Mode - Table ${selectedTable}`
-                }
-                subtitle="Counter vs online payments"
-                icon={<Wallet size={20} />}
-              >
-                {analytics.totalOrders > 0 ? (
-                  <div className="h-[330px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={paymentModeChart}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={105}
-                          label
-                        >
-                          {paymentModeChart.map((entry) => (
-                            <Cell key={entry.name} fill={entry.color} />
-                          ))}
-                        </Pie>
-
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <EmptyChart text="No payment mode data found." />
+                  <Empty />
                 )}
               </Panel>
             </div>
-
-            {/* RECENT COMPLETED */}
-            {/* <Panel
-              title={
-                selectedTable === "all"
-                  ? "Recent Completed Orders"
-                  : `Recent Completed Orders - Table ${selectedTable}`
-              }
-              subtitle="Latest completed bills from order history"
-              icon={<CheckCircle2 size={20} />}
-            >
-              {recentCompleted.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[850px] text-sm">
-                    <thead>
-                      <tr className="text-left border-b border-amber-100 text-slate-400">
-                        <th className="py-4 pr-4 font-black uppercase tracking-[0.08em]">
-                          Order
-                        </th>
-
-                        <th className="py-4 pr-4 font-black uppercase tracking-[0.08em]">
-                          Table
-                        </th>
-
-                        <th className="py-4 pr-4 font-black uppercase tracking-[0.08em]">
-                          Items
-                        </th>
-
-                        <th className="py-4 pr-4 font-black uppercase tracking-[0.08em]">
-                          Payment
-                        </th>
-
-                        <th className="py-4 pr-4 font-black uppercase tracking-[0.08em]">
-                          Total
-                        </th>
-
-                        <th className="py-4 pr-4 font-black uppercase tracking-[0.08em]">
-                          Time
-                        </th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {recentCompleted.map((order) => (
-                        <tr
-                          key={order._id}
-                          className="transition border-b border-amber-50 text-slate-700 hover:bg-amber-50/50"
-                        >
-                          <td className="py-4 pr-4 font-black text-[#111936]">
-                            #{order._id?.slice(-5).toUpperCase()}
-                          </td>
-
-                          <td className="py-4 pr-4 font-bold">
-                            Table {order.table || "—"}
-                          </td>
-
-                          <td className="py-4 pr-4 font-semibold">
-                            {getItemsCount(order)}
-                          </td>
-
-                          <td className="py-4 pr-4">
-                            <span
-                              className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.08em] ${
-                                isPaid(order)
-                                  ? "bg-emerald-50 text-emerald-700"
-                                  : "bg-red-50 text-red-600"
-                              }`}
-                            >
-                              {isPaid(order) ? "Paid" : "Due"}
-                            </span>
-                          </td>
-
-                          <td className="py-4 pr-4 font-black text-amber-700">
-                            ₹{getOrderTotal(order).toLocaleString("en-IN")}
-                          </td>
-
-                          <td className="py-4 pr-4 text-xs font-bold text-slate-400">
-                            {fmtDateTime(order.createdAt)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="py-10 text-sm font-bold text-center text-slate-400">
-                  No completed orders found.
-                </p>
-              )}
-            </Panel> */}
           </>
         )}
       </main>

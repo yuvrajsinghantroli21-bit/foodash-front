@@ -26,6 +26,10 @@ import KitchenDisplay from "./pages/KitchenDisplay";
 import AdminTablesManage from "./pages/AdminTablesManage";
 import AdminCurrentTables from "./pages/AdminCurrentTables";
 import AdminAnalytics from "./pages/AdminAnalytics";
+import AdminLogin from "./pages/AdminLogin";
+import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
+import AdminStaff from "./pages/AdminStaff";
+import AdminEnquiries from "./pages/AdminEnquiries";
 import ThankYou from "./pages/ThankYou";
 import SessionGate from "./pages/SessionGate.jsx";
 import MenuPreview from "./pages/MenuPreview.jsx";
@@ -85,22 +89,106 @@ function App() {
             </Route>
 
             {/* ADMIN ROUTES */}
+            <Route path="/admin/login" element={<AdminLogin />} />
             <Route element={<AdminLayout />}>
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/menu" element={<AdminMenu />} />
-              <Route path="/admin/history" element={<AdminHistory />} />
-              <Route path="/admin/menu/add" element={<AddMenu />} />
-              <Route path="/admin/kitchen" element={<KitchenDisplay />} />
+              <Route
+                path="/admin/dashboard"
+                element={
+                  <ProtectedAdminRoute allowedRoles={["admin", "cashier"]}>
+                    <AdminDashboard />
+                  </ProtectedAdminRoute>
+                }
+              />
+
+              <Route
+                path="/admin/menu"
+                element={
+                  <ProtectedAdminRoute allowedRoles={["admin"]}>
+                    <AdminMenu />
+                  </ProtectedAdminRoute>
+                }
+              />
+
+              <Route
+                path="/admin/history"
+                element={
+                  <ProtectedAdminRoute allowedRoles={["admin", "cashier"]}>
+                    <AdminHistory />
+                  </ProtectedAdminRoute>
+                }
+              />
+
+              <Route
+                path="/admin/kitchen"
+                element={
+                  <ProtectedAdminRoute allowedRoles={["admin", "kitchen"]}>
+                    <KitchenDisplay />
+                  </ProtectedAdminRoute>
+                }
+              />
+
               <Route
                 path="/admin/tables/manage"
-                element={<AdminTablesManage />}
+                element={
+                  <ProtectedAdminRoute allowedRoles={["admin"]}>
+                    <AdminTablesManage />
+                  </ProtectedAdminRoute>
+                }
               />
+
               <Route
                 path="/admin/tables/current"
-                element={<AdminCurrentTables />}
+                element={
+                  <ProtectedAdminRoute allowedRoles={["admin", "cashier"]}>
+                    <AdminCurrentTables />
+                  </ProtectedAdminRoute>
+                }
               />
-              <Route path="/admin/analytics" element={<AdminAnalytics />} />
-              <Route path="/admin/menu/edit/:id" element={<EditMenu />} />
+
+              <Route
+                path="/admin/analytics"
+                element={
+                  <ProtectedAdminRoute allowedRoles={["admin"]}>
+                    <AdminAnalytics />
+                  </ProtectedAdminRoute>
+                }
+              />
+
+              <Route
+                path="/admin/staff"
+                element={
+                  <ProtectedAdminRoute allowedRoles={["admin"]}>
+                    <AdminStaff />
+                  </ProtectedAdminRoute>
+                }
+              />
+
+              <Route
+                path="/admin/menu/add"
+                element={
+                  <ProtectedAdminRoute allowedRoles={["admin"]}>
+                    <AddMenu />
+                  </ProtectedAdminRoute>
+                }
+              />
+
+              <Route
+                path="/admin/menu/edit/:id"
+                element={
+                  <ProtectedAdminRoute allowedRoles={["admin"]}>
+                    <EditMenu />
+                  </ProtectedAdminRoute>
+                }
+              />
+
+              <Route
+                path="/admin/enquiries"
+                element={
+                  <ProtectedAdminRoute allowedRoles={["admin", "cashier"]}>
+                    <AdminEnquiries />
+                  </ProtectedAdminRoute>
+                }
+              />
             </Route>
           </Routes>
         </CartProvider>
