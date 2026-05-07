@@ -169,7 +169,7 @@ function MenuPreview() {
           </p>
 
           {/* COMPACT CAFE CARD */}
-          <div className="relative justify-center hidden mt-5 sm:flex">
+          {/* <div className="relative justify-center hidden mt-5 sm:flex">
             <div className="relative flex items-center gap-3 px-4 py-2 bg-white/70 border border-amber-100 shadow-[0_8px_24px_rgba(120,72,20,0.07)] rounded-full backdrop-blur-md">
               <div className="relative flex items-center justify-center rounded-full w-9 h-9 bg-amber-50 text-amber-700">
                 <span className="text-lg">☕</span>
@@ -188,7 +188,7 @@ function MenuPreview() {
                 </p>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
 
         <style>
