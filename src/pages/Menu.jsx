@@ -49,7 +49,7 @@ const CategoryIcon = ({
   );
 };
 
-function MenuTitle() {
+function MenuTitle({ softShadow = true, glow = true }) {
   return (
     <div
       className="relative text-center md:text-left leading-[0.82] tracking-[-0.07em] text-[#241309]"
@@ -58,8 +58,9 @@ function MenuTitle() {
         fontSize: "clamp(3rem, 9vw, 6rem)",
         fontWeight: 850,
         fontVariationSettings: '"SOFT" 42, "WONK" 1',
-        textShadow:
-          "0 18px 48px rgba(73,35,12,0.24), 0 2px 0 rgba(255,246,220,0.45)",
+        textShadow: softShadow
+          ? "0 18px 48px rgba(73,35,12,0.24), 0 2px 0 rgba(255,246,220,0.45)"
+          : "none",
       }}
     >
       {/* <span className="block whitespace-nowrap text-[#241309]">Our</span> */}
@@ -202,11 +203,11 @@ function Menu() {
 
     const landTimer = setTimeout(() => {
       setTitleLanded(true);
-    }, 3180);
+    }, 3260);
 
     const hideFlyTimer = setTimeout(() => {
       setHideFlyingTitle(true);
-    }, 3320);
+    }, 3310);
 
     const finishTimer = setTimeout(() => {
       setShowIntro(false);
@@ -488,7 +489,7 @@ function Menu() {
               opacity: 0,
               scale: 1,
               rotate: -2,
-              filter: "blur(18px)",
+              filter: "none",
             }}
             animate={
               titleFlight && titleTarget
@@ -500,7 +501,7 @@ function Menu() {
                     opacity: 1,
                     scale: 1,
                     rotate: 0,
-                    filter: "blur(0px)",
+                    filter: "none",
                   }
                 : {
                     left: "50%",
@@ -510,12 +511,12 @@ function Menu() {
                     opacity: 0,
                     scale: 1,
                     rotate: 0,
-                    filter: "blur(0px)",
+                    filter: "none",
                   }
             }
             exit={{
               opacity: 0,
-              filter: "blur(1px)",
+
               transition: { duration: 0.08 },
             }}
             transition={{
@@ -530,7 +531,7 @@ function Menu() {
             className="fixed z-[10000] w-max max-w-none pointer-events-none"
           >
             <div className="whc-menu-paint">
-              <MenuTitle />
+              <MenuTitle softShadow={false} glow={false} />
             </div>
           </motion.div>
         )}
@@ -567,11 +568,11 @@ function Menu() {
             ref={heroTitleRef}
             initial={false}
             animate={{ opacity: titleLanded ? 1 : 0 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.08, ease: [0.16, 1, 0.3, 1] }}
             className="relative mx-auto mt-2 w-fit"
             style={{ visibility: titleLanded ? "visible" : "hidden" }}
           >
-            <MenuTitle />
+            <MenuTitle softShadow={false} glow={false} />
           </motion.div>
 
           <motion.div

@@ -240,6 +240,7 @@ function Home() {
   const journeyRef = useRef(null);
   const menuRef = useRef(null);
   const editorialRef = useRef(null);
+  const sessionHandledRef = useRef(false);
 
   const [loaded, setLoaded] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
@@ -343,6 +344,35 @@ function Home() {
   };
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const urlToken = params.get("token");
+
+    if (!urlToken || sessionHandledRef.current) return;
+
+    sessionHandledRef.current = true;
+
+    axios
+      .get(`https://fooadash.onrender.com/api/session/${urlToken}`)
+      .then((res) => {
+        localStorage.setItem("token", urlToken);
+        localStorage.setItem("table", res.data.table);
+
+        toast.success("The White House Café: Table session started 🍽️");
+
+        navigate("/order", { replace: true });
+      })
+      .catch(() => {
+        toast.error("Session expired. Please scan QR again.");
+        navigate("/scan", { replace: true });
+      });
+  }, [location.search, navigate]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const urlToken = params.get("token");
+
+    if (urlToken) return;
+
     measureHeroTitle();
 
     const onResize = () => {
@@ -358,34 +388,16 @@ function Home() {
 
     const landTimer = setTimeout(() => {
       setTitleLanded(true);
-    }, 3180);
+    }, 3260);
 
     const hideFlyTimer = setTimeout(() => {
       setHideFlyingTitle(true);
-    }, 3320);
+    }, 3310);
 
     const finishTimer = setTimeout(() => {
       setShowIntro(false);
       setLoaded(true);
     }, 3650);
-
-    const params = new URLSearchParams(location.search);
-    const urlToken = params.get("token");
-
-    if (urlToken) {
-      axios
-        .get(`https://fooadash.onrender.com/api/session/${urlToken}`)
-        .then((res) => {
-          localStorage.setItem("token", urlToken);
-          localStorage.setItem("table", res.data.table);
-          toast.success("The White House Café: Table session started 🍽️");
-          navigate("/home", { replace: true });
-        })
-        .catch(() => {
-          toast.error("Session expired. Please scan QR again.");
-          navigate("/scan");
-        });
-    }
 
     return () => {
       window.removeEventListener("resize", onResize);
@@ -394,7 +406,7 @@ function Home() {
       clearTimeout(finishTimer);
       clearTimeout(hideFlyTimer);
     };
-  }, [location, navigate]);
+  }, [location.search]);
 
   const BrandTitle = () => (
     <div
@@ -883,7 +895,7 @@ function Home() {
               }}
               className="fixed z-[10000] w-max max-w-none pointer-events-none"
             >
-              <BrandTitle />
+              <BrandTitle softShadow={false} glow={false} />
 
               {!titleFlight && (
                 <motion.div
@@ -989,13 +1001,13 @@ function Home() {
                 animate={{
                   opacity: titleLanded ? 1 : 0,
                 }}
-                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.08, ease: [0.16, 1, 0.3, 1] }}
                 className="text-left origin-left"
                 style={{
                   visibility: titleLanded ? "visible" : "hidden",
                 }}
               >
-                <BrandTitle />
+                <BrandTitle softShadow={false} glow={false} />
               </motion.div>
 
               <motion.p

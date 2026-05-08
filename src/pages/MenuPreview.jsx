@@ -25,7 +25,7 @@ const Divider = () => (
   </div>
 );
 
-function MenuPreviewTitle() {
+function MenuPreviewTitle({ softShadow = true, glow = true }) {
   return (
     <div
       className="relative text-center leading-[0.82] tracking-[-0.07em] text-[#241309]"
@@ -34,15 +34,20 @@ function MenuPreviewTitle() {
         fontSize: "clamp(2.9rem, 10vw, 5.8rem)",
         fontWeight: 850,
         fontVariationSettings: '"SOFT" 42, "WONK" 1',
-        textShadow:
-          "0 18px 48px rgba(73,35,12,0.24), 0 2px 0 rgba(255,246,220,0.45)",
+        textShadow: softShadow
+          ? "0 18px 48px rgba(73,35,12,0.24), 0 2px 0 rgba(255,246,220,0.45)"
+          : "none",
         transform: "translateZ(0)",
         WebkitFontSmoothing: "antialiased",
         backfaceVisibility: "hidden",
       }}
     >
-      <span className="pointer-events-none absolute -left-5 top-2 -z-10 h-28 w-28 rounded-full bg-[#c8843f]/20 blur-3xl" />
-      <span className="pointer-events-none absolute -right-4 bottom-2 -z-10 h-24 w-24 rounded-full bg-[#ffe2a3]/24 blur-3xl" />
+      {glow && (
+        <>
+          <span className="pointer-events-none absolute -left-5 top-2 -z-10 h-28 w-28 rounded-full bg-[#c8843f]/20 blur-3xl" />
+          <span className="pointer-events-none absolute -right-4 bottom-2 -z-10 h-24 w-24 rounded-full bg-[#ffe2a3]/24 blur-3xl" />
+        </>
+      )}
 
       <span className="block whitespace-nowrap text-[#241309]">Menu</span>
 
@@ -53,13 +58,13 @@ function MenuPreviewTitle() {
             "linear-gradient(92deg, #7b3817 0%, #d2954f 42%, #8a4218 70%, #35190a 100%)",
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
-          filter: "drop-shadow(0 12px 22px rgba(128,67,24,0.18))",
+          filter: softShadow
+            ? "drop-shadow(0 12px 22px rgba(128,67,24,0.18))"
+            : "none",
         }}
       >
         Preview
       </span>
-
-      {/* <span className="absolute -bottom-4 left-1/2 h-[2px] w-[76%] -translate-x-1/2 rounded-full bg-gradient-to-r from-transparent via-[#d59b56]/80 to-transparent" /> */}
     </div>
   );
 }
@@ -122,11 +127,11 @@ function MenuPreview() {
 
     const landTimer = setTimeout(() => {
       setTitleLanded(true);
-    }, 3180);
+    }, 3260);
 
     const hideFlyTimer = setTimeout(() => {
       setHideFlyingTitle(true);
-    }, 3320);
+    }, 3310);
 
     const finishTimer = setTimeout(() => {
       setShowIntro(false);
@@ -366,7 +371,7 @@ function MenuPreview() {
               opacity: 0,
               scale: 1,
               rotate: -2,
-              filter: "blur(18px)",
+              filter: "none",
             }}
             animate={
               titleFlight && titleTarget
@@ -378,7 +383,7 @@ function MenuPreview() {
                     opacity: 1,
                     scale: 1,
                     rotate: 0,
-                    filter: "blur(0px)",
+                    filter: "none",
                   }
                 : {
                     left: "50%",
@@ -393,8 +398,7 @@ function MenuPreview() {
             }
             exit={{
               opacity: 0,
-              filter: "blur(1px)",
-              transition: { duration: 0.08 },
+              transition: { duration: 0.01 },
             }}
             transition={{
               opacity: { delay: 0.45, duration: 0.85 },
@@ -423,7 +427,7 @@ function MenuPreview() {
               {/* <p className="whc-preview-flying-label mb-4 text-center text-[10px] font-black uppercase tracking-[0.42em] text-[#e7c474]/80">
                 The White House Café
               </p> */}
-              <MenuPreviewTitle />
+              <MenuPreviewTitle softShadow={false} glow={false} />
             </div>
           </motion.div>
         )}
@@ -470,13 +474,13 @@ function MenuPreview() {
             animate={{
               opacity: titleLanded ? 1 : 0,
             }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.08, ease: [0.16, 1, 0.3, 1] }}
             className="relative mx-auto mt-2 w-fit"
             style={{
               visibility: titleLanded ? "visible" : "hidden",
             }}
           >
-            <MenuPreviewTitle />
+            <MenuPreviewTitle softShadow={false} glow={false} />
           </motion.div>
 
           <motion.div
@@ -896,7 +900,7 @@ function MenuPreview() {
                       opacity: 1,
                       y: 0,
                       scale: 1,
-                      filter: "blur(0px)",
+                      filter: "none",
                       transition: {
                         duration: 0.62,
                         ease: [0.16, 1, 0.3, 1],
