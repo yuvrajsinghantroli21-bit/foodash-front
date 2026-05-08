@@ -3,7 +3,6 @@ import { CartContext } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import socket from "../socket/socket";
-import StickyHeader from "../components/StickyHeader";
 import toast from "react-hot-toast";
 import {
   Trash2,
@@ -15,37 +14,97 @@ import {
   Clock,
   Star,
   ArrowLeft,
+  ShoppingBag,
+  ReceiptText,
+  Sparkles,
 } from "lucide-react";
 
-/* ── Decorative divider matching the menu page ── */
 const Divider = () => (
-  <div className="flex items-center justify-center gap-2 my-2">
-    <div className="w-8 h-[1px] bg-amber-400" />
-    <span className="text-sm text-amber-500">🌿</span>
-    <div className="w-8 h-[1px] bg-amber-400" />
+  <div className="flex items-center justify-center my-3" style={{ height: 18 }}>
+    <svg
+      width="190"
+      height="18"
+      viewBox="0 0 190 18"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <line x1="0" y1="9" x2="60" y2="9" stroke="#e8c97a" strokeWidth="0.8" />
+      <path
+        d="M60 9 Q66 4 72 7"
+        stroke="#c9a55a"
+        strokeWidth="1.1"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d="M64 9 Q67 13 73 11"
+        stroke="#c9a55a"
+        strokeWidth="1.1"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d="M69 9 Q73 5 78 8"
+        stroke="#c9a55a"
+        strokeWidth="1.1"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <circle cx="95" cy="9" r="3.5" fill="#e8c97a" />
+      <circle cx="95" cy="9" r="1.8" fill="#b45309" />
+      <path
+        d="M130 9 Q124 4 118 7"
+        stroke="#c9a55a"
+        strokeWidth="1.1"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d="M126 9 Q123 13 117 11"
+        stroke="#c9a55a"
+        strokeWidth="1.1"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d="M121 9 Q117 5 112 8"
+        stroke="#c9a55a"
+        strokeWidth="1.1"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <line
+        x1="130"
+        y1="9"
+        x2="190"
+        y2="9"
+        stroke="#e8c97a"
+        strokeWidth="0.8"
+      />
+    </svg>
   </div>
 );
 
 const TRUST_BADGES = [
   {
-    icon: <Leaf size={20} />,
+    icon: <Leaf size={19} />,
     title: "Fresh Ingredients",
-    sub: "Always fresh & healthy",
+    sub: "Prepared with care",
   },
   {
-    icon: <ChefHat size={20} />,
-    title: "Expertly Cooked",
-    sub: "By our top chefs",
+    icon: <ChefHat size={19} />,
+    title: "Kitchen Fresh",
+    sub: "Sent to café kitchen",
   },
   {
-    icon: <Clock size={20} />,
-    title: "Fast & Hot",
-    sub: "Delivered to your table",
+    icon: <Clock size={19} />,
+    title: "Table Service",
+    sub: "Served warm at table",
   },
   {
-    icon: <Star size={20} />,
-    title: "Best Quality",
-    sub: "Premium taste guarantee",
+    icon: <Star size={19} />,
+    title: "Café Quality",
+    sub: "Premium casual taste",
   },
 ];
 
@@ -57,21 +116,17 @@ function Cart() {
     useContext(CartContext);
 
   const table = localStorage.getItem("table");
-  const token = localStorage.getItem("token");
   const navigate = useNavigate();
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
 
-  /* ── Socket: session expire ── */
   useEffect(() => {
     const handleSessionExpired = (data) => {
-      const currentToken = localStorage.getItem("token"); // ✅ always fresh
+      const currentToken = localStorage.getItem("token");
 
       if (data.token === currentToken) {
         toast.error("Session expired");
-
         clearCart();
-
         localStorage.removeItem("token");
         localStorage.removeItem("table");
 
@@ -92,7 +147,7 @@ function Cart() {
     setNotes((prev) => ({ ...prev, [id]: value }));
 
   const placeOrder = () => {
-    const currentToken = localStorage.getItem("token"); // ✅ always fresh
+    const currentToken = localStorage.getItem("token");
 
     if (!currentToken) {
       toast.error("pls scan the qr code to acces this page");
@@ -111,23 +166,16 @@ function Cart() {
       table,
       sessionId: currentToken,
       token: currentToken,
-
       total: subtotal,
-
       items: cart.map((item) => ({
         name: item.name,
         price: Number(item.price || 0),
         qty: Number(item.qty || 1),
         note: notes[item._id] || "",
-
-        // ✅ IMPORTANT: send image to backend
         image: item.image || "",
       })),
-
-      // ✅ default for now
       paymentMode: "counter",
       paymentStatus: "due",
-
       status: "preparing",
     };
 
@@ -135,7 +183,6 @@ function Cart() {
       .post("/orders", order)
       .then(() => {
         toast.success("Order placed successfully! 🎉");
-
         clearCart();
         setNotes({});
 
@@ -146,12 +193,9 @@ function Cart() {
       .catch((err) => {
         if (err.response?.status === 401) {
           toast.error("Session expired");
-
           localStorage.removeItem("token");
           localStorage.removeItem("table");
-
           clearCart();
-
           navigate("/thank-you");
         } else {
           toast.error("Error placing order. Try again.");
@@ -161,286 +205,299 @@ function Cart() {
   };
 
   return (
-    <>
-      <div
-        className="min-h-screen pb-16"
-        style={{ backgroundColor: "#f5f0e8" }}
-      >
-        {/* <StickyHeader table={table} totalItems={cart.length} /> */}
-        {/* ══ Gold top accent ══ */}
-        <div className="" />
+    <div className="min-h-screen overflow-hidden bg-[#f5f0e8] pb-16 text-[#241309]">
+      <div className="pointer-events-none fixed inset-0 opacity-[0.12] bg-[linear-gradient(rgba(65,35,14,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(65,35,14,0.06)_1px,transparent_1px)] bg-[size:42px_42px]" />
+      <div className="fixed rounded-full pointer-events-none -left-24 top-10 h-72 w-72 bg-amber-200/30 blur-3xl" />
+      <div className="fixed rounded-full pointer-events-none -right-24 bottom-20 h-80 w-80 bg-orange-200/25 blur-3xl" />
 
-        {/* ══ PAGE HEADER ══ */}
-        <div className="max-w-6xl px-4 pt-8 pb-4 mx-auto sm:px-6">
-          <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start sm:justify-between">
-            {/* LEFT */}
-            <div className="w-full text-center sm:text-left sm:w-auto">
-              <p className="text-emerald-600 text-xs sm:text-sm tracking-[0.3em] uppercase font-semibold mb-2">
-                • Your Order •
-              </p>
+      <div className="relative px-4 pt-8 mx-auto max-w-7xl sm:px-6">
+        <div className="rounded-[2rem] border border-amber-100/70 bg-[#fffaf1]/75 px-5 py-7 shadow-[0_24px_70px_rgba(61,36,18,0.10)] backdrop-blur-xl sm:px-8">
+          <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:justify-between sm:text-left">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-200/70 bg-white/60 px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] text-amber-800 shadow-sm">
+                <Sparkles size={14} />
+                Your Order
+              </div>
 
               <h1
-                className="text-3xl font-bold leading-tight text-gray-900 sm:text-5xl"
-                style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+                className="text-4xl font-black leading-[0.95] tracking-[-0.05em] text-[#241309] sm:text-5xl"
+                style={{
+                  fontFamily: "'Fraunces', 'Playfair Display', Georgia, serif",
+                }}
               >
-                Cart — Table {table || "…"}
+                Cart
+                <span className="block bg-gradient-to-r from-[#7b3817] via-[#d2954f] to-[#35190a] bg-clip-text text-transparent">
+                  Table {table || "…"}
+                </span>
               </h1>
 
-              {/* Divider alignment fix */}
-              <div className="flex justify-center mt-2 sm:justify-start">
-                <Divider />
-              </div>
+              <Divider />
+
+              <p className="mx-auto max-w-md text-sm leading-6 text-[#7b5b42] sm:mx-0">
+                Review your café favourites, add small instructions, and send
+                your order directly to the kitchen.
+              </p>
             </div>
 
-            {/* BUTTON */}
-            <div className="flex justify-center w-full sm:w-auto sm:justify-end">
-              <button
-                onClick={() => navigate(-1)}
-                className="flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold text-white transition-all rounded-full shadow-md sm:text-lg bg-emerald-500 hover:bg-emerald-600 active:scale-95 whitespace-nowrap"
-              >
-                <Plus size={18} />
-                Add Items
-              </button>
-            </div>
+            <button
+              onClick={() => navigate(-1)}
+              className="group inline-flex items-center justify-center gap-2 rounded-full border border-amber-200 bg-white/80 px-6 py-3 text-sm font-black text-amber-800 shadow-[0_12px_30px_rgba(120,72,20,0.10)] transition-all hover:-translate-y-1 hover:bg-amber-50 active:scale-95"
+            >
+              <ArrowLeft
+                size={17}
+                className="transition group-hover:-translate-x-1"
+              />
+              Add More Items
+            </button>
           </div>
         </div>
 
-        {/* ══ MAIN CONTENT ══ */}
-        <div className="px-4 mx-auto max-w-7xl sm:px-6">
-          {/* Empty state */}
-          {cart.length === 0 && (
-            <div className="py-24 text-center">
-              <p className="mb-3 text-4xl">🛒</p>
-              <p className="text-sm text-gray-400">
-                Your cart is empty. Add something delicious!
-              </p>
-              <button
-                onClick={() => navigate("/order")}
-                className="mt-5 px-6 py-2.5 bg-emerald-500 text-white rounded-full text-sm font-semibold hover:bg-emerald-600 transition"
-              >
-                Browse Menu
-              </button>
+        {cart.length === 0 && (
+          <div className="relative mt-8 rounded-[2rem] border border-amber-100/70 bg-white/80 px-6 py-20 text-center shadow-xl backdrop-blur-xl">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[1.7rem] bg-amber-50 text-4xl shadow-inner">
+              🛒
             </div>
-          )}
 
-          {cart.length > 0 && (
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-              {/* ── LEFT: Cart Items ── */}
-              <div className="flex-1 space-y-4">
-                {cart.map((item) => {
-                  const image = item.image;
-                  const isVeg = item.isVeg ?? true;
+            <h2
+              className="mt-5 text-3xl font-black text-[#241309]"
+              style={{ fontFamily: "'Fraunces', Georgia, serif" }}
+            >
+              Your cart feels light
+            </h2>
 
-                  return (
-                    <div
-                      key={item._id}
-                      className="overflow-hidden bg-white border border-gray-100 shadow-md rounded-2xl"
-                    >
-                      <div className="p-4">
-                        {/* TOP ROW: thumbnail + name/price */}
-                        <div className="flex gap-3">
-                          {/* Thumbnail */}
-                          <div className="relative w-16 h-16 shrink-0 sm:w-20 sm:h-20">
-                            <img
-                              src={image}
-                              alt={item.name}
-                              className="object-cover w-full h-full rounded-xl"
-                              onError={(e) => {
-                                e.target.style.display = "none";
-                              }}
-                            />
-                            <span className="absolute flex items-center justify-center w-4 h-4 bg-white border border-gray-200 rounded-sm shadow-sm top-1 right-1">
-                              <span
-                                className={`w-2 h-2 rounded-full ${isVeg ? "bg-emerald-500" : "bg-red-500"}`}
-                              />
-                            </span>
-                          </div>
+            <p className="max-w-sm mx-auto mt-3 text-sm leading-6 text-gray-500">
+              Add something warm, fresh, and delicious from the menu.
+            </p>
 
-                          {/* Name + price */}
-                          <div className="flex-1 min-w-0">
-                            <h2 className="text-sm font-bold leading-snug text-gray-800 line-clamp-2">
+            <button
+              onClick={() => navigate("/order")}
+              className="py-3 text-sm font-black text-white transition rounded-full shadow-lg mt-7 bg-amber-600 px-7 hover:-translate-y-1 hover:bg-amber-700 active:scale-95"
+            >
+              Browse Menu
+            </button>
+          </div>
+        )}
+
+        {cart.length > 0 && (
+          <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start">
+            <div className="space-y-4">
+              {cart.map((item, index) => {
+                const image = item.image;
+                const isVeg = item.isVeg ?? item.foodType !== "nonveg";
+
+                return (
+                  <div
+                    key={item._id}
+                    className="group overflow-hidden rounded-[1.7rem] border border-amber-100/70 bg-white shadow-[0_10px_30px_rgba(59,33,24,0.07)] transition-all duration-500 hover:-translate-y-1 hover:border-amber-200 hover:shadow-[0_24px_60px_rgba(180,83,9,0.13)]"
+                  >
+                    <div className="grid gap-4 p-4 sm:grid-cols-[96px_1fr] sm:p-5">
+                      <div className="relative h-24 w-full overflow-hidden rounded-[1.25rem] bg-amber-50 sm:h-24 sm:w-24">
+                        <img
+                          src={image}
+                          alt={item.name}
+                          className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                          }}
+                        />
+
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
+
+                        <span className="absolute flex items-center justify-center border shadow-lg right-2 top-2 h-7 w-7 rounded-xl bg-white/95 backdrop-blur-xl">
+                          <span
+                            className={`h-2.5 w-2.5 rounded-full ${
+                              isVeg ? "bg-emerald-500" : "bg-red-500"
+                            }`}
+                          />
+                        </span>
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-700">
+                              Item {index + 1}
+                            </p>
+
+                            <h2
+                              className="mt-1 text-lg font-black leading-tight text-[#241309]"
+                              style={{ fontFamily: "Georgia, serif" }}
+                            >
                               {item.name}
                             </h2>
-                            <p className="mt-0.5 text-sm font-semibold text-emerald-500">
-                              ₹{item.price}
+
+                            <p className="mt-1 text-sm font-bold text-amber-700">
+                              ₹{item.price} each
                             </p>
                           </div>
-                        </div>
 
-                        {/* BOTTOM ROW: qty stepper + delete — always on its own row */}
-                        <div className="flex items-center justify-between mt-3">
-                          {/* Qty stepper */}
-                          <div className="flex items-center overflow-hidden border border-gray-200 rounded-full">
-                            <button
-                              onClick={() => removeItem(item._id)}
-                              className="flex items-center justify-center w-8 h-8 text-gray-600 transition hover:bg-gray-100"
-                            >
-                              <Minus size={13} />
-                            </button>
-                            <span className="w-8 text-sm font-semibold text-center text-gray-800">
-                              {item.qty}
-                            </span>
-                            <button
-                              onClick={() => addToCart(item)}
-                              className="flex items-center justify-center w-8 h-8 text-gray-600 transition hover:bg-gray-100"
-                            >
-                              <Plus size={13} />
-                            </button>
-                          </div>
-
-                          {/* Item subtotal */}
-                          <span className="text-xs font-medium text-gray-400">
-                            ₹{item.price * item.qty}
-                          </span>
-
-                          {/* Delete */}
                           <button
                             onClick={() => deleteItem(item._id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-500 border border-red-200 rounded-full hover:bg-red-50 transition"
+                            className="flex shrink-0 items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-500 transition hover:bg-red-100"
                           >
                             <Trash2 size={12} />
                             Delete
                           </button>
                         </div>
-                      </div>
 
-                      {/* Note input */}
-                      <div className="px-4 pb-4">
-                        <input
-                          type="text"
-                          placeholder="Add instruction (e.g. less spicy)"
-                          value={notes[item._id] || ""}
-                          onChange={(e) =>
-                            handleNoteChange(item._id, e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 text-xs text-gray-500 placeholder-gray-300 border border-gray-100 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-200 transition"
-                        />
-                        <Divider />
+                        <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
+                          <div className="flex items-center overflow-hidden rounded-full border border-amber-100 bg-[#fffaf1] shadow-inner">
+                            <button
+                              onClick={() => removeItem(item._id)}
+                              className="flex h-9 w-9 items-center justify-center text-[#7b5b42] transition hover:bg-amber-100"
+                            >
+                              <Minus size={14} />
+                            </button>
+
+                            <span className="w-10 text-center text-sm font-black text-[#241309]">
+                              {item.qty}
+                            </span>
+
+                            <button
+                              onClick={() => addToCart(item)}
+                              className="flex h-9 w-9 items-center justify-center text-[#7b5b42] transition hover:bg-amber-100"
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+
+                          <div className="px-4 py-2 text-sm font-black rounded-full bg-amber-50 text-amber-800">
+                            ₹{item.price * item.qty}
+                          </div>
+                        </div>
+
+                        <div className="mt-4">
+                          <input
+                            type="text"
+                            placeholder="Add instruction e.g. less spicy, no onion"
+                            value={notes[item._id] || ""}
+                            onChange={(e) =>
+                              handleNoteChange(item._id, e.target.value)
+                            }
+                            className="w-full rounded-2xl border border-amber-100 bg-[#fffaf1] px-4 py-3 text-xs font-medium text-gray-600 placeholder:text-gray-400 outline-none transition focus:border-amber-300 focus:ring-4 focus:ring-amber-100"
+                          />
+                        </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
+            </div>
 
-              {/* ── RIGHT: Order Summary ── */}
-              <div className="w-full lg:w-80 xl:w-96 shrink-0">
-                <div className="overflow-hidden bg-white border border-gray-100 shadow-xl rounded-2xl">
-                  <div className="px-6 pt-6 pb-4">
-                    <h2
-                      className="text-lg font-bold text-center text-gray-900"
-                      style={{ fontFamily: "Georgia, serif" }}
-                    >
-                      Order Summary
-                    </h2>
-                    <Divider />
+            <div className="lg:sticky lg:top-6">
+              <div className="overflow-hidden rounded-[2rem] border border-amber-100/70 bg-white shadow-[0_24px_70px_rgba(61,36,18,0.13)]">
+                <div className="bg-gradient-to-br from-[#3d2412] to-[#7b3817] px-6 py-6 text-white">
+                  <div className="flex items-center justify-center mx-auto h-13 w-13 rounded-2xl bg-white/10 text-amber-200 backdrop-blur-xl">
+                    <ReceiptText size={25} />
                   </div>
 
-                  {/* Line items */}
-                  <div className="px-6 space-y-2.5">
+                  <h2
+                    className="mt-4 text-2xl font-black text-center"
+                    style={{ fontFamily: "'Fraunces', Georgia, serif" }}
+                  >
+                    Order Summary
+                  </h2>
+
+                  <p className="mt-1 text-center text-xs font-semibold uppercase tracking-[0.22em] text-amber-100/65">
+                    Table {table || "…"} • Counter Payment
+                  </p>
+                </div>
+
+                <div className="px-6 py-5">
+                  <div className="space-y-3">
                     {cart.map((item) => (
                       <div
                         key={item._id}
-                        className="flex justify-between text-sm text-gray-600"
+                        className="flex items-center justify-between gap-3 text-sm"
                       >
-                        <span className="truncate max-w-[60%]">
+                        <span className="max-w-[68%] truncate text-gray-500">
                           {item.name} × {item.qty}
                         </span>
-                        <span className="font-medium text-gray-800">
+                        <span className="font-black text-[#241309]">
                           ₹{item.price * item.qty}
                         </span>
                       </div>
                     ))}
                   </div>
 
-                  {/* Subtotal / Tax rows */}
-                  <div className="px-6 pt-4 mt-4 space-y-2 border-t border-gray-100">
+                  <div className="my-5 border-t border-dashed border-amber-200" />
+
+                  <div className="space-y-2.5">
                     <div className="flex justify-between text-sm text-gray-500">
                       <span>Subtotal</span>
                       <span>₹{subtotal}</span>
                     </div>
+
                     <div className="flex justify-between text-sm text-gray-400">
-                      <span className="flex items-center gap-1">
-                        Service Charge
-                        <span className="text-[10px] text-gray-300 border border-gray-200 rounded-full px-1">
-                          i
-                        </span>
-                      </span>
+                      <span>Service Charge</span>
                       <span>₹0</span>
                     </div>
+
                     <div className="flex justify-between text-sm text-gray-400">
-                      <span className="flex items-center gap-1">
-                        Taxes
-                        <span className="text-[10px] text-gray-300 border border-gray-200 rounded-full px-1">
-                          i
-                        </span>
-                      </span>
+                      <span>Taxes</span>
                       <span>₹0</span>
                     </div>
                   </div>
 
-                  {/* Total */}
-                  <div className="flex items-center justify-between px-6 pt-4 pb-2 mt-3 border-t border-gray-100">
-                    <span className="text-base font-bold text-gray-900">
-                      Total
-                    </span>
-                    <span
-                      className="text-2xl font-bold text-emerald-500"
-                      style={{ fontFamily: "Georgia, serif" }}
-                    >
-                      ₹{subtotal}
-                    </span>
-                  </div>
+                  <div className="mt-5 rounded-2xl bg-[#fff7e8] p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-base font-black text-[#241309]">
+                        Total
+                      </span>
 
-                  {/* CTA */}
-                  <div className="px-6 pt-3 pb-5">
-                    <button
-                      onClick={placeOrder}
-                      disabled={placing}
-                      className="w-full py-3.5 font-semibold text-white rounded-xl bg-emerald-500 hover:bg-emerald-600 shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed text-sm"
-                      style={{ fontFamily: "Georgia, serif" }}
-                    >
-                      {placing ? "Placing Order…" : "Place Order 🚀"}
-                    </button>
-
-                    {/* Secure badge */}
-                    <div className="flex items-center justify-center gap-2 py-2 mt-3 border border-gray-100 rounded-xl bg-gray-50">
-                      <ShieldCheck size={14} className="text-emerald-500" />
-                      <span className="text-[11px] text-gray-400">
-                        Secure checkout • Your data is safe with us
+                      <span
+                        className="text-3xl font-black"
+                        style={{
+                          fontFamily: "Georgia, serif",
+                          background: "linear-gradient(135deg,#b45309,#d97706)",
+                          WebkitBackgroundClip: "text",
+                          WebkitTextFillColor: "transparent",
+                        }}
+                      >
+                        ₹{subtotal}
                       </span>
                     </div>
+                  </div>
+
+                  <button
+                    onClick={placeOrder}
+                    disabled={placing}
+                    className="mt-5 w-full rounded-2xl bg-gradient-to-r from-[#3d2412] via-[#7b3817] to-[#3d2412] py-4 text-sm font-black uppercase tracking-[0.14em] text-white shadow-[0_18px_40px_rgba(61,36,18,0.25)] transition hover:-translate-y-1 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {placing ? "Placing Order…" : "Place Order"}
+                  </button>
+
+                  <div className="flex items-center justify-center gap-2 px-4 py-3 mt-4 border rounded-2xl border-amber-100 bg-amber-50/70">
+                    <ShieldCheck size={15} className="text-amber-700" />
+                    <span className="text-[11px] font-semibold text-gray-500">
+                      Your order goes directly to the café kitchen
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
-          )}
-
-          {/* ══ TRUST BADGES ══ */}
-          <div className="grid grid-cols-1 min-[401px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-10">
-            {TRUST_BADGES.map((b) => (
-              <div
-                key={b.title}
-                className="flex flex-col items-center w-full gap-3 px-4 py-4 text-center transition-all bg-white border border-gray-100 shadow-sm sm:flex-row sm:items-start sm:gap-4 sm:px-5 sm:py-5 sm:text-left rounded-xl sm:rounded-2xl hover:shadow-md"
-              >
-                {/* ICON */}
-                <div className="flex items-center justify-center rounded-full w-11 h-11 sm:w-12 sm:h-12 bg-amber-50 text-amber-500 shrink-0">
-                  {b.icon}
-                </div>
-
-                {/* TEXT */}
-                <div className="space-y-0.5 sm:space-y-1">
-                  <p className="text-sm font-semibold leading-tight text-gray-800">
-                    {b.title}
-                  </p>
-
-                  <p className="text-xs leading-snug text-gray-500">{b.sub}</p>
-                </div>
-              </div>
-            ))}
           </div>
+        )}
+
+        <div className="mt-10 grid grid-cols-1 gap-3 min-[401px]:grid-cols-2 lg:grid-cols-4">
+          {TRUST_BADGES.map((b) => (
+            <div
+              key={b.title}
+              className="flex flex-col items-center gap-3 px-4 py-5 text-center transition-all border shadow-sm rounded-2xl border-amber-100/70 bg-white/80 hover:-translate-y-1 hover:shadow-md sm:flex-row sm:text-left"
+            >
+              <div className="flex items-center justify-center w-12 h-12 shrink-0 rounded-2xl bg-amber-50 text-amber-700">
+                {b.icon}
+              </div>
+
+              <div>
+                <p className="text-sm font-black text-[#241309]">{b.title}</p>
+                <p className="text-xs text-gray-500">{b.sub}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

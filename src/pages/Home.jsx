@@ -398,40 +398,65 @@ function Home() {
 
   const BrandTitle = () => (
     <div
-      className="relative text-left leading-[0.82] tracking-[-0.07em] text-[#241309]"
+      className="relative text-left leading-[0.8] tracking-[-0.075em] text-[#241309]"
       style={{
         fontFamily: "'Fraunces', 'Playfair Display', Georgia, serif",
-        fontSize: "clamp(3.25rem, 7.2vw, 7.45rem)",
-        fontWeight: 700,
-        fontVariationSettings: '"SOFT" 20, "WONK" 1',
+        fontSize: "clamp(3.35rem, 7.6vw, 7.6rem)",
+        fontWeight: 850,
+        fontVariationSettings: '"SOFT" 42, "WONK" 1',
         textShadow:
-          "0 18px 48px rgba(73,35,12,0.26), 0 0 34px rgba(255,241,210,0.25)",
+          "0 20px 54px rgba(73,35,12,0.28), 0 2px 0 rgba(255,246,220,0.48)",
+        transform: "translateZ(0)",
+        WebkitFontSmoothing: "antialiased",
+        backfaceVisibility: "hidden",
       }}
     >
-      <span className="block whitespace-nowrap">The White</span>
+      {/* warm café light */}
+      <span className="pointer-events-none absolute -left-5 top-2 -z-10 h-32 w-32 rounded-full bg-[#c8843f]/20 blur-3xl" />
+      <span className="pointer-events-none absolute -right-4 bottom-2 -z-10 h-28 w-28 rounded-full bg-[#ffe2a3]/24 blur-3xl" />
 
       <span
         className="block whitespace-nowrap"
         style={{
+          color: "#241309",
+          WebkitTextStroke: "0.35px rgba(255,244,214,0.45)",
+        }}
+      >
+        The White
+      </span>
+
+      <span
+        className="relative block whitespace-nowrap"
+        style={{
           background:
-            "linear-gradient(90deg, #241309 0%, #55290f 44%, #8f4f1d 100%)",
+            "linear-gradient(90deg, #241309 0%, #4b220e 38%, #9a5520 100%)",
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
+          filter: "drop-shadow(0 10px 20px rgba(80,36,12,0.16))",
         }}
       >
         House
       </span>
 
       <span
-        className="block whitespace-nowrap"
+        className="relative block whitespace-nowrap"
         style={{
           background:
-            "linear-gradient(90deg, #6b3414 0%, #b67832 48%, #3b1d0c 100%)",
+            "linear-gradient(92deg, #7b3817 0%, #d2954f 42%, #8a4218 70%, #35190a 100%)",
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
+          filter: "drop-shadow(0 12px 22px rgba(128,67,24,0.2))",
         }}
       >
         Café
+      </span>
+
+      {/* signature underline - absolute so no layout break */}
+      <span className="absolute -bottom-5 left-1 h-[2px] w-[76%] rounded-full bg-gradient-to-r from-[#5a260d]/75 via-[#d59b56]/80 to-transparent" />
+
+      {/* small stamp - absolute so no layout shift */}
+      <span className="absolute -bottom-9 left-1 text-[9px] font-black uppercase tracking-[0.28em] text-[#7a431d]/80 mb-5">
+        Coffee • Plates • Quiet Talks
       </span>
     </div>
   );
