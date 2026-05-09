@@ -14,6 +14,7 @@ import {
   LayoutGrid,
   ChevronUp,
   ShoppingCart,
+  Search,
 } from "lucide-react";
 
 const API = "https://fooadash.onrender.com/api";
@@ -42,23 +43,45 @@ const CategoryIcon = ({
 };
 
 function CurtainLetters({ text }) {
+  const words = text.split(" ");
+
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
-      {text.split("").map((letter, index) => (
-        <motion.span
-          key={`${letter}-${index}`}
-          initial={{ opacity: 0, y: 16, rotate: -2 }}
-          animate={{ opacity: 1, y: 0, rotate: 0 }}
-          transition={{
-            delay: 0.28 + index * 0.04,
-            duration: 0.42,
-            ease: [0.16, 1, 0.3, 1],
-          }}
-          className="inline-block"
-        >
-          {letter === " " ? "\u00A0" : letter}
-        </motion.span>
-      ))}
+    <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+      {words.map((word, wordIndex) => {
+        const isCafe = word.toLowerCase().includes("café");
+
+        return (
+          <span
+            key={`${word}-${wordIndex}`}
+            className={`inline-flex items-center justify-center ${
+              isCafe ? "basis-full sm:basis-auto" : ""
+            }`}
+          >
+            {word.split("").map((letter, letterIndex) => {
+              const absoluteIndex =
+                words.slice(0, wordIndex).join("").length +
+                wordIndex +
+                letterIndex;
+
+              return (
+                <motion.span
+                  key={`${word}-${letter}-${letterIndex}`}
+                  initial={{ opacity: 0, y: 16, rotate: -2 }}
+                  animate={{ opacity: 1, y: 0, rotate: 0 }}
+                  transition={{
+                    delay: 0.28 + absoluteIndex * 0.04,
+                    duration: 0.42,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                  className="inline-block"
+                >
+                  {letter}
+                </motion.span>
+              );
+            })}
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -117,6 +140,8 @@ function Menu() {
   const [hideFlyingTitle, setHideFlyingTitle] = useState(false);
   const [titleTarget, setTitleTarget] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  // const [search, setSearch] = useState("");
 
   const heroTitleRef = useRef(null);
   const sessionCheckedRef = useRef(false);
@@ -326,7 +351,13 @@ function Menu() {
     const categoryMatch = category === "all" || item.category === category;
     const vegMatch = !vegOnly || item.foodType === "veg";
 
-    return categoryMatch && vegMatch;
+    const searchMatch =
+      searchText.trim() === "" ||
+      item.name?.toLowerCase().includes(searchText.toLowerCase()) ||
+      item.category?.toLowerCase().includes(searchText.toLowerCase()) ||
+      item.description?.toLowerCase().includes(searchText.toLowerCase());
+
+    return categoryMatch && vegMatch && searchMatch;
   });
 
   const getQty = (id) => {
@@ -369,6 +400,32 @@ function Menu() {
           }
           50% {
             transform: translateY(-10px) rotate(4deg);
+          }
+        }
+
+        @media (max-width: 767px) {
+          .mobile-card-soft {
+            box-shadow: 0 10px 26px rgba(59,33,24,0.08) !important;
+          }
+
+          .mobile-card-soft .mobile-shine {
+            display: none !important;
+          }
+
+          .mobile-card-soft .mobile-glow {
+            display: none !important;
+          }
+
+          .mobile-card-soft .mobile-ring {
+            display: none !important;
+          }
+
+          .mobile-card-soft .mobile-hover-name {
+            transform: none !important;
+          }
+
+          .mobile-card-soft img {
+            transition-duration: 260ms !important;
           }
         }
       `}</style>
@@ -624,48 +681,35 @@ function Menu() {
 
       {/* MENU SECTION */}
       <motion.div
-        initial={{ opacity: 0, y: 42 }}
-        animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 42 }}
-        transition={{ delay: 0.18, duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 28 }}
+        transition={{ delay: 0.18, duration: 0.62, ease: [0.16, 1, 0.3, 1] }}
         className="px-4 py-6 pb-24 mx-auto max-w-7xl"
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.985 }}
-          animate={{ opacity: loaded ? 1 : 0, scale: loaded ? 1 : 0.985 }}
-          transition={{ delay: 0.3, duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
-          className="p-5 bg-white shadow-xl rounded-3xl"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: loaded ? 1 : 0 }}
+          transition={{ delay: 0.25, duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+          className="p-4 bg-white shadow-xl rounded-3xl sm:p-5"
         >
           {/* FILTER HEADER */}
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 24 }}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 18 }}
             transition={{
-              delay: 0.42,
-              duration: 0.65,
+              delay: 0.36,
+              duration: 0.5,
               ease: [0.16, 1, 0.3, 1],
             }}
             className="flex items-center justify-center mb-6 md:justify-between"
           >
             <div className="flex-wrap hidden gap-2 md:flex">
-              {categories.map((cat, index) => {
+              {categories.map((cat) => {
                 const active = category === cat;
 
                 return (
-                  <motion.button
+                  <button
                     key={cat}
-                    initial={{ opacity: 0, y: 16, scale: 0.94 }}
-                    animate={{
-                      opacity: loaded ? 1 : 0,
-                      y: loaded ? 0 : 16,
-                      scale: loaded ? 1 : 0.94,
-                    }}
-                    transition={{
-                      delay: 0.5 + index * 0.04,
-                      duration: 0.45,
-                      ease: [0.16, 1, 0.3, 1],
-                    }}
-                    whileHover={{ y: -3, scale: 1.04 }}
-                    whileTap={{ scale: 0.96 }}
                     onClick={() => setCategory(cat)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                       active
@@ -679,33 +723,20 @@ function Menu() {
                       active={active}
                     />
                     <span className="capitalize">{cat}</span>
-                  </motion.button>
+                  </button>
                 );
               })}
 
-              <motion.button
-                initial={{ opacity: 0, y: 16, scale: 0.94 }}
-                animate={{
-                  opacity: loaded ? 1 : 0,
-                  y: loaded ? 0 : 16,
-                  scale: loaded ? 1 : 0.94,
-                }}
-                transition={{
-                  delay: 0.5 + categories.length * 0.04,
-                  duration: 0.45,
-                  ease: [0.16, 1, 0.3, 1],
-                }}
-                whileHover={{ y: -3, scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
+              <button
                 onClick={() => setVegOnly(!vegOnly)}
-                className={`relative w-[120px] h-[42px] rounded-full p-1 border shadow-sm transition-all duration-500 ${
+                className={`relative w-[120px] h-[42px] rounded-full p-1 border shadow-sm transition-all duration-300 ${
                   vegOnly
                     ? "bg-amber-600 border-amber-600"
                     : "bg-white border-gray-200"
                 }`}
               >
                 <span
-                  className={`absolute top-1 left-1 w-[54px] h-[32px] rounded-full shadow transition-all duration-500 ${
+                  className={`absolute top-1 left-1 w-[54px] h-[32px] rounded-full shadow transition-transform duration-300 ${
                     vegOnly
                       ? "translate-x-[56px] bg-white"
                       : "translate-x-0 bg-amber-600"
@@ -723,25 +754,56 @@ function Menu() {
                     Veg
                   </span>
                 </span>
-              </motion.button>
+              </button>
             </div>
 
-            <motion.button
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: loaded ? 1 : 0, x: loaded ? 0 : 20 }}
-              transition={{
-                delay: 0.62,
-                duration: 0.55,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-              whileHover={{ y: -3, scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={openFilter}
-              className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium transition-all duration-300 border rounded-full shadow-sm hover:shadow-md hover:bg-amber-50 text-amber-700 border-amber-300"
-            >
-              <Filter size={16} />
-              Filter
-            </motion.button>
+            <div className="flex items-center gap-3">
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{
+                  opacity: loaded ? 1 : 0,
+                  x: loaded ? 0 : 20,
+                }}
+                transition={{
+                  delay: 0.56,
+                  duration: 0.55,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+                className="relative hidden md:block"
+              >
+                <Search
+                  size={17}
+                  className="absolute -translate-y-1/2 left-4 top-1/2 text-amber-700"
+                />
+
+                <input
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  placeholder="Search menu..."
+                  className="h-11 w-[240px] lg:w-[300px] rounded-full border border-amber-200 bg-white pl-11 pr-4 text-sm font-medium text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
+                />
+              </motion.div>
+
+              <motion.button
+                initial={{ opacity: 0, x: 20 }}
+                animate={{
+                  opacity: loaded ? 1 : 0,
+                  x: loaded ? 0 : 20,
+                }}
+                transition={{
+                  delay: 0.62,
+                  duration: 0.55,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+                whileHover={{ y: -3, scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={openFilter}
+                className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium transition-all duration-300 border rounded-full shadow-sm hover:shadow-md hover:bg-amber-50 text-amber-700 border-amber-300"
+              >
+                <Filter size={16} />
+                Filter
+              </motion.button>
+            </div>
           </motion.div>
 
           {/* DRAWER FILTER */}
@@ -761,34 +823,37 @@ function Menu() {
                   initial={{ x: "-100%" }}
                   animate={{ x: showFilter ? 0 : "-100%" }}
                   exit={{ x: "-100%" }}
-                  transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
                   className="h-screen p-5 overflow-y-auto bg-white shadow-2xl w-72"
                 >
-                  <div className="flex items-center justify-between mb-5">
-                    <h2 className="text-lg font-bold">Categories</h2>
-                    <button
-                      onClick={closeFilter}
-                      className="p-1 rounded-full hover:bg-amber-50"
-                    >
-                      <X size={20} />
-                    </button>
+                  <div className="mb-5">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg font-bold">Categories</h2>
+
+                      <button
+                        onClick={closeFilter}
+                        className="p-1 rounded-full hover:bg-amber-50"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+
+                    <input
+                      type="text"
+                      value={searchText}
+                      onChange={(e) => setSearchText(e.target.value)}
+                      placeholder="Search food..."
+                      className="w-full px-4 py-3 mt-4 text-sm font-semibold text-gray-700 transition border outline-none rounded-2xl border-amber-200 bg-amber-50/50 focus:border-amber-500 focus:bg-white"
+                    />
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    {categories.map((cat, index) => {
+                    {categories.map((cat) => {
                       const active = category === cat;
 
                       return (
-                        <motion.button
+                        <button
                           key={cat}
-                          initial={{ opacity: 0, x: -16 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{
-                            delay: 0.08 + index * 0.035,
-                            duration: 0.32,
-                            ease: [0.16, 1, 0.3, 1],
-                          }}
-                          whileTap={{ scale: 0.96 }}
                           onClick={() => {
                             setCategory(cat);
                             closeFilter();
@@ -808,28 +873,20 @@ function Menu() {
                           <span className="ml-auto text-xs opacity-60">
                             ({countByCategory(cat)})
                           </span>
-                        </motion.button>
+                        </button>
                       );
                     })}
 
-                    <motion.button
-                      initial={{ opacity: 0, x: -16 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{
-                        delay: 0.08 + categories.length * 0.035,
-                        duration: 0.32,
-                        ease: [0.16, 1, 0.3, 1],
-                      }}
-                      whileTap={{ scale: 0.96 }}
+                    <button
                       onClick={() => setVegOnly(!vegOnly)}
-                      className={`relative w-[120px] h-[42px] rounded-full p-1 border shadow-sm transition-all duration-500 mt-3 ${
+                      className={`relative w-[120px] h-[42px] rounded-full p-1 border shadow-sm transition-all duration-300 mt-3 ${
                         vegOnly
                           ? "bg-amber-600 border-amber-600"
                           : "bg-white border-gray-200"
                       }`}
                     >
                       <span
-                        className={`absolute top-1 left-1 w-[54px] h-[32px] rounded-full shadow transition-all duration-500 ${
+                        className={`absolute top-1 left-1 w-[54px] h-[32px] rounded-full shadow transition-transform duration-300 ${
                           vegOnly
                             ? "translate-x-[56px] bg-white"
                             : "translate-x-0 bg-amber-600"
@@ -851,14 +908,14 @@ function Menu() {
                           Veg
                         </span>
                       </span>
-                    </motion.button>
+                    </button>
                   </div>
                 </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* MENU GRID */}
+          {/* SMOOTHER MENU GRID */}
           <motion.div
             key={`${category}-${vegOnly}`}
             initial="hidden"
@@ -867,8 +924,8 @@ function Menu() {
               hidden: {},
               show: {
                 transition: {
-                  staggerChildren: 0.055,
-                  delayChildren: 0.08,
+                  staggerChildren: window.innerWidth < 768 ? 0.015 : 0.045,
+                  delayChildren: 0.04,
                 },
               },
             }}
@@ -888,55 +945,49 @@ function Menu() {
                   variants={{
                     hidden: {
                       opacity: 0,
-                      y: 36,
-                      scale: 0.965,
-                      filter: "blur(12px)",
+                      y: 22,
+                      scale: 0.985,
                     },
                     show: {
                       opacity: 1,
                       y: 0,
                       scale: 1,
-                      filter: "blur(0px)",
                       transition: {
-                        duration: 0.62,
+                        duration: 0.42,
                         ease: [0.16, 1, 0.3, 1],
                       },
                     },
                   }}
-                  whileHover={{
-                    y: -10,
-                    scale: 1.012,
-                    transition: {
-                      duration: 0.28,
-                      ease: [0.16, 1, 0.3, 1],
-                    },
-                  }}
-                  className={`group relative isolate flex flex-col overflow-hidden rounded-[20px] bg-white
+                  className={`mobile-card-soft group relative isolate flex flex-col overflow-hidden rounded-[20px] bg-white
             border border-amber-100/60
             shadow-[0_4px_16px_rgba(59,33,24,0.07),0_1px_3px_rgba(59,33,24,0.04)]
-            transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]
-            hover:border-amber-300/60
-            hover:shadow-[0_28px_60px_rgba(180,83,9,0.18),0_6px_20px_rgba(180,83,9,0.10)]
+            transition-colors duration-300
+            md:transition-all md:duration-500 md:ease-[cubic-bezier(0.22,1,0.36,1)]
+            md:hover:-translate-y-2 md:hover:scale-[1.01]
+            md:hover:border-amber-300/60
+            md:hover:shadow-[0_28px_60px_rgba(180,83,9,0.18),0_6px_20px_rgba(180,83,9,0.10)]
             ${isAvailable ? "" : "opacity-65 grayscale"}`}
                 >
-                  <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px] rounded-t-[20px] bg-gradient-to-r from-transparent via-amber-400 to-transparent opacity-0 transition-opacity duration-400 group-hover:opacity-100 z-10" />
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px] rounded-t-[20px] bg-gradient-to-r from-transparent via-amber-400 to-transparent opacity-0 transition-opacity duration-300 md:group-hover:opacity-100 z-10" />
 
-                  <div className="absolute z-0 w-24 h-24 transition-opacity duration-500 rounded-full opacity-0 pointer-events-none -right-8 -top-8 bg-amber-300/20 blur-2xl group-hover:opacity-100" />
+                  <div className="absolute z-0 w-24 h-24 transition-opacity duration-500 rounded-full opacity-0 pointer-events-none mobile-glow -right-8 -top-8 bg-amber-300/20 blur-2xl md:group-hover:opacity-100" />
 
-                  <div className="pointer-events-none absolute inset-0 rounded-[20px] ring-1 ring-inset ring-amber-300/0 transition-all duration-500 group-hover:ring-amber-300/25 z-10" />
+                  <div className="mobile-ring pointer-events-none absolute inset-0 rounded-[20px] ring-1 ring-inset ring-amber-300/0 transition-all duration-500 md:group-hover:ring-amber-300/25 z-10" />
 
                   <div className="relative overflow-hidden aspect-[4/3] bg-amber-50 rounded-t-[20px] flex-shrink-0">
-                    <div className="pointer-events-none absolute inset-0 z-10 translate-x-[-120%] bg-gradient-to-r from-transparent via-white/22 to-transparent transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-[130%]" />
+                    <div className="mobile-shine pointer-events-none absolute inset-0 z-10 translate-x-[-120%] bg-gradient-to-r from-transparent via-white/22 to-transparent transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] md:group-hover:translate-x-[130%]" />
 
                     <img
                       src={image}
                       alt={item.name}
-                      className={`object-cover w-full h-full transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.09] ${
+                      loading="lazy"
+                      decoding="async"
+                      className={`object-cover w-full h-full transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] md:duration-700 md:group-hover:scale-[1.07] ${
                         !isAvailable ? "opacity-50 grayscale" : ""
                       }`}
                     />
 
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/[0.04] to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/42 via-black/[0.03] to-transparent" />
 
                     {badge &&
                       badge !== "none" &&
@@ -990,7 +1041,7 @@ function Menu() {
 
                         return (
                           <span
-                            className="absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1.5 rounded-full shadow-lg backdrop-blur-md"
+                            className="absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1.5 rounded-full shadow-md backdrop-blur-md"
                             style={{
                               background: c.bg,
                               color: c.text,
@@ -1011,15 +1062,6 @@ function Menu() {
                                 fontSize: 10,
                               }}
                             >
-                              {badge === "new" && (
-                                <span
-                                  className="absolute inset-0 rounded-full animate-ping"
-                                  style={{
-                                    background: "#fde68a",
-                                    opacity: 0.5,
-                                  }}
-                                />
-                              )}
                               {c.icon}
                             </span>
                             {c.label}
@@ -1049,7 +1091,7 @@ function Menu() {
                         }`}
                       >
                         <span
-                          className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                          className={`w-1.5 h-1.5 rounded-full ${
                             isVeg ? "bg-emerald-500" : "bg-red-500"
                           }`}
                         />
@@ -1057,23 +1099,17 @@ function Menu() {
                       </span>
 
                       <div
-                        className={`relative flex items-center justify-center w-7 h-7 rounded-xl border shadow-lg backdrop-blur-xl transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110 group-hover:rotate-3 bg-white/95 ${
+                        className={`relative flex items-center justify-center w-7 h-7 rounded-xl border shadow-md backdrop-blur-xl transition-transform duration-300 bg-white/95 md:group-hover:scale-110 md:group-hover:rotate-3 ${
                           isVeg ? "border-emerald-300" : "border-red-300"
                         }`}
                       >
-                        <div
-                          className={`absolute inset-0 rounded-xl blur-[10px] opacity-0 group-hover:opacity-40 transition-opacity duration-500 ${
-                            isVeg ? "bg-emerald-400" : "bg-red-400"
-                          }`}
-                        />
-
                         <div
                           className={`relative flex items-center justify-center w-4 h-4 rounded-[4px] border ${
                             isVeg ? "border-emerald-500" : "border-red-500"
                           }`}
                         >
                           <span
-                            className={`w-2 h-2 rounded-full transition-transform duration-300 group-hover:scale-125 ${
+                            className={`w-2 h-2 rounded-full ${
                               isVeg ? "bg-emerald-500" : "bg-red-500"
                             }`}
                           />
@@ -1096,15 +1132,7 @@ function Menu() {
                     )}
                   </div>
 
-                  <div className="relative flex flex-col flex-1 px-5 pt-4 pb-5 bg-white transition-colors duration-400 group-hover:bg-[#fffbf4]">
-                    <div
-                      className="pointer-events-none absolute inset-0 rounded-b-[20px] opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                      style={{
-                        background:
-                          "radial-gradient(ellipse at 80% 10%, rgba(251,191,36,0.07), transparent 60%)",
-                      }}
-                    />
-
+                  <div className="relative flex flex-col flex-1 px-5 pt-4 pb-5 bg-white transition-colors duration-300 md:group-hover:bg-[#fffbf4]">
                     <h2
                       className="text-[17px] sm:text-[18px] font-extrabold text-gray-900 leading-snug text-center"
                       style={{ fontFamily: "Georgia, serif" }}
@@ -1242,7 +1270,7 @@ function Menu() {
                           </div>
 
                           <div
-                            className="text-[26px] font-extrabold leading-none transition-transform duration-300 group-hover:scale-105"
+                            className="text-[26px] font-extrabold leading-none"
                             style={{
                               fontFamily: "Georgia, serif",
                               background:
@@ -1256,7 +1284,7 @@ function Menu() {
                         </>
                       ) : (
                         <div
-                          className="text-[26px] font-extrabold leading-none transition-transform duration-300 group-hover:scale-105"
+                          className="text-[26px] font-extrabold leading-none"
                           style={{
                             fontFamily: "Georgia, serif",
                             background:

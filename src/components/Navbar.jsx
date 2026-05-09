@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import img from "../../public/whitehouse_profile.jpg";
+import foodashLogo from "../../public/foodash_logo.png";
 
 function Navbar({ totalItems = 0 }) {
   const [open, setOpen] = useState(false);
@@ -22,7 +23,6 @@ function Navbar({ totalItems = 0 }) {
 
   const hasSession = Boolean(token);
 
-  /* MENU CLICK */
   const handleMenuClick = () => {
     if (hasSession) {
       navigate("/order");
@@ -34,29 +34,12 @@ function Navbar({ totalItems = 0 }) {
   };
 
   const navItems = [
-    {
-      name: "Home",
-      path: "/",
-      icon: <Home size={16} />,
-    },
-    {
-      name: "Menu",
-      action: handleMenuClick,
-      icon: <Utensils size={16} />,
-    },
-    {
-      name: "About",
-      path: "/about",
-      icon: <Info size={16} />,
-    },
-    {
-      name: "Contact",
-      path: "/contact",
-      icon: <Phone size={16} />,
-    },
+    { name: "Home", path: "/", icon: <Home size={16} /> },
+    { name: "Menu", action: handleMenuClick, icon: <Utensils size={16} /> },
+    { name: "About", path: "/about", icon: <Info size={16} /> },
+    { name: "Contact", path: "/contact", icon: <Phone size={16} /> },
   ];
 
-  /* ACTIVE NAV */
   const isActive = (item) => {
     if (item.name === "Menu") {
       return ["/menu", "/menu-preview", "/order"].includes(location.pathname);
@@ -84,11 +67,9 @@ function Navbar({ totalItems = 0 }) {
       className="sticky top-0 z-50 w-full bg-[#fbf7ef]/95 border-b border-orange-100 shadow-sm backdrop-blur-md"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
-      {/* MAIN NAV */}
       <div className="flex items-center justify-between min-h-[76px] px-3 py-3 mx-auto max-w-7xl sm:px-5 lg:px-8">
         {/* LEFT BRAND */}
         <Link to="/" className="flex items-center gap-3 shrink-0">
-          {/* LOGO */}
           <div className="flex items-center justify-center w-12 h-12 overflow-hidden bg-white border border-orange-200 rounded-full shadow-sm sm:w-14 sm:h-14">
             <img
               src={img}
@@ -97,7 +78,6 @@ function Navbar({ totalItems = 0 }) {
             />
           </div>
 
-          {/* TEXT */}
           <div className="leading-none">
             <h1
               className="text-[16px] sm:text-xl font-bold tracking-tight text-[#2d2416] whitespace-nowrap"
@@ -111,7 +91,6 @@ function Navbar({ totalItems = 0 }) {
                 Café
               </p>
 
-              {/* TABLE */}
               {hasSession && table && (
                 <>
                   <span className="hidden w-1 h-1 bg-orange-200 rounded-full sm:block" />
@@ -154,10 +133,23 @@ function Navbar({ totalItems = 0 }) {
 
         {/* RIGHT */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* CART + ORDER */}
+          {/* FOODASH LOGO */}
+          {/* FOODASH LOGO */}
+          <div className="relative items-center justify-center hidden group lg:flex">
+            <img
+              src={foodashLogo}
+              alt="FoodDash"
+              className="object-contain w-auto h-16 pt-2 transition-all duration-300 opacity-85 hover:opacity-100 hover:scale-105"
+            />
+
+            {/* TOOLTIP */}
+            {/* <div className="pointer-events-none absolute right-0 top-full mt-3 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.22em] text-amber-700 opacity-0 shadow-md transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+              Powered by FoodDash
+            </div> */}
+          </div>
+
           {hasSession && (
             <>
-              {/* CART */}
               <Link
                 to="/cart"
                 className="flex items-center gap-1.5 px-2.5 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-orange-200 text-[#4b3b25] text-[11px] sm:text-sm bg-white hover:bg-orange-50 hover:text-[#d97707] transition-all duration-300 shadow-sm whitespace-nowrap"
@@ -169,7 +161,6 @@ function Navbar({ totalItems = 0 }) {
                 <span className="font-semibold">({totalItems})</span>
               </Link>
 
-              {/* MY ORDER */}
               <Link
                 to="/my-order"
                 className="hidden sm:flex px-4 py-2.5 text-xs sm:text-sm font-semibold text-white rounded-xl bg-[#d97707] shadow-sm shadow-orange-200 hover:bg-[#b86405] transition-all duration-300 whitespace-nowrap"
@@ -179,7 +170,6 @@ function Navbar({ totalItems = 0 }) {
             </>
           )}
 
-          {/* MOBILE MENU BTN */}
           <button
             className="flex items-center justify-center w-10 h-10 transition-all duration-300 bg-white border border-orange-100 shadow-sm rounded-xl lg:hidden text-[#5b4b36] hover:text-[#d97707] hover:bg-orange-50"
             onClick={() => setOpen(!open)}
@@ -193,6 +183,8 @@ function Navbar({ totalItems = 0 }) {
       {open && (
         <div className="px-4 pb-5 border-t lg:hidden bg-[#fbf7ef] border-orange-100 shadow-lg">
           <div className="flex flex-col gap-2 pt-4">
+            {/* MOBILE FOODASH LOGO */}
+
             {navItems.map((item) => {
               const active = isActive(item);
 
@@ -218,7 +210,6 @@ function Navbar({ totalItems = 0 }) {
               );
             })}
 
-            {/* MOBILE CART + ORDER */}
             {hasSession && (
               <div className="grid grid-cols-1 gap-2 pt-2 sm:hidden">
                 <Link
@@ -239,11 +230,22 @@ function Navbar({ totalItems = 0 }) {
                 </Link>
               </div>
             )}
+
+            <div className="">
+              {/* <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#b66a08]">
+                Powered by
+              </span> */}
+
+              <img
+                src={foodashLogo}
+                alt="Foodash"
+                className="object-contain w-auto h-16"
+              />
+            </div>
           </div>
         </div>
       )}
 
-      {/* GOLD LINE */}
       <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-[#d97707] via-[#e6b85c] to-[#d97707]" />
     </header>
   );

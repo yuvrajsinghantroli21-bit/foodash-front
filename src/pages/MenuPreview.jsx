@@ -776,16 +776,33 @@ function MenuPreview() {
                     duration: 0.36,
                     ease: [0.16, 1, 0.3, 1],
                   }}
-                  className="h-screen p-5 overflow-y-auto bg-white shadow-2xl w-72"
+                  className="h-screen w-[88vw] max-w-[360px] p-5 overflow-y-auto bg-white shadow-2xl"
                 >
-                  <div className="flex items-center justify-between mb-5">
-                    <h2 className="text-lg font-bold">Categories</h2>
-                    <button
-                      onClick={closeFilter}
-                      className="p-1 rounded-full hover:bg-amber-50"
-                    >
-                      <X size={20} />
-                    </button>
+                  <div className="mb-5">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg font-bold">Categories</h2>
+
+                      <button
+                        onClick={closeFilter}
+                        className="p-1 rounded-full hover:bg-amber-50"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+
+                    <div className="relative mt-4">
+                      <Search
+                        size={16}
+                        className="absolute -translate-y-1/2 left-4 top-1/2 text-amber-700"
+                      />
+
+                      <input
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search food..."
+                        className="w-full py-3 pr-4 text-sm font-semibold text-gray-700 transition border outline-none rounded-2xl border-amber-200 bg-amber-50/50 pl-11 placeholder:text-gray-400 focus:border-amber-500 focus:bg-white"
+                      />
+                    </div>
                   </div>
 
                   <div className="flex flex-col gap-2">
