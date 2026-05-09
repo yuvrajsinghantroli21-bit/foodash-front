@@ -2,14 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
-import {
-  motion,
-  AnimatePresence,
-  useMotionValue,
-  useSpring,
-  useTransform,
-  useScroll,
-} from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
   Coffee,
@@ -23,122 +16,6 @@ import {
   MapPin,
   Utensils,
 } from "lucide-react";
-
-/* ─────────────────────────────────────────────
-   SMALL UTILITIES
-───────────────────────────────────────────── */
-
-function useInView(ref, threshold = 0.18) {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setVisible(true);
-      },
-      { threshold },
-    );
-
-    if (ref.current) obs.observe(ref.current);
-
-    return () => obs.disconnect();
-  }, [ref, threshold]);
-
-  return visible;
-}
-
-function Reveal({ children, delay = 0, className = "" }) {
-  const ref = useRef(null);
-  const visible = useInView(ref);
-
-  return (
-    <div
-      ref={ref}
-      className={className}
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible
-          ? "translateY(0px) scale(1)"
-          : "translateY(42px) scale(0.985)",
-        filter: visible ? "blur(0px)" : "blur(12px)",
-        transition: `opacity 900ms cubic-bezier(.16,1,.3,1) ${delay}s, transform 900ms cubic-bezier(.16,1,.3,1) ${delay}s, filter 900ms cubic-bezier(.16,1,.3,1) ${delay}s`,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function SplitHeading({ children, className = "" }) {
-  const ref = useRef(null);
-  const visible = useInView(ref, 0.22);
-  const text = String(children);
-
-  return (
-    <h2 ref={ref} className={className} aria-label={text}>
-      {text.split("").map((char, index) => (
-        <span
-          key={`${char}-${index}`}
-          aria-hidden="true"
-          className="whc-letter"
-          style={{
-            display: char === " " ? "inline" : "inline-block",
-            opacity: visible ? 1 : 0,
-            transform: visible
-              ? "translateY(0px) rotate(0deg)"
-              : "translateY(26px) rotate(4deg)",
-            transition: `opacity 620ms cubic-bezier(.16,1,.3,1) ${
-              index * 0.015
-            }s, transform 620ms cubic-bezier(.16,1,.3,1) ${index * 0.015}s`,
-          }}
-        >
-          {char === " " ? "\u00A0" : char}
-        </span>
-      ))}
-    </h2>
-  );
-}
-
-function TiltCard({ children, className = "" }) {
-  const ref = useRef(null);
-  const rotateX = useMotionValue(0);
-  const rotateY = useMotionValue(0);
-
-  const smoothX = useSpring(rotateX, { stiffness: 230, damping: 20 });
-  const smoothY = useSpring(rotateY, { stiffness: 230, damping: 20 });
-
-  const handleMove = (e) => {
-    if (!ref.current) return;
-
-    const rect = ref.current.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width;
-    const py = (e.clientY - rect.top) / rect.height;
-
-    rotateX.set((0.5 - py) * 8);
-    rotateY.set((px - 0.5) * 10);
-  };
-
-  const reset = () => {
-    rotateX.set(0);
-    rotateY.set(0);
-  };
-
-  return (
-    <motion.div
-      ref={ref}
-      onMouseMove={handleMove}
-      onMouseLeave={reset}
-      style={{
-        rotateX: smoothX,
-        rotateY: smoothY,
-        transformStyle: "preserve-3d",
-      }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-}
 
 /* ─────────────────────────────────────────────
    DATA
@@ -232,115 +109,220 @@ const SPECIALS = [
   },
 ];
 
+const MARQUEE_ITEMS = [
+  "Fresh coffee",
+  "Warm plates",
+  "Table QR ordering",
+  "Soft conversations",
+  "The White House Café",
+  "Jaipur café mood",
+];
+
+/* ─────────────────────────────────────────────
+   SMALL UTILITIES
+───────────────────────────────────────────── */
+
+function useInView(ref, threshold = 0.16) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setVisible(true);
+      },
+      { threshold },
+    );
+
+    if (ref.current) obs.observe(ref.current);
+
+    return () => obs.disconnect();
+  }, [ref, threshold]);
+
+  return visible;
+}
+
+function Reveal({ children, delay = 0, className = "" }) {
+  const ref = useRef(null);
+  const visible = useInView(ref);
+
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0px)" : "translateY(26px)",
+        transition: `opacity 680ms cubic-bezier(.16,1,.3,1) ${delay}s, transform 680ms cubic-bezier(.16,1,.3,1) ${delay}s`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SplitHeading({ children, className = "" }) {
+  const ref = useRef(null);
+  const visible = useInView(ref, 0.2);
+  const text = String(children);
+
+  return (
+    <h2 ref={ref} className={className} aria-label={text}>
+      {text.split("").map((char, index) => (
+        <span
+          key={`${char}-${index}`}
+          aria-hidden="true"
+          className="whc-letter"
+          style={{
+            display: char === " " ? "inline" : "inline-block",
+            opacity: visible ? 1 : 0,
+            transform: visible ? "translateY(0px)" : "translateY(18px)",
+            transition: `opacity 520ms cubic-bezier(.16,1,.3,1) ${
+              index * 0.01
+            }s, transform 520ms cubic-bezier(.16,1,.3,1) ${index * 0.01}s`,
+          }}
+        >
+          {char === " " ? "\u00A0" : char}
+        </span>
+      ))}
+    </h2>
+  );
+}
+
+function SoftCard({ children, className = "" }) {
+  return (
+    <div
+      className={`transition-transform duration-300 ease-out hover:-translate-y-1 ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CurtainLetterTitle({ text }) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+      {text.split("").map((letter, index) => (
+        <motion.span
+          key={`${letter}-${index}`}
+          initial={{ opacity: 0, y: 16, rotate: -2 }}
+          animate={{ opacity: 1, y: 0, rotate: 0 }}
+          transition={{
+            delay: 0.38 + index * 0.045,
+            duration: 0.42,
+            ease: [0.16, 1, 0.3, 1],
+          }}
+          className="inline-block"
+        >
+          {letter === " " ? "\u00A0" : letter}
+        </motion.span>
+      ))}
+    </div>
+  );
+}
+
+function BrandTitle() {
+  return (
+    <div
+      className="relative text-left tracking-[-0.065em]"
+      style={{
+        fontFamily: "'Fraunces', 'Playfair Display', Georgia, serif",
+        fontSize: "clamp(3.45rem, 7.8vw, 7.8rem)",
+        fontWeight: 900,
+        lineHeight: 0.78,
+        fontVariationSettings: '"SOFT" 18, "WONK" 0',
+        textShadow: "none",
+        filter: "none",
+        WebkitFontSmoothing: "antialiased",
+        backfaceVisibility: "hidden",
+        transform: "translateZ(0)",
+      }}
+    >
+      <span
+        className="block whitespace-nowrap"
+        style={{
+          color: "#1f1007",
+          WebkitTextStroke: "0px transparent",
+          WebkitTextFillColor: "#1f1007",
+          filter: "none",
+          textShadow: "none",
+        }}
+      >
+        The White
+      </span>
+
+      <span
+        className="block whitespace-nowrap"
+        style={{
+          color: "#4a220e",
+          WebkitTextStroke: "0px transparent",
+          WebkitTextFillColor: "#4a220e",
+          filter: "none",
+          textShadow: "none",
+        }}
+      >
+        House
+      </span>
+
+      <span
+        className="block whitespace-nowrap"
+        style={{
+          color: "#7a330f",
+          WebkitTextStroke: "0px transparent",
+          WebkitTextFillColor: "#7a330f",
+          filter: "none",
+          textShadow: "none",
+        }}
+      >
+        Café
+      </span>
+
+      <span className="absolute -bottom-5 left-1 h-[2px] w-[76%] rounded-full bg-gradient-to-r from-[#5a260d] via-[#c98b3f] to-transparent" />
+
+      <span className="absolute -bottom-9 left-1 mb-5 text-[9px] font-black uppercase tracking-[0.28em] text-[#5a260d]">
+        Coffee • Plates • Quiet Talks
+      </span>
+    </div>
+  );
+}
+
 function Home() {
   const navigate = useNavigate();
   const location = useLocation();
-  const heroRef = useRef(null);
-  const heroTitleRef = useRef(null);
-  const journeyRef = useRef(null);
-  const menuRef = useRef(null);
-  const editorialRef = useRef(null);
+
   const sessionHandledRef = useRef(false);
+  const heroTitleRef = useRef(null);
 
   const [loaded, setLoaded] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
-  const [titleFlight, setTitleFlight] = useState(false);
-  const [titleLanded, setTitleLanded] = useState(false);
-  const [titleTarget, setTitleTarget] = useState(null);
+  const [curtainLeaving, setCurtainLeaving] = useState(false);
+  const [titleStart, setTitleStart] = useState({ x: 0, y: 0 });
+  const [titleMeasured, setTitleMeasured] = useState(false);
 
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  const smoothX = useSpring(mouseX, { stiffness: 70, damping: 24 });
-  const smoothY = useSpring(mouseY, { stiffness: 70, damping: 24 });
-
-  const cardRotateX = useTransform(smoothY, [-320, 320], [9, -9]);
-  const cardRotateY = useTransform(smoothX, [-320, 320], [-9, 9]);
-  const cardLift = useTransform(smoothY, [-320, 320], [-8, 8]);
-
-  const glowX = useTransform(smoothX, [-450, 450], ["14%", "86%"]);
-  const glowY = useTransform(smoothY, [-450, 450], ["18%", "82%"]);
-  const [hideFlyingTitle, setHideFlyingTitle] = useState(false);
-
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"],
-  });
-
-  const smoothScroll = useSpring(scrollYProgress, {
-    stiffness: 85,
-    damping: 24,
-    mass: 0.35,
-  });
-
-  const heroY = useTransform(smoothScroll, [0, 1], [0, -115]);
-  const cardY = useTransform(smoothScroll, [0, 1], [0, 45]);
-  const heroTextOpacity = useTransform(smoothScroll, [0, 0.55], [1, 0]);
-  const bgY = useTransform(smoothScroll, [0, 1], [0, -160]);
-  const scrollHintOpacity = useTransform(smoothScroll, [0, 0.25], [1, 0]);
-
-  const { scrollYProgress: journeyProgress } = useScroll({
-    target: journeyRef,
-    offset: ["start end", "end start"],
-  });
-
-  const timelineHeight = useTransform(
-    journeyProgress,
-    [0.08, 0.82],
-    ["0%", "100%"],
-  );
-  const journeyCardY = useTransform(journeyProgress, [0, 1], [32, -36]);
-  const journeyCardRotate = useTransform(journeyProgress, [0, 1], [-5, 5]);
-  const journeyGlowX = useTransform(journeyProgress, [0, 1], ["-16%", "18%"]);
-
-  const { scrollYProgress: menuProgress } = useScroll({
-    target: menuRef,
-    offset: ["start end", "end start"],
-  });
-
-  const menuFloat = useTransform(menuProgress, [0, 1], [26, -28]);
-  const menuRotate = useTransform(menuProgress, [0, 1], [-1.8, 1.8]);
-
-  const { scrollYProgress: editorialProgress } = useScroll({
-    target: editorialRef,
-    offset: ["start end", "end start"],
-  });
-
-  const editorialGlowX = useTransform(editorialProgress, [0, 1], ["8%", "76%"]);
-  const editorialNumberY = useTransform(editorialProgress, [0, 1], [50, -55]);
-
-  const particles = useMemo(
-    () =>
-      Array.from({ length: 30 }, (_, i) => ({
-        left: `${(i * 19 + 6) % 100}%`,
-        top: `${(i * 31 + 9) % 100}%`,
-      })),
-    [],
-  );
+  const marqueeItems = useMemo(() => [...MARQUEE_ITEMS, ...MARQUEE_ITEMS], []);
 
   const handleExplore = () => {
     const token = localStorage.getItem("token");
-    if (token) navigate("/order");
-    else navigate("/menu-preview");
+
+    if (token) {
+      navigate("/order");
+    } else {
+      navigate("/menu-preview");
+    }
   };
 
-  const handleMouseMove = (e) => {
-    const rect = heroRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    mouseX.set(e.clientX - rect.left - rect.width / 2);
-    mouseY.set(e.clientY - rect.top - rect.height / 2);
-  };
-
-  const measureHeroTitle = () => {
+  const measureTitleStart = () => {
     if (!heroTitleRef.current) return;
 
     const rect = heroTitleRef.current.getBoundingClientRect();
 
-    setTitleTarget({
-      left: rect.left,
-      top: rect.top,
-    });
+    const centerX = window.innerWidth / 2 - rect.width / 2;
+    const centerY = window.innerHeight / 2 - rect.height / 2;
+
+    const moveX = centerX - rect.left;
+    const moveY = centerY - rect.top;
+
+    setTitleStart({ x: moveX, y: moveY });
+    setTitleMeasured(true);
   };
 
   useEffect(() => {
@@ -371,116 +353,56 @@ function Home() {
     const params = new URLSearchParams(location.search);
     const urlToken = params.get("token");
 
-    if (urlToken) return;
+    if (urlToken) {
+      setShowIntro(false);
+      setLoaded(true);
+      setTitleMeasured(true);
+      return;
+    }
 
-    measureHeroTitle();
+    const measureTimer = setTimeout(() => {
+      measureTitleStart();
+    }, 120);
 
     const onResize = () => {
-      measureHeroTitle();
+      measureTitleStart();
     };
 
     window.addEventListener("resize", onResize);
 
-    const flyTimer = setTimeout(() => {
-      measureHeroTitle();
-      setTitleFlight(true);
-    }, 2200);
+    const leaveCurtainTimer = setTimeout(() => {
+      setCurtainLeaving(true);
+    }, 2650);
 
-    const landTimer = setTimeout(() => {
-      setTitleLanded(true);
-    }, 3260);
-
-    const hideFlyTimer = setTimeout(() => {
-      setHideFlyingTitle(true);
-    }, 3310);
-
-    const finishTimer = setTimeout(() => {
+    const removeCurtainTimer = setTimeout(() => {
       setShowIntro(false);
+    }, 3550);
+
+    const landTitleTimer = setTimeout(() => {
       setLoaded(true);
-    }, 3650);
+    }, 3950);
 
     return () => {
+      clearTimeout(measureTimer);
+      clearTimeout(leaveCurtainTimer);
+      clearTimeout(removeCurtainTimer);
+      clearTimeout(landTitleTimer);
       window.removeEventListener("resize", onResize);
-      clearTimeout(flyTimer);
-      clearTimeout(landTimer);
-      clearTimeout(finishTimer);
-      clearTimeout(hideFlyTimer);
     };
   }, [location.search]);
-
-  const BrandTitle = () => (
-    <div
-      className="relative text-left leading-[0.8] tracking-[-0.075em] text-[#241309]"
-      style={{
-        fontFamily: "'Fraunces', 'Playfair Display', Georgia, serif",
-        fontSize: "clamp(3.35rem, 7.6vw, 7.6rem)",
-        fontWeight: 850,
-        fontVariationSettings: '"SOFT" 42, "WONK" 1',
-        textShadow:
-          "0 20px 54px rgba(73,35,12,0.28), 0 2px 0 rgba(255,246,220,0.48)",
-        transform: "translateZ(0)",
-        WebkitFontSmoothing: "antialiased",
-        backfaceVisibility: "hidden",
-      }}
-    >
-      {/* warm café light */}
-      <span className="pointer-events-none absolute -left-5 top-2 -z-10 h-32 w-32 rounded-full bg-[#c8843f]/20 blur-3xl" />
-      <span className="pointer-events-none absolute -right-4 bottom-2 -z-10 h-28 w-28 rounded-full bg-[#ffe2a3]/24 blur-3xl" />
-
-      <span
-        className="block whitespace-nowrap"
-        style={{
-          color: "#241309",
-          WebkitTextStroke: "0.35px rgba(255,244,214,0.45)",
-        }}
-      >
-        The White
-      </span>
-
-      <span
-        className="relative block whitespace-nowrap"
-        style={{
-          background:
-            "linear-gradient(90deg, #241309 0%, #4b220e 38%, #9a5520 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          filter: "drop-shadow(0 10px 20px rgba(80,36,12,0.16))",
-        }}
-      >
-        House
-      </span>
-
-      <span
-        className="relative block whitespace-nowrap"
-        style={{
-          background:
-            "linear-gradient(92deg, #7b3817 0%, #d2954f 42%, #8a4218 70%, #35190a 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          filter: "drop-shadow(0 12px 22px rgba(128,67,24,0.2))",
-        }}
-      >
-        Café
-      </span>
-
-      {/* signature underline - absolute so no layout break */}
-      <span className="absolute -bottom-5 left-1 h-[2px] w-[76%] rounded-full bg-gradient-to-r from-[#5a260d]/75 via-[#d59b56]/80 to-transparent" />
-
-      {/* small stamp - absolute so no layout shift */}
-      <span className="absolute -bottom-9 left-1 text-[9px] font-black uppercase tracking-[0.28em] text-[#7a431d]/80 mb-5">
-        Coffee • Plates • Quiet Talks
-      </span>
-    </div>
-  );
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..800,0..100,0..1&family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Cormorant+Garamond:wght@600;700&family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
 
         .whc-display {
           font-family: 'Fraunces', Georgia, serif;
-          font-variation-settings: "SOFT" 52, "WONK" 0.8;
+          font-variation-settings: "SOFT" 40, "WONK" 0.5;
+        }
+
+        .whc-graffiti {
+          font-family: 'Caveat', cursive;
         }
 
         .whc-grid {
@@ -492,16 +414,16 @@ function Home() {
 
         .whc-gold-text {
           background: linear-gradient(110deg, #7a3f16 0%, #c28a3c 38%, #8b5727 72%, #f1d694 100%);
-          background-size: 260% auto;
+          background-size: 220% auto;
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
-          animation: whc-shimmer 6.5s linear infinite;
+          animation: whc-shimmer 8s linear infinite;
         }
 
         @keyframes whc-shimmer {
-          0% { background-position: -180% center; }
-          100% { background-position: 180% center; }
+          0% { background-position: -160% center; }
+          100% { background-position: 160% center; }
         }
 
         @keyframes whc-marquee {
@@ -509,28 +431,17 @@ function Home() {
           to { transform: translateX(-50%); }
         }
 
-        @keyframes whc-ring {
-          0% { transform: scale(0.76); opacity: 0.72; }
-          100% { transform: scale(1.86); opacity: 0; }
+        @keyframes whc-float-soft {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
         }
 
-        @keyframes whc-steam {
-          0% {
-            transform: translateY(16px) scaleX(0.82);
-            opacity: 0;
-          }
-          34% {
-            opacity: 0.76;
-          }
-          100% {
-            transform: translateY(-34px) scaleX(1.32);
-            opacity: 0;
-          }
+        .whc-marquee-track {
+          animation: whc-marquee 34s linear infinite;
         }
 
-        @keyframes whc-breathe {
-          0%, 100% { transform: scale(1); opacity: 0.46; }
-          50% { transform: scale(1.12); opacity: 0.86; }
+        .whc-hero-card-float {
+          animation: whc-float-soft 7s ease-in-out infinite;
         }
 
         .whc-btn {
@@ -550,36 +461,17 @@ function Home() {
             linear-gradient(135deg, rgba(255,255,255,0.96), rgba(231,196,116,0.94)),
             linear-gradient(135deg, #d97706, #e7c474);
           box-shadow:
-            0 20px 50px rgba(199, 155, 66, 0.31),
+            0 18px 42px rgba(199, 155, 66, 0.22),
             inset 0 1px 0 rgba(255,255,255,0.74);
           overflow: hidden;
-          transition: transform 0.28s ease, box-shadow 0.28s ease;
-        }
-
-        .whc-btn::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          transform: translateX(-120%);
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.72), transparent);
-          transition: transform 0.76s ease;
+          transition: transform 0.25s ease, box-shadow 0.25s ease;
         }
 
         .whc-btn:hover {
-          transform: translateY(-4px);
+          transform: translateY(-3px);
           box-shadow:
-            0 30px 68px rgba(199, 155, 66, 0.42),
+            0 22px 52px rgba(199, 155, 66, 0.30),
             inset 0 1px 0 rgba(255,255,255,0.8);
-        }
-
-        .whc-btn:hover::before {
-          transform: translateX(120%);
-        }
-
-        .whc-btn span,
-        .whc-btn svg {
-          position: relative;
-          z-index: 1;
         }
 
         .whc-ghost-btn {
@@ -592,17 +484,16 @@ function Home() {
           border-radius: 999px;
           border: 1px solid rgba(61, 36, 18, 0.14);
           color: #3d2412;
-          background: rgba(255, 250, 241, 0.6);
-          backdrop-filter: blur(18px);
+          background: rgba(255, 250, 241, 0.72);
           font-weight: 900;
-          transition: all 0.28s ease;
-          box-shadow: 0 14px 36px rgba(61,36,18,0.08);
+          transition: all 0.25s ease;
+          box-shadow: 0 12px 30px rgba(61,36,18,0.07);
         }
 
         .whc-ghost-btn:hover {
-          background: rgba(255, 250, 241, 0.92);
+          background: rgba(255, 250, 241, 0.95);
           border-color: rgba(199, 155, 66, 0.5);
-          transform: translateY(-4px);
+          transform: translateY(-3px);
         }
 
         .whc-dark-ghost {
@@ -621,54 +512,8 @@ function Home() {
         .whc-orb {
           position: absolute;
           border-radius: 999px;
-          filter: blur(36px);
+          filter: blur(34px);
           pointer-events: none;
-        }
-
-        .whc-steam span {
-          position: absolute;
-          left: 50%;
-          bottom: 73%;
-          width: 18px;
-          height: 58px;
-          border-radius: 999px;
-          border-left: 2px solid rgba(231,196,116,0.48);
-          filter: blur(0.4px);
-          animation: whc-steam 2.85s ease-in-out infinite;
-        }
-
-        .whc-steam span:nth-child(1) {
-          transform: translateX(-28px);
-          animation-delay: 0s;
-        }
-
-        .whc-steam span:nth-child(2) {
-          transform: translateX(-2px);
-          animation-delay: 0.45s;
-        }
-
-        .whc-steam span:nth-child(3) {
-          transform: translateX(24px);
-          animation-delay: 0.9s;
-        }
-
-        .whc-cup-glow::before {
-          content: "";
-          position: absolute;
-          inset: -34px;
-          border-radius: 999px;
-          background: radial-gradient(circle, rgba(231,196,116,0.34), transparent 64%);
-          z-index: -1;
-          animation: whc-breathe 4.8s ease-in-out infinite;
-        }
-
-        .whc-story-section {
-          min-height: auto;
-        }
-
-        .whc-story-sticky {
-          position: relative;
-          top: auto;
         }
 
         .whc-menu-strip {
@@ -690,16 +535,11 @@ function Home() {
         }
 
         .whc-menu-card:hover .whc-menu-emoji {
-          transform: translateY(-9px) rotate(-7deg) scale(1.14);
+          transform: translateY(-7px) scale(1.08);
         }
 
         .whc-menu-emoji {
-          transition: transform 0.38s cubic-bezier(.16,1,.3,1);
-        }
-
-        .whc-editorial-number {
-          font-size: clamp(7rem, 17vw, 18rem);
-          line-height: 0.72;
+          transition: transform 0.32s cubic-bezier(.16,1,.3,1);
         }
 
         @media (min-width: 768px) {
@@ -715,38 +555,23 @@ function Home() {
             flex: initial;
           }
 
-          .whc-menu-item:nth-child(1) {
-            grid-column: span 2;
-          }
-
-          .whc-menu-item:nth-child(2) {
-            grid-column: span 2;
-            transform: translateY(46px);
-          }
-
+          .whc-menu-item:nth-child(1),
+          .whc-menu-item:nth-child(2),
           .whc-menu-item:nth-child(3) {
             grid-column: span 2;
           }
 
-          .whc-menu-item:nth-child(4) {
-            grid-column: span 3;
-            transform: translateY(24px);
-          }
-
+          .whc-menu-item:nth-child(4),
           .whc-menu-item:nth-child(5) {
             grid-column: span 3;
-            transform: translateY(-14px);
-          }
-        }
-
-        @media (min-width: 1024px) {
-          .whc-story-section {
-            min-height: 230vh;
           }
 
-          .whc-story-sticky {
-            position: sticky;
-            top: 88px;
+          .whc-menu-item:nth-child(2) {
+            transform: translateY(28px);
+          }
+
+          .whc-menu-item:nth-child(4) {
+            transform: translateY(18px);
           }
         }
 
@@ -760,6 +585,14 @@ function Home() {
           .whc-letter {
             transition-delay: 0s !important;
           }
+
+          .whc-hero-card-float {
+            animation: none;
+          }
+
+          .whc-marquee-track {
+            animation-duration: 42s;
+          }
         }
       `}</style>
 
@@ -772,220 +605,113 @@ function Home() {
           {showIntro && (
             <motion.div
               initial={{ y: 0 }}
-              animate={{ y: titleFlight ? "-108%" : 0 }}
-              exit={{ y: "-108%" }}
+              animate={{ y: curtainLeaving ? "-100%" : 0 }}
+              exit={{ y: "-100%" }}
               transition={{
-                delay: titleFlight ? 0.05 : 0,
-                duration: 1.08,
+                duration: 1.05,
                 ease: [0.76, 0, 0.24, 1],
               }}
-              className="fixed inset-0 z-[9998] flex items-center justify-center bg-[#2b1609]"
+              className="fixed inset-0 z-[9998] flex items-center justify-center overflow-hidden bg-[#2b1609]"
             >
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.35),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(16,185,129,0.18),transparent_35%),linear-gradient(135deg,#2b1609_0%,#7c3f11_52%,#f3d7a8_100%)]" />
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,#2b1609_0%,#74370f_52%,#e0b875_100%)]" />
+
+              <div className="absolute inset-0 opacity-[0.16] bg-[linear-gradient(rgba(255,250,241,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,250,241,0.05)_1px,transparent_1px)] bg-[size:52px_52px]" />
+
+              <div className="absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-100/12 blur-3xl" />
 
               <motion.div
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: 1.15, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute left-0 top-1/2 h-44 w-full origin-left -translate-y-1/2 bg-[#fff4dc]/20 blur-3xl"
-              />
-
-              <motion.p
-                initial={{ opacity: 0, y: 18 }}
+                initial={{ opacity: 0, y: 20, scale: 0.98 }}
                 animate={{
-                  opacity: titleFlight ? 0 : 1,
-                  y: titleFlight ? -12 : 0,
+                  opacity: curtainLeaving ? 0 : 1,
+                  y: curtainLeaving ? -22 : 0,
+                  scale: curtainLeaving ? 0.98 : 1,
                 }}
-                transition={{ delay: 0.2, duration: 0.65 }}
-                className="absolute top-[18%] text-center text-[10px] font-black uppercase tracking-[0.45em] text-amber-100/70"
+                transition={{
+                  duration: 0.65,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+                className="relative z-10 w-full px-5 text-center"
               >
-                Painting the café mood
-              </motion.p>
+                <motion.p
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.55 }}
+                  className="mb-5 text-[10px] font-black uppercase tracking-[0.42em] text-amber-100/65"
+                >
+                  Welcome to
+                </motion.p>
 
-              <motion.div
-                initial={{ scaleX: 0, opacity: 0 }}
-                animate={{
-                  scaleX: titleFlight ? 0 : 1,
-                  opacity: titleFlight ? 0 : 1,
-                }}
-                transition={{ delay: titleFlight ? 0 : 1.25, duration: 0.8 }}
-                className="absolute top-[70%] h-[3px] w-72 origin-left rounded-full bg-gradient-to-r from-transparent via-amber-200 to-transparent"
-              />
+                <div
+                  className="whc-graffiti mx-auto max-w-[92vw] text-center text-[clamp(2rem,9vw,4.8rem)] font-bold leading-none text-[#fff4cf]"
+                  style={{
+                    textShadow: "none",
+                    filter: "none",
+                  }}
+                >
+                  <CurtainLetterTitle text="The White House Café" />
+                </div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 22 }}
-                animate={{
-                  opacity: titleFlight ? 0 : 1,
-                  y: titleFlight ? 18 : 0,
-                }}
-                transition={{ delay: titleFlight ? 0 : 1.45, duration: 0.7 }}
-                className="absolute top-[74%] inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-amber-50 shadow-2xl backdrop-blur-xl"
-              >
-                <Coffee size={17} />
-                <span className="text-xs font-black uppercase tracking-[0.25em]">
-                  Warm coffee. Soft conversations.
-                </span>
+                <motion.div
+                  initial={{ scaleX: 0, opacity: 0 }}
+                  animate={{ scaleX: 1, opacity: 1 }}
+                  transition={{ delay: 1.35, duration: 0.7 }}
+                  className="mx-auto mt-5 h-px w-64 max-w-[70vw] origin-center bg-gradient-to-r from-transparent via-amber-100/85 to-transparent"
+                />
+
+                <motion.h1
+                  initial={{ opacity: 0, y: 22 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    delay: 1.62,
+                    duration: 0.72,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                  className="whc-display mx-auto mt-6 text-[clamp(3.7rem,15vw,9rem)] font-[780] leading-[0.82] tracking-[-0.075em] text-[#fff8df]"
+                >
+                  Elegance.
+                </motion.h1>
+
+                <motion.p
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 2.05, duration: 0.55 }}
+                  className="mx-auto mt-5 max-w-xl text-xs font-black uppercase tracking-[0.22em] text-amber-50/78 sm:text-sm"
+                >
+                  Coffee • Plates • Quiet Talks
+                </motion.p>
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* ONE REAL MOVING TITLE */}
-        <AnimatePresence>
-          {!hideFlyingTitle && (
-            <motion.div
-              initial={{
-                left: "50%",
-                top: "50%",
-                x: "-50%",
-                y: "-50%",
-                opacity: 0,
-                scale: 1,
-                rotate: -2,
-                filter: "blur(18px)",
-              }}
-              animate={
-                titleFlight && titleTarget
-                  ? {
-                      left: titleTarget.left,
-                      top: titleTarget.top,
-                      x: "0%",
-                      y: "0%",
-                      opacity: 1,
-                      scale: 1,
-                      rotate: 0,
-                      filter: "blur(0px)",
-                    }
-                  : {
-                      left: "50%",
-                      top: "50%",
-                      x: "-50%",
-                      y: "-50%",
-                      opacity: 1,
-                      scale: 1,
-                      rotate: 0,
-                      filter: "blur(0px)",
-                    }
-              }
-              exit={{
-                opacity: 0,
-                filter: "blur(1px)",
-                transition: { duration: 0.08 },
-              }}
-              transition={{
-                opacity: { delay: 0.45, duration: 0.85 },
-                filter: { delay: 0.45, duration: 0.85 },
-                rotate: { duration: 0.8 },
-                left: {
-                  duration: 1.05,
-                  ease: [0.18, 1, 0.25, 1],
-                },
-                top: {
-                  duration: 1.05,
-                  ease: [0.18, 1, 0.25, 1],
-                },
-                x: {
-                  duration: 1.05,
-                  ease: [0.18, 1, 0.25, 1],
-                },
-                y: {
-                  duration: 1.05,
-                  ease: [0.18, 1, 0.25, 1],
-                },
-              }}
-              className="fixed z-[10000] w-max max-w-none pointer-events-none"
-            >
-              <BrandTitle softShadow={false} glow={false} />
-
-              {!titleFlight && (
-                <motion.div
-                  initial={{ x: "-125%", opacity: 0 }}
-                  animate={{ x: "125%", opacity: [0, 1, 1, 0] }}
-                  transition={{
-                    delay: 0.72,
-                    duration: 1.35,
-                    ease: [0.16, 1, 0.3, 1],
-                  }}
-                  className="absolute inset-y-0 left-0 pointer-events-none w-28 rotate-12 bg-white/45 blur-xl"
-                />
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* HERO */}
-        <section
-          ref={heroRef}
-          onMouseMove={handleMouseMove}
-          className="relative min-h-[100svh] overflow-hidden pb-16 lg:min-h-[122vh]"
-        >
-          <motion.div style={{ y: bgY }} className="absolute inset-0">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_16%,rgba(120,53,15,0.30),transparent_28%),radial-gradient(circle_at_85%_20%,rgba(5,150,105,0.16),transparent_28%),linear-gradient(135deg,#fff8e8_0%,#efd6aa_43%,#9b5b26_100%)]" />
-            <motion.div
-              style={{
-                background: `radial-gradient(circle at ${glowX} ${glowY}, rgba(255,246,210,0.68), transparent 32%)`,
-              }}
-              className="absolute inset-0"
-            />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(255,248,232,0.14)_38%,rgba(45,23,8,0.38)_100%)]" />
-            <div className="absolute inset-0 opacity-[0.16] bg-[linear-gradient(rgba(65,35,14,0.10)_1px,transparent_1px),linear-gradient(90deg,rgba(65,35,14,0.07)_1px,transparent_1px)] bg-[size:44px_44px]" />
-          </motion.div>
+        <section className="relative min-h-[100svh] overflow-hidden pb-16 lg:min-h-[112vh]">
+          <div className="absolute inset-0">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_16%,rgba(120,53,15,0.22),transparent_28%),radial-gradient(circle_at_85%_20%,rgba(5,150,105,0.10),transparent_30%),linear-gradient(135deg,#fff8e8_0%,#efd6aa_48%,#9b5b26_100%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(255,248,232,0.16)_42%,rgba(45,23,8,0.32)_100%)]" />
+            <div className="absolute inset-0 opacity-[0.14] bg-[linear-gradient(rgba(65,35,14,0.10)_1px,transparent_1px),linear-gradient(90deg,rgba(65,35,14,0.07)_1px,transparent_1px)] bg-[size:44px_44px]" />
+          </div>
 
-          <div className="pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-multiply bg-[url('data:image/svg+xml,%3Csvg_viewBox=%220_0_200_200%22_xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter_id=%22n%22%3E%3CfeTurbulence_type=%22fractalNoise%22_baseFrequency=%220.75%22_numOctaves=%224%22_stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect_width=%22200%22_height=%22200%22_filter=%22url(%23n)%22_opacity=%220.6%22/%3E%3C/svg%3E')]" />
+          <div className="absolute -right-40 -top-44 hidden h-[480px] w-[480px] rounded-full bg-amber-300/25 blur-[90px] md:block" />
+          <div className="absolute -bottom-40 -left-44 hidden h-[440px] w-[440px] rounded-full bg-emerald-300/16 blur-[90px] md:block" />
 
           <motion.div
-            initial={{ opacity: 0, y: 60 }}
-            animate={{ opacity: loaded ? 0.075 : 0, y: loaded ? 0 : 60 }}
-            transition={{ delay: 0.6, duration: 1.2 }}
-            className="pointer-events-none absolute left-1/2 top-[16%] hidden -translate-x-1/2 whitespace-nowrap text-[15rem] font-black leading-none tracking-[-0.12em] text-stone-950 lg:block"
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: loaded ? 0.06 : 0, y: loaded ? 0 : 50 }}
+            transition={{ delay: 0.25, duration: 0.9 }}
+            className="pointer-events-none absolute left-1/2 top-[15%] hidden -translate-x-1/2 whitespace-nowrap text-[15rem] font-black leading-none tracking-[-0.12em] text-stone-950 lg:block"
             style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
           >
             CAFÉ
           </motion.div>
 
-          <motion.div
-            animate={{ scale: [1, 1.16, 1], opacity: [0.25, 0.45, 0.25] }}
-            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -right-40 -top-44 h-[560px] w-[560px] rounded-full bg-amber-300/45 blur-[130px]"
-          />
-
-          <motion.div
-            animate={{ scale: [1.08, 1, 1.08], opacity: [0.14, 0.28, 0.14] }}
-            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -bottom-40 -left-44 h-[520px] w-[520px] rounded-full bg-emerald-300/25 blur-[130px]"
-          />
-
-          <div className="absolute inset-0 pointer-events-none">
-            {particles.map((item, i) => (
-              <motion.span
-                key={i}
-                className="absolute w-1 h-1 rounded-full bg-amber-900/25"
-                style={{
-                  left: item.left,
-                  top: item.top,
-                }}
-                animate={{
-                  y: [0, -32, 0],
-                  opacity: [0.12, 0.72, 0.12],
-                  scale: [0.7, 1.8, 0.7],
-                }}
-                transition={{
-                  duration: 3.6 + (i % 7),
-                  repeat: Infinity,
-                  delay: i * 0.11,
-                  ease: "easeInOut",
-                }}
-              />
-            ))}
-          </div>
-
-          <div className="relative z-10 mx-auto grid min-h-screen max-w-7xl grid-cols-1 items-center gap-10 px-5 pt-10 pb-14 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14 lg:px-8 lg:pb-36">
-            <motion.div style={{ y: heroY, opacity: heroTextOpacity }}>
+          <div className="relative z-10 mx-auto grid min-h-screen max-w-7xl grid-cols-1 items-center gap-10 px-5 pb-14 pt-10 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14 lg:px-8 lg:pb-28">
+            <div>
               <motion.div
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 24 }}
-                transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
-                className="inline-flex items-center gap-3 px-4 py-2 border rounded-full shadow-xl mb-7 border-white/70 bg-white/60 backdrop-blur-xl"
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 18 }}
+                transition={{ duration: 0.58, ease: [0.16, 1, 0.3, 1] }}
+                className="inline-flex items-center gap-3 px-4 py-2 border rounded-full shadow-xl mb-7 border-white/70 bg-white/60 backdrop-blur-md"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2b1609] text-amber-100">
                   <Sparkles size={16} />
@@ -995,50 +721,52 @@ function Home() {
                 </p>
               </motion.div>
 
+              {/* REAL CENTER TO PLACE HEADER ANIMATION */}
               <motion.div
                 ref={heroTitleRef}
-                initial={false}
+                initial={{
+                  opacity: 1,
+                  x: titleStart.x,
+                  y: titleStart.y,
+                  scale: 1.06,
+                }}
                 animate={{
-                  opacity: titleLanded ? 1 : 0,
+                  opacity: 1,
+                  x: loaded ? 0 : titleStart.x,
+                  y: loaded ? 0 : titleStart.y,
+                  scale: loaded ? 1 : 1.06,
                 }}
-                transition={{ duration: 0.08, ease: [0.16, 1, 0.3, 1] }}
-                className="text-left origin-left"
-                style={{
-                  visibility: titleLanded ? "visible" : "hidden",
+                transition={{
+                  duration: 1.05,
+                  ease: [0.16, 1, 0.3, 1],
                 }}
+                className="origin-left will-change-transform"
               >
-                <BrandTitle softShadow={false} glow={false} />
+                <BrandTitle />
               </motion.div>
 
               <motion.p
-                initial={{ opacity: 0, y: 30, filter: "blur(12px)" }}
+                initial={{ opacity: 0, y: 22 }}
                 animate={{
                   opacity: loaded ? 1 : 0,
-                  y: loaded ? 0 : 30,
-                  filter: loaded ? "blur(0px)" : "blur(12px)",
+                  y: loaded ? 0 : 22,
                 }}
-                transition={{ delay: 0.18, duration: 0.8 }}
-                className="max-w-xl text-base leading-8 mt-7 text-stone-700 sm:text-lg"
+                transition={{ delay: 0.18, duration: 0.65 }}
+                className="max-w-xl mt-8 text-base leading-8 text-stone-700 sm:text-lg"
               >
                 A premium café space for rich coffee, warm plates, quiet talks,
                 and a smooth QR menu experience from every table.
               </motion.p>
 
               <motion.div
-                initial={{ opacity: 0, y: 28 }}
-                animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 28 }}
-                transition={{ delay: 0.34, duration: 0.75 }}
+                initial={{ opacity: 0, y: 22 }}
+                animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 22 }}
+                transition={{ delay: 0.3, duration: 0.65 }}
                 className="flex flex-col gap-4 mt-9 sm:flex-row"
               >
-                <motion.button
+                <button
                   onClick={handleExplore}
-                  whileHover={{
-                    scale: 1.05,
-                    y: -5,
-                    boxShadow: "0 28px 90px rgba(20,83,45,0.28)",
-                  }}
-                  whileTap={{ scale: 0.96 }}
-                  className="group relative overflow-hidden rounded-full bg-gradient-to-r from-emerald-900 via-emerald-600 to-emerald-900 px-8 py-4 text-sm font-black uppercase tracking-[0.16em] text-white shadow-2xl"
+                  className="group relative overflow-hidden rounded-full bg-gradient-to-r from-emerald-900 via-emerald-600 to-emerald-900 px-8 py-4 text-sm font-black uppercase tracking-[0.16em] text-white shadow-[0_20px_52px_rgba(20,83,45,0.22)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_25px_70px_rgba(20,83,45,0.30)]"
                 >
                   <span className="relative z-10 flex items-center justify-center gap-3">
                     Explore Café Menu
@@ -1047,133 +775,38 @@ function Home() {
                       className="transition-transform duration-300 group-hover:translate-x-1"
                     />
                   </span>
+                </button>
 
-                  <motion.span
-                    animate={{ x: ["-130%", "160%"] }}
-                    transition={{
-                      duration: 2.1,
-                      repeat: Infinity,
-                      repeatDelay: 1.5,
-                      ease: "easeInOut",
-                    }}
-                    className="absolute inset-y-0 w-24 rotate-12 bg-white/35 blur-md"
-                  />
-                </motion.button>
-
-                <motion.div
-                  whileHover={{ y: -4, scale: 1.03 }}
-                  className="flex items-center gap-3 px-6 py-4 border rounded-full shadow-lg border-white/80 bg-white/65 backdrop-blur-xl"
-                >
+                <div className="flex items-center justify-center gap-3 px-6 py-4 border rounded-full shadow-lg border-white/80 bg-white/65 backdrop-blur-md">
                   <ScanLine size={19} className="text-emerald-700" />
                   <span className="text-sm font-black text-stone-700">
                     Scan. Choose. Relax.
                   </span>
-                </motion.div>
+                </div>
               </motion.div>
-            </motion.div>
+            </div>
 
+            {/* LIGHTER HERO CARD */}
             <motion.div
-              style={{
-                y: cardY,
-                rotateX: cardRotateX,
-                rotateY: cardRotateY,
-                translateY: cardLift,
-                transformStyle: "preserve-3d",
-              }}
-              initial={{ opacity: 0, x: 70, rotateY: -18 }}
+              initial={{ opacity: 0, x: 40, y: 18 }}
               animate={{
                 opacity: loaded ? 1 : 0,
-                x: loaded ? 0 : 70,
-                rotateY: loaded ? 0 : -18,
-              }}
-              whileHover={{
-                scale: 1.025,
-                rotateX: 4,
-                rotateY: -5,
+                x: loaded ? 0 : 40,
+                y: loaded ? 0 : 18,
               }}
               transition={{
-                type: "spring",
-                stiffness: 180,
-                damping: 18,
+                delay: 0.2,
+                duration: 0.72,
+                ease: [0.16, 1, 0.3, 1],
               }}
-              className="group relative mx-auto w-full max-w-[580px] sm:max-w-[640px] lg:max-w-[700px]"
+              className="whc-hero-card-float relative mx-auto w-full max-w-[620px]"
             >
-              <motion.div
-                style={{
-                  background: `radial-gradient(circle at ${glowX} ${glowY}, rgba(255,226,150,0.65), transparent 44%)`,
-                }}
-                className="absolute -inset-8 rounded-[4rem] blur-2xl transition-transform duration-500 group-hover:scale-110"
-              />
+              <div className="absolute -inset-6 hidden rounded-[4rem] bg-amber-200/28 blur-3xl md:block" />
 
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 28, repeat: Infinity, ease: "linear" }}
-                className="absolute left-1/2 top-1/2 hidden h-[610px] w-[610px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/30 lg:block"
-              />
-
-              <motion.div
-                animate={{ y: [0, -14, 0], rotate: [-4, 4, -4] }}
-                transition={{
-                  duration: 5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                whileHover={{
-                  x: 115,
-                  y: 92,
-                  rotate: 9,
-                  scale: 1.08,
-                }}
-                className="absolute -left-1 top-8 z-40 rounded-[1.5rem] border border-white/80 bg-white/90 p-3 shadow-2xl backdrop-blur-xl sm:-left-7 sm:p-4"
-              >
-                <Coffee size={21} className="text-amber-700" />
-                <p className="mt-2 text-[9px] font-black uppercase tracking-[0.22em] text-emerald-700">
-                  House brew
-                </p>
-                <p className="mt-1 text-xs font-black text-stone-950 sm:text-sm">
-                  Fresh coffee
-                </p>
-              </motion.div>
-
-              <motion.div
-                animate={{ y: [0, 15, 0], rotate: [4, -4, 4] }}
-                transition={{
-                  duration: 5.8,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                whileHover={{
-                  x: -118,
-                  y: -95,
-                  rotate: -10,
-                  scale: 1.08,
-                }}
-                className="absolute -right-1 bottom-24 z-40 rounded-[1.5rem] bg-[#2b1609] p-3 text-white shadow-2xl sm:-right-7 sm:p-4"
-              >
-                <QrCode size={21} className="text-amber-200" />
-                <p className="mt-2 text-[9px] font-black uppercase tracking-[0.22em] text-amber-200">
-                  Table QR
-                </p>
-                <p className="mt-1 text-xs font-black sm:text-sm">
-                  Order softly
-                </p>
-              </motion.div>
-
-              <div className="relative z-30 overflow-hidden rounded-[2.4rem] border border-white/80 bg-[#fffaf0] p-2.5 shadow-[0_50px_135px_rgba(78,42,12,0.32)] transition-shadow duration-500 group-hover:shadow-[0_70px_170px_rgba(78,42,12,0.42)] sm:rounded-[3rem] sm:p-3">
-                <motion.div
-                  animate={{ x: ["-120%", "135%"] }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    repeatDelay: 2.2,
-                    ease: "easeInOut",
-                  }}
-                  className="absolute inset-y-0 z-50 w-24 pointer-events-none rotate-12 bg-white/35 blur-md"
-                />
-
+              <div className="relative overflow-hidden rounded-[2.4rem] border border-white/80 bg-[#fffaf0] p-2.5 shadow-[0_35px_95px_rgba(78,42,12,0.24)] sm:rounded-[3rem] sm:p-3">
                 <div className="relative overflow-hidden rounded-[2rem] bg-[#2a170b] sm:rounded-[2.55rem]">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(245,158,11,0.42),transparent_34%),radial-gradient(circle_at_90%_20%,rgba(16,185,129,0.20),transparent_28%),linear-gradient(145deg,#2b1609_0%,#4a250c_50%,#1c1008_100%)]" />
-                  <div className="absolute inset-0 opacity-[0.14] bg-[linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-[size:34px_34px]" />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(245,158,11,0.34),transparent_34%),radial-gradient(circle_at_90%_20%,rgba(16,185,129,0.14),transparent_28%),linear-gradient(145deg,#2b1609_0%,#4a250c_50%,#1c1008_100%)]" />
+                  <div className="absolute inset-0 opacity-[0.12] bg-[linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-[size:34px_34px]" />
 
                   <div className="relative px-5 pt-6 pb-5 text-white sm:px-6 sm:pt-7">
                     <div className="flex items-start justify-between gap-4">
@@ -1193,17 +826,9 @@ function Home() {
                         </h3>
                       </div>
 
-                      <motion.div
-                        animate={{ rotate: [0, 10, -10, 0], y: [0, -6, 0] }}
-                        transition={{
-                          duration: 4.5,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                        }}
-                        className="flex h-13 w-13 items-center justify-center rounded-[1.25rem] bg-amber-100 text-[#2b1609] shadow-inner sm:h-16 sm:w-16 sm:rounded-[1.5rem]"
-                      >
+                      <div className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-amber-100 text-[#2b1609] shadow-inner sm:h-16 sm:w-16 sm:rounded-[1.5rem]">
                         <ChefHat size={26} />
-                      </motion.div>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2 mt-5 sm:gap-3">
@@ -1212,10 +837,9 @@ function Home() {
                         ["Mood", "Warm"],
                         ["Table", "QR"],
                       ].map(([top, bottom]) => (
-                        <motion.div
+                        <div
                           key={top}
-                          whileHover={{ y: -4, scale: 1.03 }}
-                          className="rounded-2xl border border-white/10 bg-white/10 p-2.5 backdrop-blur-xl sm:p-3"
+                          className="rounded-2xl border border-white/10 bg-white/10 p-2.5 backdrop-blur-md sm:p-3"
                         >
                           <p className="text-[8px] font-black uppercase tracking-[0.18em] text-white/45 sm:text-[10px]">
                             {top}
@@ -1223,47 +847,20 @@ function Home() {
                           <p className="mt-1 text-xs font-black text-white sm:text-sm">
                             {bottom}
                           </p>
-                        </motion.div>
+                        </div>
                       ))}
                     </div>
                   </div>
 
                   <div className="relative rounded-t-[2rem] bg-[#fff7e8] px-4 pb-4 pt-5 text-stone-950 sm:rounded-t-[2.3rem] sm:px-5 sm:pb-5 sm:pt-6">
-                    <div className="absolute left-1/2 top-12 h-36 w-[78%] -translate-x-1/2 rounded-full bg-amber-200/35 blur-3xl" />
+                    <div className="absolute left-1/2 top-12 h-32 w-[72%] -translate-x-1/2 rounded-full bg-amber-200/28 blur-3xl" />
 
-                    <motion.div
-                      whileHover={{ y: -8, scale: 1.015 }}
-                      className="relative overflow-hidden rounded-[1.9rem] border border-amber-200/70 bg-white p-3.5 shadow-xl sm:rounded-[2.15rem] sm:p-4"
-                    >
+                    <div className="relative overflow-hidden rounded-[1.9rem] border border-amber-200/70 bg-white p-3.5 shadow-xl sm:rounded-[2.15rem] sm:p-4">
                       <div className="grid gap-4 sm:grid-cols-[145px_1fr] sm:items-center">
                         <div className="relative h-[136px] overflow-hidden rounded-[1.55rem] bg-[radial-gradient(circle,#fff7cc_0%,#f59e0b_36%,#7c2d12_78%)] shadow-inner sm:h-36">
-                          <motion.div
-                            animate={{ rotate: 360, scale: [1, 1.04, 1] }}
-                            transition={{
-                              rotate: {
-                                duration: 26,
-                                repeat: Infinity,
-                                ease: "linear",
-                              },
-                              scale: {
-                                duration: 2.5,
-                                repeat: Infinity,
-                                ease: "easeInOut",
-                              },
-                            }}
-                            className="absolute left-1/2 top-1/2 flex h-28 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[11px] border-white/90 bg-amber-100 text-5xl shadow-2xl"
-                          >
+                          <div className="absolute left-1/2 top-1/2 flex h-28 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[11px] border-white/90 bg-amber-100 text-5xl shadow-2xl">
                             🍝
-                          </motion.div>
-
-                          <motion.div
-                            animate={{
-                              y: [18, -18, 18],
-                              opacity: [0, 0.55, 0],
-                            }}
-                            transition={{ duration: 3, repeat: Infinity }}
-                            className="absolute w-4 h-16 rounded-full left-8 top-10 bg-white/45 blur-md"
-                          />
+                          </div>
                         </div>
 
                         <div>
@@ -1303,23 +900,9 @@ function Home() {
                           </div>
                         </div>
                       </div>
-                    </motion.div>
+                    </div>
 
-                    <motion.div
-                      whileHover={{ y: -6 }}
-                      className="relative mt-4 overflow-hidden rounded-[1.8rem] border border-dashed border-emerald-300 bg-emerald-50 p-4"
-                    >
-                      <motion.div
-                        animate={{ x: ["-20%", "120%"] }}
-                        transition={{
-                          duration: 2.4,
-                          repeat: Infinity,
-                          repeatDelay: 1.8,
-                          ease: "easeInOut",
-                        }}
-                        className="absolute top-0 w-16 h-full rotate-12 bg-white/60 blur-md"
-                      />
-
+                    <div className="relative mt-4 overflow-hidden rounded-[1.8rem] border border-dashed border-emerald-300 bg-emerald-50 p-4">
                       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="text-[9px] font-black uppercase tracking-[0.26em] text-emerald-700">
@@ -1338,64 +921,30 @@ function Home() {
                           </p>
                         </div>
 
-                        <motion.div
-                          animate={{
-                            scale: [1, 1.08, 1],
-                            rotate: [0, 2, -2, 0],
-                          }}
-                          transition={{
-                            duration: 2,
-                            repeat: Infinity,
-                            ease: "easeInOut",
-                          }}
-                          className="grid h-[72px] w-[72px] shrink-0 grid-cols-3 gap-1 rounded-2xl bg-stone-950 p-2.5 shadow-xl sm:h-20 sm:w-20 sm:p-3"
-                        >
+                        <div className="grid h-[72px] w-[72px] shrink-0 grid-cols-3 gap-1 rounded-2xl bg-stone-950 p-2.5 shadow-xl sm:h-20 sm:w-20 sm:p-3">
                           {[...Array(9)].map((_, i) => (
-                            <motion.span
+                            <span
                               key={i}
-                              animate={{
-                                opacity:
-                                  i % 2 === 0 ? [1, 0.45, 1] : [0.45, 1, 0.45],
-                              }}
-                              transition={{
-                                duration: 1.8,
-                                repeat: Infinity,
-                                delay: i * 0.07,
-                              }}
                               className={`rounded-[4px] ${
                                 i % 2 === 0 ? "bg-white" : "bg-amber-300"
                               }`}
                             />
                           ))}
-                        </motion.div>
+                        </div>
                       </div>
-                    </motion.div>
+                    </div>
                   </div>
                 </div>
               </div>
             </motion.div>
           </div>
-
-          <motion.div
-            style={{ opacity: scrollHintOpacity }}
-            className="absolute z-20 flex-col items-center hidden gap-2 -translate-x-1/2 bottom-8 left-1/2 lg:flex"
-          >
-            <span className="text-[10px] font-black uppercase tracking-[0.35em] text-stone-700">
-              scroll
-            </span>
-            <motion.div
-              animate={{ y: [0, 9, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-              className="h-8 w-[1px] bg-gradient-to-b from-stone-700 to-transparent"
-            />
-          </motion.div>
         </section>
 
         {/* MOMENTS */}
         <section className="relative overflow-hidden bg-[#fffaf1] px-4 py-20 sm:px-6 lg:py-28">
           <div className="absolute inset-0 whc-grid opacity-60" />
-          <div className="whc-orb left-[-140px] top-16 h-[360px] w-[360px] bg-[#e7c474]/22" />
-          <div className="whc-orb bottom-[-140px] right-[-120px] h-[430px] w-[430px] bg-[#d97706]/10" />
+          <div className="whc-orb left-[-140px] top-16 hidden h-[320px] w-[320px] bg-[#e7c474]/18 md:block" />
+          <div className="whc-orb bottom-[-140px] right-[-120px] hidden h-[380px] w-[380px] bg-[#d97706]/08 md:block" />
 
           <div className="relative max-w-6xl mx-auto">
             <Reveal>
@@ -1404,7 +953,7 @@ function Home() {
                   More than a place to eat
                 </p>
 
-                <SplitHeading className="whc-display mt-4 text-[clamp(2.5rem,6vw,5.4rem)] font-[520] leading-[0.92] tracking-[-0.06em] text-[#3d2412]">
+                <SplitHeading className="whc-display mt-4 text-[clamp(2.5rem,6vw,5.4rem)] font-[560] leading-[0.92] tracking-[-0.06em] text-[#3d2412]">
                   A café that feels slow, warm and memorable.
                 </SplitHeading>
 
@@ -1417,22 +966,20 @@ function Home() {
 
             <div className="grid gap-5 mt-14 sm:grid-cols-2 lg:grid-cols-4">
               {MOMENTS.map((item, index) => (
-                <Reveal key={item.title} delay={index * 0.08}>
-                  <TiltCard className="h-full rounded-[2rem] border border-[#eadfcd] bg-white/78 p-6 shadow-[0_18px_50px_rgba(61,36,18,0.08)] backdrop-blur-xl">
-                    <div style={{ transform: "translateZ(28px)" }}>
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#3d2412] text-[#e7c474]">
-                        {item.icon}
-                      </div>
-
-                      <h3 className="whc-display mt-6 text-2xl font-semibold tracking-[-0.03em] text-[#3d2412]">
-                        {item.title}
-                      </h3>
-
-                      <p className="mt-3 text-sm font-semibold leading-7 text-[#3d2412]/58">
-                        {item.text}
-                      </p>
+                <Reveal key={item.title} delay={index * 0.06}>
+                  <SoftCard className="h-full rounded-[2rem] border border-[#eadfcd] bg-white/82 p-6 shadow-[0_16px_42px_rgba(61,36,18,0.07)]">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#3d2412] text-[#e7c474]">
+                      {item.icon}
                     </div>
-                  </TiltCard>
+
+                    <h3 className="whc-display mt-6 text-2xl font-semibold tracking-[-0.03em] text-[#3d2412]">
+                      {item.title}
+                    </h3>
+
+                    <p className="mt-3 text-sm font-semibold leading-7 text-[#3d2412]/58">
+                      {item.text}
+                    </p>
+                  </SoftCard>
                 </Reveal>
               ))}
             </div>
@@ -1440,15 +987,8 @@ function Home() {
         </section>
 
         {/* JOURNEY */}
-        <section
-          ref={journeyRef}
-          className="relative overflow-hidden bg-[#120d08] px-4 py-20 text-[#fffaf1] sm:px-6 lg:py-24"
-        >
-          <motion.div
-            style={{ x: journeyGlowX }}
-            className="absolute left-1/2 top-24 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-[#e7c474]/14 blur-3xl"
-          />
-
+        <section className="relative overflow-hidden bg-[#120d08] px-4 py-20 text-[#fffaf1] sm:px-6 lg:py-24">
+          <div className="absolute left-1/2 top-24 hidden h-[380px] w-[380px] -translate-x-1/2 rounded-full bg-[#e7c474]/12 blur-3xl md:block" />
           <div className="absolute inset-0 opacity-[0.12] bg-[linear-gradient(rgba(255,250,241,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,250,241,0.05)_1px,transparent_1px)] bg-[size:58px_58px]" />
 
           <div className="relative max-w-6xl mx-auto">
@@ -1458,7 +998,7 @@ function Home() {
                   The table journey
                 </p>
 
-                <h2 className="whc-display mt-4 text-[clamp(2.45rem,5vw,5rem)] font-[540] leading-[0.93] tracking-[-0.06em] text-[#fffaf1]">
+                <h2 className="whc-display mt-4 text-[clamp(2.45rem,5vw,5rem)] font-[560] leading-[0.93] tracking-[-0.06em] text-[#fffaf1]">
                   From first scan
                   <span className="block italic whc-gold-text">
                     to last sip.
@@ -1474,48 +1014,42 @@ function Home() {
 
             <div className="relative mt-16">
               <div className="absolute top-0 hidden w-px h-full -translate-x-1/2 left-1/2 bg-white/10 lg:block" />
-              <motion.div
-                style={{ height: timelineHeight }}
-                className="absolute left-1/2 top-0 hidden w-px -translate-x-1/2 rounded-full bg-gradient-to-b from-[#e7c474] via-[#d97706] to-transparent lg:block"
-              />
 
               <div className="grid gap-6 lg:grid-cols-4">
                 {JOURNEY.map((step, index) => (
-                  <Reveal key={step.no} delay={index * 0.08}>
-                    <TiltCard
-                      className={`relative h-full rounded-[2rem] border border-white/10 bg-white/[0.06] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.20)] backdrop-blur-xl ${
+                  <Reveal key={step.no} delay={index * 0.06}>
+                    <SoftCard
+                      className={`relative h-full rounded-[2rem] border border-white/10 bg-white/[0.06] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.18)] backdrop-blur-sm ${
                         index % 2 === 1 ? "lg:mt-14" : ""
                       }`}
                     >
-                      <div style={{ transform: "translateZ(24px)" }}>
-                        <div className="flex items-center justify-between mb-6">
-                          <span className="rounded-full border border-[#e7c474]/25 bg-[#e7c474]/10 px-3 py-1 text-[11px] font-black tracking-[0.22em] text-[#e7c474]">
-                            {step.no}
-                          </span>
+                      <div className="flex items-center justify-between mb-6">
+                        <span className="rounded-full border border-[#e7c474]/25 bg-[#e7c474]/10 px-3 py-1 text-[11px] font-black tracking-[0.22em] text-[#e7c474]">
+                          {step.no}
+                        </span>
 
-                          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#fffaf1] text-3xl shadow-xl">
-                            {step.icon}
-                          </span>
-                        </div>
-
-                        <h3 className="whc-display text-3xl font-semibold tracking-[-0.04em] text-[#fffaf1]">
-                          {step.title}
-                        </h3>
-
-                        <p className="mt-3 text-sm font-semibold leading-7 text-[#fffaf1]/55">
-                          {step.text}
-                        </p>
+                        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#fffaf1] text-3xl shadow-xl">
+                          {step.icon}
+                        </span>
                       </div>
 
+                      <h3 className="whc-display text-3xl font-semibold tracking-[-0.04em] text-[#fffaf1]">
+                        {step.title}
+                      </h3>
+
+                      <p className="mt-3 text-sm font-semibold leading-7 text-[#fffaf1]/55">
+                        {step.text}
+                      </p>
+
                       <div className="pointer-events-none absolute inset-x-6 bottom-0 h-px bg-gradient-to-r from-transparent via-[#e7c474]/50 to-transparent" />
-                    </TiltCard>
+                    </SoftCard>
                   </Reveal>
                 ))}
               </div>
             </div>
 
-            <Reveal delay={0.12}>
-              <div className="mt-12 overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.055] p-4 shadow-[0_28px_80px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+            <Reveal delay={0.1}>
+              <div className="mt-12 overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.055] p-4 shadow-[0_24px_65px_rgba(0,0,0,0.18)] backdrop-blur-sm">
                 <div className="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
                   <div className="rounded-[1.5rem] bg-[#fffaf1] p-5 text-[#3d2412]">
                     <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#8f561a]">
@@ -1554,16 +1088,26 @@ function Home() {
           </div>
         </section>
 
-        <MarqueeStrip />
+        {/* MARQUEE */}
+        <section className="overflow-hidden border-y border-[#eadfcd] bg-[#fffaf1] py-5">
+          <div className="flex items-center gap-8 whc-marquee-track w-max">
+            {marqueeItems.map((item, index) => (
+              <span
+                key={`${item}-${index}`}
+                className="inline-flex items-center gap-3 text-[12px] font-black uppercase tracking-[0.22em] text-[#8f561a]"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-[#d97706]" />
+                {item}
+              </span>
+            ))}
+          </div>
+        </section>
 
         {/* MENU */}
-        <section
-          ref={menuRef}
-          className="relative overflow-hidden bg-[#f5f0e8] px-4 py-20 sm:px-6 lg:py-28"
-        >
+        <section className="relative overflow-hidden bg-[#f5f0e8] px-4 py-20 sm:px-6 lg:py-28">
           <div className="absolute inset-0 whc-grid opacity-70" />
-          <div className="whc-orb left-[-130px] top-16 h-[360px] w-[360px] bg-[#d97706]/12" />
-          <div className="whc-orb bottom-[-110px] right-[-100px] h-[460px] w-[460px] bg-[#e7c474]/22" />
+          <div className="whc-orb left-[-130px] top-16 hidden h-[320px] w-[320px] bg-[#d97706]/10 md:block" />
+          <div className="whc-orb bottom-[-110px] right-[-100px] hidden h-[380px] w-[380px] bg-[#e7c474]/18 md:block" />
 
           <div className="relative max-w-6xl mx-auto">
             <Reveal>
@@ -1573,7 +1117,7 @@ function Home() {
                     Café favourites
                   </p>
 
-                  <SplitHeading className="whc-display mt-4 text-[clamp(2.5rem,5.5vw,5rem)] font-[520] leading-[0.92] tracking-[-0.06em] text-[#3d2412]">
+                  <SplitHeading className="whc-display mt-4 text-[clamp(2.5rem,5.5vw,5rem)] font-[560] leading-[0.92] tracking-[-0.06em] text-[#3d2412]">
                     Golden bites, warm coffee.
                   </SplitHeading>
                 </div>
@@ -1585,30 +1129,21 @@ function Home() {
               </div>
             </Reveal>
 
-            <motion.div
-              style={{ y: menuFloat, rotate: menuRotate }}
-              className="whc-menu-strip"
-            >
+            <div className="whc-menu-strip">
               {SPECIALS.map((dish, index) => (
                 <div className="h-full whc-menu-item" key={dish.name}>
-                  <Reveal delay={index * 0.06} className="h-full">
+                  <Reveal delay={index * 0.05} className="h-full">
                     <DishCard dish={dish} />
                   </Reveal>
                 </div>
               ))}
-            </motion.div>
+            </div>
           </div>
         </section>
 
         {/* EDITORIAL */}
-        <section
-          ref={editorialRef}
-          className="relative overflow-hidden bg-[#fffaf1] px-4 py-20 sm:px-6 lg:py-28"
-        >
-          <motion.div
-            style={{ left: editorialGlowX }}
-            className="absolute top-20 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-[#e7c474]/18 blur-3xl"
-          />
+        <section className="relative overflow-hidden bg-[#fffaf1] px-4 py-20 sm:px-6 lg:py-28">
+          <div className="absolute left-[76%] top-20 hidden h-[380px] w-[380px] -translate-x-1/2 rounded-full bg-[#e7c474]/16 blur-3xl md:block" />
 
           <div className="relative max-w-6xl mx-auto">
             <Reveal>
@@ -1617,7 +1152,7 @@ function Home() {
                   The feeling
                 </p>
 
-                <SplitHeading className="whc-display mt-4 text-[clamp(2.5rem,5.5vw,5rem)] font-[520] leading-[0.92] tracking-[-0.06em] text-[#3d2412]">
+                <SplitHeading className="whc-display mt-4 text-[clamp(2.5rem,5.5vw,5rem)] font-[560] leading-[0.92] tracking-[-0.06em] text-[#3d2412]">
                   Designed for the moments between meals.
                 </SplitHeading>
               </div>
@@ -1625,14 +1160,11 @@ function Home() {
 
             <div className="grid gap-5 mt-14 lg:grid-cols-12">
               <Reveal className="lg:col-span-7">
-                <TiltCard className="relative min-h-[350px] overflow-hidden rounded-[2.4rem] border border-[#eadfcd] bg-[#120d08] p-7 text-[#fffaf1] shadow-[0_28px_80px_rgba(61,36,18,0.14)]">
-                  <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-[#e7c474]/14 blur-3xl" />
-                  <div className="absolute -bottom-24 left-12 h-72 w-72 rounded-full bg-[#d97706]/12 blur-3xl" />
+                <SoftCard className="relative min-h-[350px] overflow-hidden rounded-[2.4rem] border border-[#eadfcd] bg-[#120d08] p-7 text-[#fffaf1] shadow-[0_24px_70px_rgba(61,36,18,0.12)]">
+                  <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-[#e7c474]/12 blur-3xl" />
+                  <div className="absolute -bottom-24 left-12 h-72 w-72 rounded-full bg-[#d97706]/10 blur-3xl" />
 
-                  <div
-                    style={{ transform: "translateZ(28px)" }}
-                    className="relative"
-                  >
+                  <div className="relative">
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#e7c474]/14 text-[#e7c474]">
                       <Sparkles size={26} />
                     </div>
@@ -1647,22 +1179,16 @@ function Home() {
                       casual visitors all feel comfortable.
                     </p>
                   </div>
-                </TiltCard>
+                </SoftCard>
               </Reveal>
 
-              <Reveal delay={0.08} className="lg:col-span-5">
-                <TiltCard className="relative h-full overflow-hidden rounded-[2.4rem] border border-[#eadfcd] bg-white/80 p-7 shadow-[0_24px_70px_rgba(61,36,18,0.10)] backdrop-blur-xl">
-                  <motion.p
-                    style={{ y: editorialNumberY }}
-                    className="pointer-events-none absolute -right-3 top-2 whc-display text-[9rem] font-[520] leading-none tracking-[-0.1em] text-[#e7c474]/24 sm:text-[11rem]"
-                  >
+              <Reveal delay={0.06} className="lg:col-span-5">
+                <SoftCard className="relative h-full overflow-hidden rounded-[2.4rem] border border-[#eadfcd] bg-white/82 p-7 shadow-[0_20px_60px_rgba(61,36,18,0.08)]">
+                  <p className="pointer-events-none absolute -right-3 top-2 whc-display text-[9rem] font-[560] leading-none tracking-[-0.1em] text-[#e7c474]/22 sm:text-[11rem]">
                     01
-                  </motion.p>
+                  </p>
 
-                  <div
-                    style={{ transform: "translateZ(28px)" }}
-                    className="relative z-10"
-                  >
+                  <div className="relative z-10">
                     <div className="mb-12 inline-flex rounded-full bg-[#3d2412] px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-[#e7c474]">
                       Café corner
                     </div>
@@ -1676,18 +1202,18 @@ function Home() {
                       meet-up, a quick coffee, or a cozy evening plan.
                     </p>
                   </div>
-                </TiltCard>
+                </SoftCard>
               </Reveal>
 
-              <Reveal delay={0.12} className="lg:col-span-4">
+              <Reveal delay={0.08} className="lg:col-span-4">
                 <MiniBento
-                  icon={<Leaf size={23} />}
+                  icon={<Leaf size={25} />}
                   title="Fresh & simple"
                   text="Clean menu, warm food and less confusion at the table."
                 />
               </Reveal>
 
-              <Reveal delay={0.16} className="lg:col-span-4">
+              <Reveal delay={0.1} className="lg:col-span-4">
                 <MiniBento
                   icon={<ChefHat size={23} />}
                   title="Kitchen friendly"
@@ -1695,7 +1221,7 @@ function Home() {
                 />
               </Reveal>
 
-              <Reveal delay={0.2} className="lg:col-span-4">
+              <Reveal delay={0.12} className="lg:col-span-4">
                 <MiniBento
                   icon={<Heart size={23} />}
                   title="Made to return"
@@ -1709,116 +1235,62 @@ function Home() {
         {/* CTA */}
         <section className="relative overflow-hidden bg-[#120d08] px-4 py-20 text-center text-[#fffaf1] sm:px-6 lg:py-28">
           <div className="absolute inset-0 opacity-[0.13] bg-[linear-gradient(rgba(255,250,241,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,250,241,0.05)_1px,transparent_1px)] bg-[size:58px_58px]" />
-          <div className="whc-orb left-1/2 top-[-160px] h-[520px] w-[520px] -translate-x-1/2 bg-[#e7c474]/16" />
+          <div className="absolute left-1/2 top-1/2 hidden h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#e7c474]/12 blur-3xl md:block" />
 
-          <Reveal>
-            <div className="relative max-w-4xl mx-auto">
-              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-[#e7c474]/25 bg-white/[0.07] text-[#e7c474]">
-                <MapPin size={28} />
-              </div>
+          <div className="relative max-w-4xl mx-auto">
+            <Reveal>
+              <p className="text-[11px] font-black uppercase tracking-[0.28em] text-[#e7c474]">
+                Ready for a warm table?
+              </p>
 
-              <h2 className="whc-display text-[clamp(2.8rem,6vw,5.8rem)] font-[540] leading-[0.9] tracking-[-0.065em] text-[#fffaf1]">
-                Your table is
+              <h2 className="whc-display mt-4 text-[clamp(2.7rem,6vw,5.8rem)] font-[560] leading-[0.92] tracking-[-0.06em]">
+                Browse the café menu
                 <span className="block italic whc-gold-text">
-                  already waiting.
+                  before your first sip.
                 </span>
               </h2>
 
-              <p className="mx-auto mt-6 max-w-xl text-base font-semibold leading-8 text-[#fffaf1]/58">
-                Come in, sit down, scan the QR and let The White House Café take
-                care of the rest.
+              <p className="mx-auto mt-6 max-w-2xl text-base font-semibold leading-8 text-[#fffaf1]/58">
+                Explore our menu or scan your table QR when you visit to place
+                your order directly.
               </p>
 
-              <div className="flex flex-col items-center justify-center gap-3 mt-9 sm:flex-row">
+              <div className="flex flex-col items-center justify-center gap-4 mt-9 sm:flex-row">
                 <button onClick={handleExplore} className="whc-btn">
                   <span>Explore Menu</span>
                   <ArrowRight size={18} />
                 </button>
 
                 <button
-                  onClick={() => navigate("/scan")}
+                  onClick={() => navigate("/contact")}
                   className="whc-ghost-btn whc-dark-ghost"
                 >
-                  <QrCode size={18} />
-                  Scan QR
+                  <MapPin size={18} />
+                  <span>Visit Café</span>
                 </button>
               </div>
-            </div>
-          </Reveal>
+            </Reveal>
+          </div>
         </section>
-
-        <footer className="border-t border-white/10 bg-[#120d08] px-4 py-8 text-center sm:px-6">
-          <p className="whc-display text-lg italic text-[#fffaf1]/35">
-            © 2026 The White House Café · Crafted with warmth
-          </p>
-        </footer>
       </div>
     </>
   );
 }
 
-/* ─────────────────────────────────────────────
-   SUB COMPONENTS
-───────────────────────────────────────────── */
-
-function MarqueeStrip() {
-  const items = [
-    "Fresh Coffee",
-    "QR Table Ordering",
-    "Warm Snacks",
-    "Cozy Seating",
-    "Golden Café Mood",
-    "Friends & Family",
-    "Evening Bites",
-    "The White House Café",
-  ];
-
-  return (
-    <section className="overflow-hidden border-y border-[#eadfcd] bg-[#fffaf1] py-4">
-      <div
-        className="flex gap-10 whitespace-nowrap"
-        style={{
-          width: "max-content",
-          animation: "whc-marquee 28s linear infinite",
-        }}
-      >
-        {[...items, ...items].map((item, index) => (
-          <span
-            key={`${item}-${index}`}
-            className="inline-flex items-center gap-3 text-[12px] font-black uppercase tracking-[0.22em] text-[#8f561a]"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-[#d97706]" />
-            {item}
-          </span>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function DishCard({ dish }) {
   return (
-    <TiltCard className="whc-menu-card relative flex h-[390px] flex-col overflow-hidden rounded-[2rem] border border-[#eadfcd] bg-[#fffaf1]/90 p-6 text-center shadow-[0_22px_60px_rgba(61,36,18,0.11)] backdrop-blur-xl sm:h-full">
-      <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#e7c474]/24 blur-2xl" />
+    <SoftCard className="whc-menu-card relative flex h-[390px] flex-col overflow-hidden rounded-[2rem] border border-[#eadfcd] bg-[#fffaf1]/92 p-6 text-center shadow-[0_18px_48px_rgba(61,36,18,0.08)] sm:h-full">
+      <div className="absolute -right-10 -top-10 h-24 w-24 rounded-full bg-[#e7c474]/18 blur-2xl" />
 
-      <div
-        style={{ transform: "translateZ(28px)" }}
-        className="absolute left-5 top-5 rounded-full bg-[#3d2412] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#e7c474]"
-      >
+      <div className="absolute left-5 top-5 rounded-full bg-[#3d2412] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#e7c474]">
         {dish.tag}
       </div>
 
-      <div
-        style={{ transform: "translateZ(34px)" }}
-        className="whc-menu-emoji relative mx-auto mb-5 mt-8 flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-[#eadfcd] bg-white text-5xl shadow-[0_18px_45px_rgba(61,36,18,0.08)]"
-      >
+      <div className="whc-menu-emoji relative mx-auto mb-5 mt-8 flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-[#eadfcd] bg-white text-5xl shadow-[0_14px_35px_rgba(61,36,18,0.07)]">
         {dish.emoji}
       </div>
 
-      <div
-        style={{ transform: "translateZ(24px)" }}
-        className="flex flex-col flex-1"
-      >
+      <div className="flex flex-col flex-1">
         <h3 className="whc-display text-2xl font-semibold tracking-[-0.03em] text-[#3d2412]">
           {dish.name}
         </h3>
@@ -1843,27 +1315,25 @@ function DishCard({ dish }) {
           </div>
         </div>
       </div>
-    </TiltCard>
+    </SoftCard>
   );
 }
 
 function MiniBento({ icon, title, text }) {
   return (
-    <TiltCard className="h-full rounded-[2rem] border border-[#eadfcd] bg-white/80 p-6 shadow-[0_20px_55px_rgba(61,36,18,0.08)] backdrop-blur-xl">
-      <div style={{ transform: "translateZ(26px)" }}>
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#3d2412] text-[#e7c474]">
-          {icon}
-        </div>
-
-        <h3 className="whc-display mt-8 text-3xl font-semibold tracking-[-0.045em] text-[#3d2412]">
-          {title}
-        </h3>
-
-        <p className="mt-4 text-sm font-semibold leading-7 text-[#3d2412]/58">
-          {text}
-        </p>
+    <SoftCard className="h-full rounded-[2rem] border border-[#eadfcd] bg-white/82 p-6 shadow-[0_16px_48px_rgba(61,36,18,0.08)]">
+      <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-[#3d2412] text-[#e7c474]">
+        {icon}
       </div>
-    </TiltCard>
+
+      <h3 className="whc-display mt-6 text-2xl font-semibold tracking-[-0.03em] text-[#3d2412]">
+        {title}
+      </h3>
+
+      <p className="mt-3 text-sm font-semibold leading-7 text-[#3d2412]/58">
+        {text}
+      </p>
+    </SoftCard>
   );
 }
 

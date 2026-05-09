@@ -1,11 +1,10 @@
 import { useEffect, useState, useContext, useRef } from "react";
 import axios from "axios";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { CartContext } from "../context/CartContext.jsx";
 import ExpandableText from "../components/ExpandableText";
 import socket from "../socket/socket";
 import toast from "react-hot-toast";
-import img from "../../public/plate.png";
 import AddToCartButton from "../components/AddToCartButton";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,14 +17,7 @@ import {
 } from "lucide-react";
 
 const API = "https://fooadash.onrender.com/api";
-
-const Divider = () => (
-  <div className="flex items-center justify-center gap-2 my-1">
-    <div className="w-6 h-[1px] bg-amber-400" />
-    <span className="text-sm text-amber-500">🌿</span>
-    <div className="w-6 h-[1px] bg-amber-400" />
-  </div>
-);
+const INTRO_KEY = "whc_menu_intro_played";
 
 const CategoryIcon = ({
   cat,
@@ -49,35 +41,60 @@ const CategoryIcon = ({
   );
 };
 
-function MenuTitle({ softShadow = true, glow = true }) {
+function CurtainLetters({ text }) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
+      {text.split("").map((letter, index) => (
+        <motion.span
+          key={`${letter}-${index}`}
+          initial={{ opacity: 0, y: 16, rotate: -2 }}
+          animate={{ opacity: 1, y: 0, rotate: 0 }}
+          transition={{
+            delay: 0.28 + index * 0.04,
+            duration: 0.42,
+            ease: [0.16, 1, 0.3, 1],
+          }}
+          className="inline-block"
+        >
+          {letter === " " ? "\u00A0" : letter}
+        </motion.span>
+      ))}
+    </div>
+  );
+}
+
+function MenuTitle({ large = false }) {
   return (
     <div
-      className="relative text-center md:text-left leading-[0.82] tracking-[-0.07em] text-[#241309]"
+      className="relative text-center md:text-left leading-[0.78] tracking-[-0.075em]"
       style={{
         fontFamily: "'Fraunces', 'Playfair Display', Georgia, serif",
-        fontSize: "clamp(3rem, 9vw, 6rem)",
-        fontWeight: 850,
-        fontVariationSettings: '"SOFT" 42, "WONK" 1',
-        textShadow: softShadow
-          ? "0 18px 48px rgba(73,35,12,0.24), 0 2px 0 rgba(255,246,220,0.45)"
-          : "none",
+        fontSize: large
+          ? "clamp(4.8rem, 18vw, 9.4rem)"
+          : "clamp(4rem, 14vw, 7.4rem)",
+        fontWeight: 900,
+        fontVariationSettings: '"SOFT" 18, "WONK" 0',
+        textShadow: "none",
+        filter: "none",
+        WebkitFontSmoothing: "antialiased",
+        backfaceVisibility: "hidden",
+        transform: "translateZ(0)",
       }}
     >
-      {/* <span className="block whitespace-nowrap text-[#241309]">Our</span> */}
-
       <span
         className="relative block whitespace-nowrap"
         style={{
-          background:
-            "linear-gradient(92deg, #7b3817 0%, #d2954f 42%, #8a4218 70%, #35190a 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
+          color: "#b45309",
+          WebkitTextStroke: "0px transparent",
+          WebkitTextFillColor: "#b45309",
+          filter: "none",
+          textShadow: "none",
         }}
       >
         Menu
       </span>
 
-      {/* <span className="absolute -bottom-4 left-1/2 h-[2px] w-[76%] -translate-x-1/2 rounded-full bg-gradient-to-r from-transparent via-[#d59b56]/80 to-transparent md:left-1 md:translate-x-0" /> */}
+      <span className="absolute -bottom-4 left-1/2 h-[2px] w-[76%] -translate-x-1/2 rounded-full bg-gradient-to-r from-transparent via-[#d97706] to-transparent md:left-1 md:translate-x-0" />
     </div>
   );
 }
@@ -93,6 +110,8 @@ function Menu() {
   const [dbCategories, setDbCategories] = useState([]);
 
   const [showIntro, setShowIntro] = useState(true);
+  const [curtainStep, setCurtainStep] = useState("welcome");
+  const [curtainLeaving, setCurtainLeaving] = useState(false);
   const [titleFlight, setTitleFlight] = useState(false);
   const [titleLanded, setTitleLanded] = useState(false);
   const [hideFlyingTitle, setHideFlyingTitle] = useState(false);
@@ -100,12 +119,21 @@ function Menu() {
   const [loaded, setLoaded] = useState(false);
 
   const heroTitleRef = useRef(null);
+  const sessionCheckedRef = useRef(false);
 
   const { cart, addToCart, removeItem, clearCart } = useContext(CartContext);
   const { token: tokenFromUrl } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const token = tokenFromUrl || localStorage.getItem("token");
+  const queryToken = new URLSearchParams(location.search).get("token");
+  const storedToken = localStorage.getItem("token");
+  const token = tokenFromUrl || queryToken || storedToken;
+
+  const isPageReload = () => {
+    const navEntry = performance.getEntriesByType?.("navigation")?.[0];
+    return navEntry?.type === "reload";
+  };
 
   const measureHeroTitle = () => {
     if (!heroTitleRef.current) return;
@@ -125,19 +153,27 @@ function Menu() {
   }, []);
 
   useEffect(() => {
+    if (sessionCheckedRef.current) return;
+    sessionCheckedRef.current = true;
+
     if (!token) {
-      toast.error("FoodDash: Please scan QR first");
-      setTimeout(() => navigate("/thank-you"), 1200);
+      toast.error("Please scan QR first");
+      localStorage.removeItem("token");
+      localStorage.removeItem("table");
+      clearCart();
+      navigate("/scan", { replace: true });
       return;
     }
 
     axios
-      .get(`https://fooadash.onrender.com/api/session/${token}`)
+      .get(`${API}/session/${token}`)
       .then((res) => {
         setTable(res.data.table);
-        if (tokenFromUrl) {
-          localStorage.setItem("table", res.data.table);
-          localStorage.setItem("token", token);
+        localStorage.setItem("table", res.data.table);
+        localStorage.setItem("token", token);
+
+        if (tokenFromUrl || queryToken) {
+          navigate("/order", { replace: true });
         }
       })
       .catch(() => {
@@ -145,15 +181,15 @@ function Menu() {
         localStorage.removeItem("token");
         localStorage.removeItem("table");
         clearCart();
-        navigate("/thank-you");
+        navigate("/thank-you", { replace: true });
       });
-  }, [token, tokenFromUrl, navigate, clearCart]);
+  }, [token, tokenFromUrl, queryToken, navigate, clearCart]);
 
   useEffect(() => {
     const handleSessionExpire = (data) => {
       const currentToken = localStorage.getItem("token");
 
-      if (data.token === currentToken) {
+      if (data?.token && data.token === currentToken) {
         toast.error("Session expired");
 
         clearCart();
@@ -161,8 +197,8 @@ function Menu() {
         localStorage.removeItem("table");
 
         setTimeout(() => {
-          navigate("/thank-you");
-        }, 1200);
+          navigate("/thank-you", { replace: true });
+        }, 900);
       }
     };
 
@@ -191,35 +227,68 @@ function Menu() {
   }, []);
 
   useEffect(() => {
-    measureHeroTitle();
+    const shouldReplayOnRefresh = isPageReload();
+    const alreadyPlayed = sessionStorage.getItem(INTRO_KEY);
 
-    const onResize = () => measureHeroTitle();
+    const measureTimer = setTimeout(() => {
+      measureHeroTitle();
+    }, 120);
+
+    const onResize = () => {
+      measureHeroTitle();
+    };
+
     window.addEventListener("resize", onResize);
 
-    const flyTimer = setTimeout(() => {
+    if (alreadyPlayed && !shouldReplayOnRefresh) {
+      setShowIntro(false);
+      setHideFlyingTitle(true);
+      setTitleLanded(true);
+      setLoaded(true);
+
+      return () => {
+        clearTimeout(measureTimer);
+        window.removeEventListener("resize", onResize);
+      };
+    }
+
+    sessionStorage.setItem(INTRO_KEY, "true");
+
+    const stepTimer = setTimeout(() => {
+      setCurtainStep("menu");
+    }, 1750);
+
+    const startFlightTimer = setTimeout(() => {
       measureHeroTitle();
       setTitleFlight(true);
-    }, 2200);
+      setCurtainLeaving(true);
+    }, 3300);
 
     const landTimer = setTimeout(() => {
       setTitleLanded(true);
-    }, 3260);
+    }, 4380);
 
     const hideFlyTimer = setTimeout(() => {
       setHideFlyingTitle(true);
-    }, 3310);
+    }, 4480);
 
-    const finishTimer = setTimeout(() => {
+    const removeCurtainTimer = setTimeout(() => {
       setShowIntro(false);
+    }, 4500);
+
+    const loadTimer = setTimeout(() => {
       setLoaded(true);
-    }, 3650);
+    }, 4550);
 
     return () => {
-      window.removeEventListener("resize", onResize);
-      clearTimeout(flyTimer);
+      clearTimeout(measureTimer);
+      clearTimeout(stepTimer);
+      clearTimeout(startFlightTimer);
       clearTimeout(landTimer);
       clearTimeout(hideFlyTimer);
-      clearTimeout(finishTimer);
+      clearTimeout(removeCurtainTimer);
+      clearTimeout(loadTimer);
+      window.removeEventListener("resize", onResize);
     };
   }, []);
 
@@ -283,203 +352,80 @@ function Menu() {
       style={{ backgroundColor: "#f5f0e8" }}
     >
       <style>{`
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..800,0..100,0..1&family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
 
-  .whc-menu-paint {
-    position: relative;
-  }
+        .whc-display {
+          font-family: 'Fraunces', Georgia, serif;
+          font-variation-settings: "SOFT" 38, "WONK" 0.4;
+        }
 
-  .whc-menu-paint::before {
-    content: "";
-    position: absolute;
-    inset: -12px -24px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.48), transparent);
-    transform: translateX(-125%) rotate(10deg);
-    filter: blur(13px);
-    animation: whcMenuBrush 1.35s cubic-bezier(0.16,1,0.3,1) 0.72s forwards;
-    pointer-events: none;
-  }
+        .whc-graffiti {
+          font-family: 'Caveat', cursive;
+        }
 
-  .whc-welcome-paint {
-    position: relative;
-    font-family: 'Fraunces', Georgia, serif;
-    font-size: clamp(2.2rem, 8.5vw, 5.8rem);
-    font-weight: 850;
-    line-height: 0.9;
-    letter-spacing: -0.06em;
-    text-align: center;
-    color: transparent;
-    -webkit-text-stroke: 1px rgba(255, 241, 201, 0.45);
-    text-shadow: 0 26px 70px rgba(0,0,0,0.45);
-  }
-
-  .whc-welcome-paint::before {
-    content: "The White House Café\\A Welcomes You";
-    white-space: pre;
-    position: absolute;
-    inset: 0;
-    color: #fff1c9;
-    overflow: hidden;
-    width: 0%;
-    animation: whcWelcomePaint 1.55s cubic-bezier(0.22,1,0.36,1) 0.35s forwards;
-  }
-
-  .whc-welcome-paint::after {
-    content: "";
-    position: absolute;
-    top: 8%;
-    left: 0;
-    width: 18px;
-    height: 84%;
-    border-radius: 999px;
-    background: linear-gradient(to bottom, transparent, #e7c474, transparent);
-    filter: blur(6px);
-    opacity: 0;
-    animation: whcWelcomeBrush 1.55s cubic-bezier(0.22,1,0.36,1) 0.35s forwards;
-  }
-
-  @keyframes whcWelcomePaint {
-    0% {
-      width: 0%;
-      filter: blur(8px);
-    }
-    45% {
-      filter: blur(2px);
-    }
-    100% {
-      width: 100%;
-      filter: blur(0px);
-    }
-  }
-
-  @keyframes whcWelcomeBrush {
-    0% {
-      opacity: 0;
-      transform: translateX(0);
-    }
-    18% {
-      opacity: 1;
-    }
-    85% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 0;
-      transform: translateX(420px);
-    }
-  }
-
-  @keyframes whcMenuBrush {
-    0% {
-      transform: translateX(-125%) rotate(10deg);
-      opacity: 0;
-    }
-    18% {
-      opacity: 1;
-    }
-    80% {
-      opacity: 1;
-    }
-    100% {
-      transform: translateX(125%) rotate(10deg);
-      opacity: 0;
-    }
-  }
-
-  @keyframes floatSlow {
-    0%, 100% {
-      transform: translateY(0px) rotate(0deg);
-    }
-    50% {
-      transform: translateY(-10px) rotate(4deg);
-    }
-  }
-
-  @keyframes leafPulse {
-    0%, 100% {
-      transform: scale(1);
-      opacity: 0.9;
-    }
-    50% {
-      transform: scale(1.12);
-      opacity: 1;
-    }
-  }
-`}</style>
+        @keyframes floatSlow {
+          0%, 100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-10px) rotate(4deg);
+          }
+        }
+      `}</style>
 
       {/* INTRO CURTAIN */}
       <AnimatePresence>
         {showIntro && (
           <motion.div
             initial={{ y: 0 }}
-            animate={{ y: titleFlight ? "-108%" : 0 }}
-            exit={{ y: "-108%" }}
+            animate={{ y: curtainLeaving ? "-100%" : 0 }}
+            exit={{ y: "-100%" }}
             transition={{
-              delay: titleFlight ? 0.05 : 0,
-              duration: 1.08,
+              duration: 1.05,
               ease: [0.76, 0, 0.24, 1],
             }}
             className="fixed inset-0 z-[9998] flex items-center justify-center overflow-hidden bg-[#2b1609]"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.35),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(16,185,129,0.16),transparent_35%),linear-gradient(135deg,#2b1609_0%,#7c3f11_52%,#f3d7a8_100%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,#2b1609_0%,#74370f_52%,#e0b875_100%)]" />
+            <div className="absolute inset-0 opacity-[0.16] bg-[linear-gradient(rgba(255,250,241,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,250,241,0.05)_1px,transparent_1px)] bg-[size:52px_52px]" />
+            <div className="absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-100/12 blur-3xl" />
 
-            <motion.div
-              initial={{ scaleX: 0 }}
-              animate={{ scaleX: 1 }}
-              transition={{ duration: 1.15, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute left-0 top-1/2 z-0 h-44 w-full origin-left -translate-y-1/2 bg-[#fff4dc]/20 blur-3xl"
-            />
+            <AnimatePresence mode="wait">
+              {curtainStep === "welcome" && (
+                <motion.div
+                  key="welcome"
+                  initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -20, scale: 0.98 }}
+                  transition={{
+                    duration: 0.55,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                  className="relative z-10 w-full px-5 text-center"
+                >
+                  <p className="mb-5 text-[10px] font-black uppercase tracking-[0.42em] text-amber-100/65">
+                    Welcome to
+                  </p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 26, scale: 0.96, filter: "blur(16px)" }}
-              animate={{
-                opacity: titleFlight ? 0 : 1,
-                y: titleFlight ? -20 : 0,
-                scale: titleFlight ? 0.96 : 1,
-                filter: titleFlight ? "blur(8px)" : "blur(0px)",
-              }}
-              transition={{
-                delay: titleFlight ? 0 : 0.15,
-                duration: titleFlight ? 0.35 : 0.85,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-              className="relative z-10 px-5 text-center"
-            >
-              <h1 className="whc-welcome-paint">
-                The White House Café
-                <br />
-                Welcomes You
-              </h1>
+                  <div className="whc-graffiti mx-auto max-w-[92vw] text-center text-[clamp(2.2rem,10vw,5.2rem)] font-bold leading-none text-[#fff4cf]">
+                    <CurtainLetters text="The White House Café" />
+                  </div>
 
-              <motion.p
-                initial={{ opacity: 0, y: 14 }}
-                animate={{
-                  opacity: titleFlight ? 0 : 1,
-                  y: titleFlight ? 10 : 0,
-                }}
-                transition={{ delay: titleFlight ? 0 : 1.65, duration: 0.6 }}
-                className="mt-7 text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/70"
-              >
-                Choose softly from your table
-              </motion.p>
-            </motion.div>
+                  <div className="mx-auto mt-5 h-px w-64 max-w-[70vw] origin-center bg-gradient-to-r from-transparent via-amber-100/85 to-transparent" />
 
-            <motion.div
-              initial={{ scaleX: 0, opacity: 0 }}
-              animate={{
-                scaleX: titleFlight ? 0 : 1,
-                opacity: titleFlight ? 0 : 1,
-              }}
-              transition={{ delay: titleFlight ? 0 : 1.85, duration: 0.65 }}
-              className="absolute top-[74%] z-10 h-[3px] w-72 origin-left rounded-full bg-gradient-to-r from-transparent via-amber-200 to-transparent"
-            />
+                  <p className="mx-auto mt-5 max-w-xl text-xs font-black uppercase tracking-[0.22em] text-amber-50/78 sm:text-sm">
+                    Coffee • Plates • Quiet Talks
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* FLYING TITLE */}
+      {/* SINGLE FLYING MENU TITLE */}
       <AnimatePresence>
-        {!hideFlyingTitle && (
+        {!hideFlyingTitle && curtainStep === "menu" && (
           <motion.div
             initial={{
               left: "50%",
@@ -489,7 +435,6 @@ function Menu() {
               opacity: 0,
               scale: 1,
               rotate: -2,
-              filter: "none",
             }}
             animate={
               titleFlight && titleTarget
@@ -501,27 +446,23 @@ function Menu() {
                     opacity: 1,
                     scale: 1,
                     rotate: 0,
-                    filter: "none",
                   }
                 : {
                     left: "50%",
                     top: "50%",
                     x: "-50%",
                     y: "-50%",
-                    opacity: 0,
+                    opacity: 1,
                     scale: 1,
                     rotate: 0,
-                    filter: "none",
                   }
             }
             exit={{
               opacity: 0,
-
               transition: { duration: 0.08 },
             }}
             transition={{
-              opacity: { delay: titleFlight ? 0.08 : 0, duration: 0.28 },
-              filter: { duration: 0.7 },
+              opacity: { duration: 0.25 },
               rotate: { duration: 0.8 },
               left: { duration: 1.05, ease: [0.18, 1, 0.25, 1] },
               top: { duration: 1.05, ease: [0.18, 1, 0.25, 1] },
@@ -530,9 +471,7 @@ function Menu() {
             }}
             className="fixed z-[10000] w-max max-w-none pointer-events-none"
           >
-            <div className="whc-menu-paint">
-              <MenuTitle softShadow={false} glow={false} />
-            </div>
+            <MenuTitle large={!titleFlight} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -572,7 +511,7 @@ function Menu() {
             className="relative mx-auto mt-2 w-fit"
             style={{ visibility: titleLanded ? "visible" : "hidden" }}
           >
-            <MenuTitle softShadow={false} glow={false} />
+            <MenuTitle />
           </motion.div>
 
           <motion.div
@@ -683,7 +622,6 @@ function Menu() {
         </div>
       </div>
 
-      {/* MENU SECTION */}
       {/* MENU SECTION */}
       <motion.div
         initial={{ opacity: 0, y: 42 }}
@@ -987,7 +925,6 @@ function Menu() {
 
                   <div className="pointer-events-none absolute inset-0 rounded-[20px] ring-1 ring-inset ring-amber-300/0 transition-all duration-500 group-hover:ring-amber-300/25 z-10" />
 
-                  {/* IMAGE */}
                   <div className="relative overflow-hidden aspect-[4/3] bg-amber-50 rounded-t-[20px] flex-shrink-0">
                     <div className="pointer-events-none absolute inset-0 z-10 translate-x-[-120%] bg-gradient-to-r from-transparent via-white/22 to-transparent transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-[130%]" />
 
@@ -1001,7 +938,6 @@ function Menu() {
 
                     <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/[0.04] to-transparent" />
 
-                    {/* BADGE */}
                     {badge &&
                       badge !== "none" &&
                       isAvailable &&
@@ -1091,7 +1027,6 @@ function Menu() {
                         );
                       })()}
 
-                    {/* SOLD OUT */}
                     {!isAvailable && (
                       <div className="absolute inset-0 z-20 flex items-center justify-center">
                         <div
@@ -1105,7 +1040,6 @@ function Menu() {
                       </div>
                     )}
 
-                    {/* VEG / NON VEG */}
                     <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-30">
                       <span
                         className={`hidden sm:flex items-center gap-1.5 overflow-hidden backdrop-blur-xl border shadow-md rounded-full max-w-0 opacity-0 px-0 group-hover:max-w-[90px] group-hover:opacity-100 group-hover:px-2.5 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] text-[8.5px] font-bold tracking-[0.12em] whitespace-nowrap ${
@@ -1147,7 +1081,6 @@ function Menu() {
                       </div>
                     </div>
 
-                    {/* CATEGORY PILL */}
                     {item.category && isAvailable && (
                       <span className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[9px] font-semibold tracking-widest uppercase text-white/90 bg-black/30 backdrop-blur-sm rounded-full border border-white/10">
                         {itemCategoryIconSvg && (
@@ -1163,7 +1096,6 @@ function Menu() {
                     )}
                   </div>
 
-                  {/* CONTENT */}
                   <div className="relative flex flex-col flex-1 px-5 pt-4 pb-5 bg-white transition-colors duration-400 group-hover:bg-[#fffbf4]">
                     <div
                       className="pointer-events-none absolute inset-0 rounded-b-[20px] opacity-0 group-hover:opacity-100 transition-opacity duration-500"
@@ -1190,7 +1122,6 @@ function Menu() {
                       />
                     </div>
 
-                    {/* SAME SVG DIVIDER AS MENU PREVIEW */}
                     <div
                       className="flex items-center justify-center my-3"
                       style={{ height: 18 }}
@@ -1285,7 +1216,6 @@ function Menu() {
                       </svg>
                     </div>
 
-                    {/* PRICE - NO FAKE PLACEHOLDER SPACE */}
                     <div className="mt-auto text-center">
                       {item.salePrice ? (
                         <>
