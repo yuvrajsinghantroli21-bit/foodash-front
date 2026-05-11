@@ -13,17 +13,15 @@ import {
   ArrowLeft,
   Sparkles,
   Timer,
+  X,
+  TicketPercent,
+  CreditCard,
+  Wallet,
 } from "lucide-react";
 
 const Divider = () => (
   <div className="flex items-center justify-center my-3" style={{ height: 18 }}>
-    <svg
-      width="190"
-      height="18"
-      viewBox="0 0 190 18"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
+    <svg width="190" height="18" viewBox="0 0 190 18" fill="none">
       <line x1="0" y1="9" x2="60" y2="9" stroke="#e8c97a" strokeWidth="0.8" />
       <path
         d="M60 9 Q66 4 72 7"
@@ -134,6 +132,7 @@ export default function MyOrder() {
   const [orders, setOrders] = useState([]);
   const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedBill, setSelectedBill] = useState(null);
 
   const table = localStorage.getItem("table");
   const token = localStorage.getItem("token");
@@ -154,6 +153,33 @@ export default function MyOrder() {
     if (found.image.startsWith("http")) return found.image;
 
     return `https://fooadash.onrender.com/uploads/${found.image}`;
+  };
+
+  const getOrderSubtotal = (order) =>
+    Number(
+      order?.subtotal ||
+        (order?.items || []).reduce(
+          (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1),
+          0,
+        ),
+    );
+
+  const getOrderDiscount = (order) =>
+    Number(order?.discountAmount || order?.coupon?.discountAmount || 0);
+
+  const getOrderFinalTotal = (order) =>
+    Number(order?.finalTotal || order?.total || getOrderSubtotal(order));
+
+  const getPaymentMode = (order) => {
+    const mode = String(order?.paymentMode || "counter").toLowerCase();
+
+    if (["online", "razorpay", "upi", "card"].includes(mode)) return "Online";
+    return "Pay at Counter";
+  };
+
+  const getPaymentStatus = (order) => {
+    const status = String(order?.paymentStatus || "due").toLowerCase();
+    return status === "paid" ? "Paid" : "Due";
   };
 
   useEffect(() => {
@@ -186,7 +212,7 @@ export default function MyOrder() {
   useEffect(() => {
     fetchOrders();
 
-    socket.on("orderUpdated", (updatedOrder) => {
+    const handleUpdate = (updatedOrder) => {
       if (updatedOrder.token === token || updatedOrder.sessionId === token) {
         setOrders((prev) => {
           const exists = prev.find((o) => o._id === updatedOrder._id);
@@ -204,27 +230,10 @@ export default function MyOrder() {
           toast.success("One batch is served! 🍽️");
         }
       }
-    });
+    };
 
-    socket.on("order-updated", (updatedOrder) => {
-      if (updatedOrder.token === token || updatedOrder.sessionId === token) {
-        setOrders((prev) => {
-          const exists = prev.find((o) => o._id === updatedOrder._id);
-
-          const next = exists
-            ? prev.map((o) => (o._id === updatedOrder._id ? updatedOrder : o))
-            : [...prev, updatedOrder];
-
-          return next.sort(
-            (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
-          );
-        });
-
-        if (updatedOrder.status === "served") {
-          toast.success("One batch is served! 🍽️");
-        }
-      }
-    });
+    socket.on("orderUpdated", handleUpdate);
+    socket.on("order-updated", handleUpdate);
 
     socket.on("session-expired", (data) => {
       if (data.token === token) {
@@ -237,8 +246,8 @@ export default function MyOrder() {
     });
 
     return () => {
-      socket.off("orderUpdated");
-      socket.off("order-updated");
+      socket.off("orderUpdated", handleUpdate);
+      socket.off("order-updated", handleUpdate);
       socket.off("session-expired");
     };
   }, [token, navigate]);
@@ -254,11 +263,9 @@ export default function MyOrder() {
     }
   }, [orders, navigate]);
 
-  const grandTotal = orders.reduce(
-    (sum, o) =>
-      sum + (o.total ?? o.items.reduce((s, i) => s + i.price * i.qty, 0)),
-    0,
-  );
+  const grandSubtotal = orders.reduce((sum, o) => sum + getOrderSubtotal(o), 0);
+  const grandDiscount = orders.reduce((sum, o) => sum + getOrderDiscount(o), 0);
+  const grandTotal = orders.reduce((sum, o) => sum + getOrderFinalTotal(o), 0);
 
   const totalItems = orders.reduce(
     (sum, o) => sum + o.items.reduce((s, i) => s + i.qty, 0),
@@ -365,10 +372,11 @@ export default function MyOrder() {
           <div className="mt-8 space-y-5">
             {orders.map((order, index) => {
               const safeStatus = order.status || "pending";
-
-              const batchTotal =
-                order.total ??
-                order.items.reduce((s, i) => s + i.price * i.qty, 0);
+              const batchSubtotal = getOrderSubtotal(order);
+              const batchDiscount = getOrderDiscount(order);
+              const batchTotal = getOrderFinalTotal(order);
+              const paymentStatus = getPaymentStatus(order);
+              const paymentMode = getPaymentMode(order);
 
               const time = new Date(order.createdAt).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -393,6 +401,13 @@ export default function MyOrder() {
                           <span className="text-xs font-bold text-amber-100/70">
                             {orderId}
                           </span>
+
+                          {order.coupon?.code && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-black rounded-full bg-emerald-100 text-emerald-800">
+                              <TicketPercent size={13} />
+                              {order.coupon.code}
+                            </span>
+                          )}
                         </div>
 
                         <p className="mt-2 text-xs font-semibold uppercase tracking-[0.22em] text-amber-100/60">
@@ -400,9 +415,21 @@ export default function MyOrder() {
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs font-semibold text-amber-100/80">
-                        <Clock size={14} />
-                        Today, {time}
+                      <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-amber-100/80">
+                        <span className="inline-flex items-center gap-1">
+                          <Clock size={14} />
+                          Today, {time}
+                        </span>
+
+                        <span
+                          className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${
+                            paymentStatus === "Paid"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {paymentStatus}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -458,21 +485,60 @@ export default function MyOrder() {
                   </div>
 
                   <div className="border-t border-amber-100 bg-[#fffaf1] px-4 py-4">
+                    {order.coupon?.code && batchDiscount > 0 && (
+                      <div className="px-4 py-3 mb-3 border rounded-2xl border-emerald-100 bg-emerald-50">
+                        <div className="flex items-center justify-between gap-3 text-xs font-black text-emerald-700">
+                          <span>Coupon Applied: {order.coupon.code}</span>
+                          <span>-₹{Math.round(batchDiscount)}</span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                          <span>Subtotal ₹{Math.round(batchSubtotal)}</span>
+                          <span>Final ₹{Math.round(batchTotal)}</span>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-black text-[#241309]">
                         Batch Total
                       </span>
 
-                      <span
-                        className="text-xl font-black"
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedBill({
+                            orders: [order],
+                            title: `Batch ${index + 1}`,
+                          })
+                        }
+                        className="rounded-2xl border border-amber-200 bg-white px-4 py-2 text-xl font-black shadow-sm transition hover:-translate-y-0.5 hover:bg-amber-50"
                         style={{
                           fontFamily: "Georgia, serif",
-                          background: "linear-gradient(135deg,#b45309,#d97706)",
-                          WebkitBackgroundClip: "text",
-                          WebkitTextFillColor: "transparent",
+                          color: "#b45309",
                         }}
                       >
-                        ₹{batchTotal}
+                        ₹{Math.round(batchTotal)}
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 mt-3 text-xs font-bold">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-[#7b5b42]">
+                        {paymentMode === "Online" ? (
+                          <CreditCard size={14} />
+                        ) : (
+                          <Wallet size={14} />
+                        )}
+                        {paymentMode}
+                      </span>
+
+                      <span
+                        className={`rounded-full px-3 py-1 ${
+                          paymentStatus === "Paid"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-red-100 text-red-600"
+                        }`}
+                      >
+                        {paymentStatus}
                       </span>
                     </div>
 
@@ -520,9 +586,25 @@ export default function MyOrder() {
                     </span>
                   </div>
 
-                  <p className="text-3xl font-black text-amber-100">
-                    ₹{grandTotal}
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedBill({
+                        orders,
+                        title: "Full Bill",
+                      })
+                    }
+                    className="text-3xl font-black text-left transition text-amber-100 hover:scale-105"
+                  >
+                    ₹{Math.round(grandTotal)}
+                  </button>
+
+                  {grandDiscount > 0 && (
+                    <p className="mt-1 text-xs font-bold text-emerald-200">
+                      Saved ₹{Math.round(grandDiscount)} on ₹
+                      {Math.round(grandSubtotal)}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -534,6 +616,220 @@ export default function MyOrder() {
           </div>
         )}
       </div>
+
+      {selectedBill && (
+        <CustomerBillMiniBox
+          data={selectedBill}
+          table={table}
+          getImage={getImage}
+          onClose={() => setSelectedBill(null)}
+          getOrderSubtotal={getOrderSubtotal}
+          getOrderDiscount={getOrderDiscount}
+          getOrderFinalTotal={getOrderFinalTotal}
+          getPaymentMode={getPaymentMode}
+          getPaymentStatus={getPaymentStatus}
+        />
+      )}
+    </div>
+  );
+}
+
+function CustomerBillMiniBox({
+  data,
+  table,
+  getImage,
+  onClose,
+  getOrderSubtotal,
+  getOrderDiscount,
+  getOrderFinalTotal,
+  getPaymentMode,
+  getPaymentStatus,
+}) {
+  const orders = data.orders || [];
+
+  const subtotal = orders.reduce((sum, o) => sum + getOrderSubtotal(o), 0);
+  const discount = orders.reduce((sum, o) => sum + getOrderDiscount(o), 0);
+  const finalTotal = orders.reduce((sum, o) => sum + getOrderFinalTotal(o), 0);
+
+  const paymentStatus = orders.some((o) => getPaymentStatus(o) === "Due")
+    ? "Due"
+    : "Paid";
+
+  const paymentMode = orders.some((o) => getPaymentMode(o) === "Online")
+    ? "Online"
+    : "Pay at Counter";
+
+  const coupon = orders.find((o) => o.coupon?.code)?.coupon;
+
+  return (
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
+        <div className="flex items-start justify-between gap-4 border-b border-amber-100 bg-[#fffaf1] px-5 py-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">
+              Bill Summary
+            </p>
+
+            <h2
+              className="mt-1 text-2xl font-black tracking-tight text-[#241309]"
+              style={{ fontFamily: "Georgia, serif" }}
+            >
+              {data.title}
+            </h2>
+
+            <p className="mt-1 text-xs font-semibold text-slate-400">
+              Table {table || "—"} · {orders.length} batch
+              {orders.length !== 1 ? "es" : ""}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center justify-center w-10 h-10 transition bg-white rounded-full shadow-sm text-slate-500 hover:bg-red-50 hover:text-red-500"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="max-h-[62vh] overflow-y-auto px-5 py-4">
+          <div className="space-y-5">
+            {orders.map((order, batchIndex) => (
+              <div
+                key={order._id || batchIndex}
+                className="p-4 bg-white border shadow-sm rounded-3xl border-amber-100"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <div>
+                    <h3 className="text-sm font-black text-[#241309]">
+                      Batch #{batchIndex + 1}
+                    </h3>
+                    <p className="mt-1 text-[11px] font-semibold text-slate-400">
+                      {getPaymentMode(order)} · {getPaymentStatus(order)}
+                    </p>
+                  </div>
+
+                  {order.coupon?.code && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">
+                      <TicketPercent size={13} />
+                      {order.coupon.code}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {(order.items || []).map((item, index) => {
+                    const image = getImage(item);
+                    const itemTotal =
+                      Number(item.price || 0) * Number(item.qty || 1);
+
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center gap-3 rounded-2xl bg-[#fbfaf8] p-3"
+                      >
+                        <div className="flex items-center justify-center w-12 h-12 overflow-hidden bg-white shrink-0 rounded-2xl">
+                          {image ? (
+                            <img
+                              src={image}
+                              alt={item.name}
+                              className="object-cover w-full h-full"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <span className="text-xl">🍽</span>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-sm font-black text-[#241309]">
+                            {item.name}
+                          </p>
+
+                          <p className="mt-1 text-xs font-semibold text-slate-400">
+                            ₹{Number(item.price || 0)} × {Number(item.qty || 1)}
+                          </p>
+
+                          {item.note && (
+                            <p className="mt-1 truncate text-[11px] font-semibold text-amber-700">
+                              Note: {item.note}
+                            </p>
+                          )}
+                        </div>
+
+                        <p className="text-sm font-black text-slate-700">
+                          ₹{itemTotal}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-amber-100 bg-[#fffaf1] px-5 py-4">
+          <div className="p-4 space-y-2 bg-white rounded-3xl">
+            <PriceRow label="Subtotal" value={subtotal} />
+
+            {coupon && discount > 0 && (
+              <PriceRow
+                label={`Coupon ${coupon.code}`}
+                value={-Math.round(discount)}
+                discount
+              />
+            )}
+
+            <div className="my-3 border-t border-dashed border-slate-200" />
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-black uppercase tracking-[0.12em] text-[#241309]">
+                Final Payable
+              </span>
+
+              <span className="text-3xl font-black tracking-tight text-emerald-700">
+                ₹{Math.round(finalTotal)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 mt-4 text-xs font-black bg-white rounded-2xl">
+            <span className="inline-flex items-center gap-2 text-[#7b5b42]">
+              {paymentMode === "Online" ? (
+                <CreditCard size={15} />
+              ) : (
+                <Wallet size={15} />
+              )}
+              {paymentMode}
+            </span>
+
+            <span
+              className={`rounded-full px-3 py-1 ${
+                paymentStatus === "Paid"
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-red-100 text-red-600"
+              }`}
+            >
+              {paymentStatus}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PriceRow({ label, value, discount }) {
+  return (
+    <div className="flex items-center justify-between text-sm font-bold">
+      <span className="text-slate-500">{label}</span>
+
+      <span className={discount ? "text-emerald-600" : "text-[#241309]"}>
+        {value < 0 ? "-" : ""}₹{Math.abs(Number(value || 0))}
+      </span>
     </div>
   );
 }

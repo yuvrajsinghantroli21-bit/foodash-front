@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import api from "../api/api";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
+import { printBill } from "../components/PrintBill";
 
 import {
   Download,
@@ -237,532 +238,6 @@ function StatCard({ icon, label, value, sub, tone }) {
   );
 }
 
-const printBill = (tableOrders, orderNo = "ACTIVE", settings = null) => {
-  if (!tableOrders || tableOrders.length === 0) {
-    toast.error("No orders found for bill");
-    return;
-  }
-
-  const table = tableOrders[0]?.table || tableOrders[0]?.tableId || "N/A";
-
-  const sessionId =
-    tableOrders[0]?.sessionId ||
-    tableOrders[0]?.token ||
-    tableOrders[0]?._id?.slice(-6)?.toUpperCase() ||
-    "—";
-
-  const paymentMode = getPaymentMode(tableOrders);
-  const paymentStatus = getPaymentStatus(tableOrders);
-
-  const total = tableOrders.reduce(
-    (sum, order) => sum + getOrderTotal(order),
-    0,
-  );
-
-  const totalItems = tableOrders.reduce(
-    (sum, order) =>
-      sum +
-      (order.items || []).reduce(
-        (itemSum, item) => itemSum + Number(item.qty || 1),
-        0,
-      ),
-    0,
-  );
-
-  const billDate = new Date().toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-
-  const batchHtml = tableOrders
-    .map((order, batchIndex) => {
-      const batchTotal = getOrderTotal(order);
-
-      const itemsHtml = (order.items || [])
-        .map(
-          (item) => `
-          <tr>
-            <td>
-              <div class="item-name">${item.name}</div>
-              ${
-                item.note && item.note.trim() !== ""
-                  ? `<div class="item-note">📝 ${item.note}</div>`
-                  : ""
-              }
-            </td>
-            <td class="center">${item.qty || 1}</td>
-            <td class="right">₹${Number(item.price || 0)}</td>
-            <td class="right strong">₹${
-              Number(item.price || 0) * Number(item.qty || 1)
-            }</td>
-          </tr>
-        `,
-        )
-        .join("");
-
-      return `
-      <div class="batch">
-        <div class="batch-head">
-          <div>
-            <h3>Batch #${batchIndex + 1}</h3>
-            <p>Received: ${new Date(order.createdAt).toLocaleString("en-IN", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-            })}</p>
-          </div>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th class="center">Qty</th>
-              <th class="right">Price</th>
-              <th class="right">Total</th>
-            </tr>
-          </thead>
-          <tbody>${itemsHtml}</tbody>
-        </table>
-
-        <div class="batch-total">
-          <span>Batch Total</span>
-          <strong>₹${batchTotal}</strong>
-        </div>
-      </div>
-    `;
-    })
-    .join("");
-
-  const billHtml = `
-  <!DOCTYPE html>
-  <html>
-    <head>
-      <title>Bill #${orderNo}</title>
-      <style>
-        * { box-sizing: border-box; }
-
-        body {
-          margin: 0;
-          padding: 24px;
-          background: #f8f5ef;
-          color: #111827;
-          font-family: Arial, sans-serif;
-        }
-
-        .bill {
-          max-width: 520px;
-          margin: 0 auto;
-          background: #ffffff;
-          border-radius: 22px;
-          overflow: hidden;
-          border: 1px solid #eee7dc;
-          box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-        }
-
-        .top-strip {
-          height: 8px;
-          background: linear-gradient(90deg, #0f172a, #d4a74f, #0f172a);
-        }
-
-        .header {
-          padding: 26px 26px 18px;
-          text-align: center;
-          background: linear-gradient(180deg, #fffaf2, #ffffff);
-          border-bottom: 1px solid #f1ede5;
-        }
-
-        .brand {
-          font-family: Georgia, serif;
-          font-size: 30px;
-          font-weight: 900;
-          margin-bottom: 6px;
-        }
-
-        .sub {
-          font-size: 12px;
-          color: #6b7280;
-          font-weight: 600;
-        }
-
-        .badge {
-          display: inline-block;
-          margin-top: 14px;
-          padding: 7px 12px;
-          border-radius: 999px;
-          background: #0f172a;
-          color: white;
-          font-size: 11px;
-          font-weight: 800;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-        }
-
-        .meta {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
-          padding: 18px 22px 10px;
-        }
-
-        .meta-card {
-          background: #faf7f1;
-          border: 1px solid #efe9de;
-          border-radius: 14px;
-          padding: 11px 12px;
-        }
-
-        .label {
-          display: block;
-          font-size: 10px;
-          text-transform: uppercase;
-          color: #8a8f98;
-          font-weight: 800;
-          letter-spacing: 0.07em;
-          margin-bottom: 4px;
-        }
-
-        .value {
-          font-size: 13px;
-          font-weight: 900;
-          color: #111827;
-          word-break: break-word;
-        }
-
-        .summary {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 10px;
-          padding: 10px 22px 16px;
-        }
-
-        .summary-box {
-          text-align: center;
-          border-radius: 14px;
-          padding: 11px 8px;
-          border: 1px solid #edf0f3;
-          background: #ffffff;
-        }
-
-        .summary-box.gold {
-          background: #fff8eb;
-          border-color: #f4e1b5;
-        }
-
-        .summary-box.green {
-          background: #edfdf3;
-          border-color: #bfe8cd;
-        }
-
-        .summary-title {
-          font-size: 10px;
-          font-weight: 800;
-          color: #7b818a;
-          text-transform: uppercase;
-          margin-bottom: 5px;
-        }
-
-        .summary-value {
-          font-size: 15px;
-          font-weight: 900;
-          text-transform: capitalize;
-        }
-
-        .content {
-          padding: 0 22px 18px;
-        }
-
-        .batch {
-          border: 1px solid #ebeef2;
-          border-radius: 16px;
-          padding: 14px;
-          margin-bottom: 14px;
-          background: #fcfcfd;
-        }
-
-        .batch-head {
-          display: flex;
-          justify-content: space-between;
-          gap: 12px;
-          margin-bottom: 10px;
-        }
-
-        .batch h3 {
-          margin: 0;
-          font-size: 14px;
-          font-weight: 900;
-        }
-
-        .batch p {
-          margin: 3px 0 0;
-          font-size: 11px;
-          color: #6b7280;
-        }
-
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 12px;
-        }
-
-        th {
-          color: #7b818a;
-          font-size: 10px;
-          text-transform: uppercase;
-          padding: 8px 0;
-          border-bottom: 1px solid #e5e7eb;
-        }
-
-        td {
-          padding: 9px 0;
-          border-bottom: 1px solid #f1f5f9;
-          vertical-align: top;
-        }
-
-        .item-name { font-weight: 800; }
-
-        .item-note {
-          font-size: 10px;
-          color: #b45309;
-          margin-top: 3px;
-          font-style: italic;
-        }
-
-        .center { text-align: center; }
-        .right { text-align: right; }
-        .strong { font-weight: 900; }
-
-        .batch-total {
-          display: flex;
-          justify-content: space-between;
-          padding-top: 10px;
-          margin-top: 10px;
-          border-top: 1px dashed #d1d5db;
-          font-size: 13px;
-        }
-
-        .grand-total {
-          margin: 6px 22px 20px;
-          padding: 18px;
-          border-radius: 18px;
-          background: linear-gradient(135deg, #0f172a, #1f2937);
-          color: white;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .grand-label {
-          font-size: 12px;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          opacity: 0.8;
-          font-weight: 800;
-        }
-
-        .grand-value {
-          font-family: Georgia, serif;
-          font-size: 32px;
-          font-weight: 900;
-        }
-
-        .payment {
-          font-size: 12px;
-          text-align: right;
-          color: rgba(255, 255, 255, 0.85);
-          line-height: 1.6;
-          text-transform: capitalize;
-        }
-
-        .footer {
-          padding: 0 24px 24px;
-          text-align: center;
-        }
-
-        .footer-inner {
-          border-top: 1px dashed #d1d5db;
-          padding-top: 16px;
-        }
-
-        .thanks {
-          font-family: Georgia, serif;
-          font-size: 17px;
-          font-weight: 900;
-          margin-bottom: 5px;
-        }
-
-        .footer-sub {
-          font-size: 11px;
-          color: #6b7280;
-          line-height: 1.5;
-        }
-
-        @media print {
-          body {
-            background: white;
-            padding: 0;
-          }
-
-          .bill {
-            border: none;
-            box-shadow: none;
-            max-width: 100%;
-            border-radius: 0;
-          }
-        }
-      </style>
-    </head>
-
-    <body>
-      <div class="bill">
-        <div class="top-strip"></div>
-
-        <div class="header">
-         ${
-           settings?.logo
-             ? `<img src="${settings.logo}" style="height:54px;width:auto;object-fit:contain;margin-bottom:10px;" />`
-             : ""
-         }
-
-       <div class="brand">${settings?.cafeName || "The White House Café"}</div>
-
-  <div class="sub">
-  ${settings?.address || "FoodDash Smart Ordering Receipt"}
-</div>
-
-${
-  settings?.phone || settings?.email
-    ? `<div class="sub" style="margin-top:6px;">
-        ${settings?.phone || ""} ${
-          settings?.phone && settings?.email ? " • " : ""
-        } ${settings?.email || ""}
-      </div>`
-    : ""
-}
-
-${
-  settings?.gstNumber
-    ? `<div class="sub" style="margin-top:6px;">GST: ${settings.gstNumber}</div>`
-    : ""
-}
-          <div class="badge">Table Bill</div>
-        </div>
-
-        <div class="meta">
-          <div class="meta-card">
-            <span class="label">Bill No</span>
-            <span class="value">#${orderNo}</span>
-          </div>
-
-          <div class="meta-card">
-            <span class="label">Table</span>
-            <span class="value">${table}</span>
-          </div>
-
-          <div class="meta-card">
-            <span class="label">Session</span>
-            <span class="value">${sessionId}</span>
-          </div>
-
-          <div class="meta-card">
-            <span class="label">Printed At</span>
-            <span class="value">${billDate}</span>
-          </div>
-        </div>
-
-        <div class="summary">
-          <div class="summary-box gold">
-            <div class="summary-title">Batches</div>
-            <div class="summary-value">${tableOrders.length}</div>
-          </div>
-
-          <div class="summary-box">
-            <div class="summary-title">Items</div>
-            <div class="summary-value">${totalItems}</div>
-          </div>
-
-          <div class="summary-box green">
-            <div class="summary-title">Payment</div>
-            <div class="summary-value">${paymentStatus}</div>
-          </div>
-        </div>
-
-        <div class="content">
-          ${batchHtml}
-        </div>
-
-        <div class="grand-total">
-          <div>
-            <div class="grand-label">Grand Total</div>
-            <div class="grand-value">₹${total}</div>
-          </div>
-
-          <div class="payment">
-            ${paymentMode}<br/>
-            ${paymentStatus === "paid" ? "Paid" : "Due"}
-          </div>
-        </div>
-
-        ${
-          settings?.paymentNote
-            ? `
-      <div style="
-        margin: 14px 22px 20px;
-        padding: 14px;
-        border-radius: 14px;
-        background: #fff8eb;
-        border: 1px solid #f4dfb0;
-        font-size: 12px;
-        font-weight: 700;
-        color: #b45309;
-        line-height: 1.6;
-        text-align: center;
-      ">
-        ${settings.paymentNote}
-      </div>
-    `
-            : ""
-        }
-
-        <div class="footer">
-          <div class="footer-inner">
-            <div class="thanks">${settings?.receiptFooter || "Thank you for dining with us"}</div>
-            <div class="footer-sub">
-              Please keep this bill for your reference.<br/>
-              Powered by FoodDash
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <script>
-        setTimeout(function () {
-          window.focus();
-          window.print();
-        }, 400);
-      </script>
-    </body>
-  </html>
-`;
-
-  const printWindow = window.open("", "_blank", "width=900,height=700");
-
-  if (!printWindow) {
-    toast.error("Popup blocked. Please allow popups and try again.");
-    return;
-  }
-
-  printWindow.document.open();
-  printWindow.document.write(billHtml);
-  printWindow.document.close();
-};
 /* ───────────────── ORDER CARD ───────────────── */
 
 function OrderHistoryCard({
@@ -772,6 +247,7 @@ function OrderHistoryCard({
   menu,
   printBill,
   setSelectedBill,
+  settings,
 }) {
   const table = sessionOrders[0]?.table || sessionOrders[0]?.tableId || "—";
   const totalBatches = sessionOrders.length;
@@ -997,7 +473,14 @@ function OrderHistoryCard({
 
         <button
           type="button"
-          onClick={() => printBill(sessionOrders, orderNo)}
+          onClick={() =>
+            printBill({
+              tableOrders: sessionOrders,
+              tableKey: sessionOrders[0]?.table,
+              orderNo: orderNo,
+              settings: settings,
+            })
+          }
           className="flex items-center justify-center w-full gap-2 py-2.5 mt-4 text-sm font-extrabold text-white bg-[#071832] rounded-lg shadow-[0_8px_18px_rgba(7,24,50,0.18)]"
         >
           Print Bill
@@ -1527,6 +1010,7 @@ export default function AdminHistory() {
                 menu={menu}
                 printBill={printBill}
                 setSelectedBill={setSelectedBill}
+                settings={settings}
               />
             ))}
           </div>
@@ -1588,15 +1072,23 @@ export default function AdminHistory() {
           tableOrders={selectedBill.tableOrders}
           orderNo={selectedBill.orderNo}
           menu={menu}
-          onClose={() => setSelectedBill(null)}
+          settings={settings}
           printBill={printBill}
+          onClose={() => setSelectedBill(null)}
         />
       )}
     </div>
   );
 }
 
-function BillSummaryModal({ tableOrders, menu = [], onClose, printBill }) {
+function BillSummaryModal({
+  tableOrders,
+  orderNo,
+  menu = [],
+  settings,
+  onClose,
+  printBill,
+}) {
   const table = tableOrders[0]?.table || tableOrders[0]?.tableId || "—";
 
   const subtotal = tableOrders.reduce(
@@ -1782,7 +1274,14 @@ function BillSummaryModal({ tableOrders, menu = [], onClose, printBill }) {
 
             <button
               type="button"
-              onClick={() => printBill(tableOrders, orderNo)}
+              onClick={() =>
+                printBill({
+                  tableOrders,
+                  tableKey: table,
+                  orderNo,
+                  settings,
+                })
+              }
               className="h-12 rounded-2xl bg-[#111936] text-sm font-black text-amber-300 transition hover:bg-[#1d2a56]"
             >
               Print Bill
