@@ -134,19 +134,6 @@ function Navbar({ totalItems = 0 }) {
         {/* RIGHT */}
         <div className="flex items-center gap-2 shrink-0">
           {/* FOODASH LOGO */}
-          {/* FOODASH LOGO */}
-          <div className="relative items-center justify-center hidden group lg:flex">
-            <img
-              src={foodashLogo}
-              alt="FoodDash"
-              className="object-contain w-auto h-16 pt-2 transition-all duration-300 opacity-85 hover:opacity-100 hover:scale-105"
-            />
-
-            {/* TOOLTIP */}
-            {/* <div className="pointer-events-none absolute right-0 top-full mt-3 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.22em] text-amber-700 opacity-0 shadow-md transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-              Powered by FoodDash
-            </div> */}
-          </div>
 
           {hasSession && (
             <>
@@ -169,6 +156,20 @@ function Navbar({ totalItems = 0 }) {
               </Link>
             </>
           )}
+
+          {/* FOODASH LOGO */}
+          <div className="relative items-center justify-center hidden group lg:flex">
+            <img
+              src={foodashLogo}
+              alt="FoodDash"
+              className="object-contain w-auto h-16 pt-2 transition-all duration-300 opacity-85 hover:opacity-100 hover:scale-105"
+            />
+
+            {/* TOOLTIP */}
+            {/* <div className="pointer-events-none absolute right-0 top-full mt-3 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.22em] text-amber-700 opacity-0 shadow-md transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+              Powered by FoodDash
+            </div> */}
+          </div>
 
           <button
             className="flex items-center justify-center w-10 h-10 transition-all duration-300 bg-white border border-orange-100 shadow-sm rounded-xl lg:hidden text-[#5b4b36] hover:text-[#d97707] hover:bg-orange-50"

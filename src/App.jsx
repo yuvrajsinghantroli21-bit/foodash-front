@@ -30,11 +30,14 @@ import AdminLogin from "./pages/AdminLogin";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import AdminStaff from "./pages/AdminStaff";
 import AdminEnquiries from "./pages/AdminEnquiries";
+import AdminFeedback from "./pages/AdminFeedback";
 import ThankYou from "./pages/ThankYou";
 import SessionGate from "./pages/SessionGate.jsx";
 import MenuPreview from "./pages/MenuPreview.jsx";
 import MyOrder from "./pages/MyOrder.jsx";
 import ScrollToTop from "./components/ScrollToTop";
+import AdminSettings from "./pages/AdminSettings.jsx";
+import AdminCoupons from "./pages/AdminCoupons.jsx";
 
 function App() {
   return (
@@ -186,6 +189,33 @@ function App() {
                 element={
                   <ProtectedAdminRoute allowedRoles={["admin", "cashier"]}>
                     <AdminEnquiries />
+                  </ProtectedAdminRoute>
+                }
+              />
+
+              <Route
+                path="/admin/feedback"
+                element={
+                  <ProtectedAdminRoute allowedRoles={["admin", "cashier"]}>
+                    <AdminFeedback />
+                  </ProtectedAdminRoute>
+                }
+              />
+
+              <Route
+                path="/admin/settings"
+                element={
+                  <ProtectedAdminRoute allowedRoles={["admin"]}>
+                    <AdminSettings />
+                  </ProtectedAdminRoute>
+                }
+              />
+
+              <Route
+                path="/admin/coupons"
+                element={
+                  <ProtectedAdminRoute allowedRoles={["admin"]}>
+                    <AdminCoupons />
                   </ProtectedAdminRoute>
                 }
               />

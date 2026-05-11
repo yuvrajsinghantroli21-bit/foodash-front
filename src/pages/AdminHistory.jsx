@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../api/api";
 import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
+
 import {
   Download,
   Search,
@@ -81,6 +83,25 @@ const getOrderTotal = (order) =>
 
 const getSessionTotal = (sessionOrders) =>
   sessionOrders.reduce((sum, order) => sum + getOrderTotal(order), 0);
+const getOrderSubtotal = (order) => Number(order.subtotal || order.total || 0);
+
+const getOrderDiscount = (order) =>
+  Number(order.discountAmount || order.coupon?.discountAmount || 0);
+
+const getOrderFinalTotal = (order) =>
+  Number(order.finalTotal || order.total || 0);
+
+const getSessionSubtotal = (sessionOrders) =>
+  sessionOrders.reduce((sum, order) => sum + getOrderSubtotal(order), 0);
+
+const getSessionDiscount = (sessionOrders) =>
+  sessionOrders.reduce((sum, order) => sum + getOrderDiscount(order), 0);
+
+const getSessionFinalTotal = (sessionOrders) =>
+  sessionOrders.reduce((sum, order) => sum + getOrderFinalTotal(order), 0);
+
+const getSessionCoupon = (sessionOrders) =>
+  sessionOrders.find((order) => order.coupon?.code)?.coupon || null;
 
 const getSessionItemCount = (sessionOrders) =>
   sessionOrders.reduce(
@@ -216,8 +237,13 @@ function StatCard({ icon, label, value, sub, tone }) {
   );
 }
 
-const printBill = (tableOrders, tableKey) => {
-  const table = tableKey === "Unknown" ? "N/A" : tableKey;
+const printBill = (tableOrders, orderNo = "ACTIVE", settings = null) => {
+  if (!tableOrders || tableOrders.length === 0) {
+    toast.error("No orders found for bill");
+    return;
+  }
+
+  const table = tableOrders[0]?.table || tableOrders[0]?.tableId || "N/A";
 
   const sessionId =
     tableOrders[0]?.sessionId ||
@@ -225,8 +251,8 @@ const printBill = (tableOrders, tableKey) => {
     tableOrders[0]?._id?.slice(-6)?.toUpperCase() ||
     "—";
 
-  const paymentMode = getTablePaymentMode(tableOrders);
-  const paymentStatus = getTablePaymentStatus(tableOrders);
+  const paymentMode = getPaymentMode(tableOrders);
+  const paymentStatus = getPaymentStatus(tableOrders);
 
   const total = tableOrders.reduce(
     (sum, order) => sum + getOrderTotal(order),
@@ -236,7 +262,10 @@ const printBill = (tableOrders, tableKey) => {
   const totalItems = tableOrders.reduce(
     (sum, order) =>
       sum +
-      order.items.reduce((itemSum, item) => itemSum + Number(item.qty || 1), 0),
+      (order.items || []).reduce(
+        (itemSum, item) => itemSum + Number(item.qty || 1),
+        0,
+      ),
     0,
   );
 
@@ -249,13 +278,11 @@ const printBill = (tableOrders, tableKey) => {
     hour12: true,
   });
 
-  const orderNo = tableOrders[0]?._id?.slice(-5)?.toUpperCase() || "ACTIVE";
-
   const batchHtml = tableOrders
     .map((order, batchIndex) => {
       const batchTotal = getOrderTotal(order);
 
-      const itemsHtml = order.items
+      const itemsHtml = (order.items || [])
         .map(
           (item) => `
           <tr>
@@ -267,7 +294,7 @@ const printBill = (tableOrders, tableKey) => {
                   : ""
               }
             </td>
-            <td class="center">${item.qty}</td>
+            <td class="center">${item.qty || 1}</td>
             <td class="right">₹${Number(item.price || 0)}</td>
             <td class="right strong">₹${
               Number(item.price || 0) * Number(item.qty || 1)
@@ -302,9 +329,7 @@ const printBill = (tableOrders, tableKey) => {
               <th class="right">Total</th>
             </tr>
           </thead>
-          <tbody>
-            ${itemsHtml}
-          </tbody>
+          <tbody>${itemsHtml}</tbody>
         </table>
 
         <div class="batch-total">
@@ -316,17 +341,13 @@ const printBill = (tableOrders, tableKey) => {
     })
     .join("");
 
-  const printWindow = window.open("", "_blank");
-
-  printWindow.document.write(`
+  const billHtml = `
+  <!DOCTYPE html>
   <html>
     <head>
-      <title>Table ${table} Bill</title>
-
+      <title>Bill #${orderNo}</title>
       <style>
-        * {
-          box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
           margin: 0;
@@ -505,9 +526,7 @@ const printBill = (tableOrders, tableKey) => {
           vertical-align: top;
         }
 
-        .item-name {
-          font-weight: 800;
-        }
+        .item-name { font-weight: 800; }
 
         .item-note {
           font-size: 10px;
@@ -516,17 +535,9 @@ const printBill = (tableOrders, tableKey) => {
           font-style: italic;
         }
 
-        .center {
-          text-align: center;
-        }
-
-        .right {
-          text-align: right;
-        }
-
-        .strong {
-          font-weight: 900;
-        }
+        .center { text-align: center; }
+        .right { text-align: right; }
+        .strong { font-weight: 900; }
 
         .batch-total {
           display: flex;
@@ -614,9 +625,34 @@ const printBill = (tableOrders, tableKey) => {
         <div class="top-strip"></div>
 
         <div class="header">
-          <div class="brand">The White House Café</div>
-          <div class="sub">Jaipur • FoodDash Smart Ordering Receipt</div>
-          <div class="badge">Active Table Bill</div>
+         ${
+           settings?.logo
+             ? `<img src="${settings.logo}" style="height:54px;width:auto;object-fit:contain;margin-bottom:10px;" />`
+             : ""
+         }
+
+       <div class="brand">${settings?.cafeName || "The White House Café"}</div>
+
+  <div class="sub">
+  ${settings?.address || "FoodDash Smart Ordering Receipt"}
+</div>
+
+${
+  settings?.phone || settings?.email
+    ? `<div class="sub" style="margin-top:6px;">
+        ${settings?.phone || ""} ${
+          settings?.phone && settings?.email ? " • " : ""
+        } ${settings?.email || ""}
+      </div>`
+    : ""
+}
+
+${
+  settings?.gstNumber
+    ? `<div class="sub" style="margin-top:6px;">GST: ${settings.gstNumber}</div>`
+    : ""
+}
+          <div class="badge">Table Bill</div>
         </div>
 
         <div class="meta">
@@ -674,9 +710,30 @@ const printBill = (tableOrders, tableKey) => {
           </div>
         </div>
 
+        ${
+          settings?.paymentNote
+            ? `
+      <div style="
+        margin: 14px 22px 20px;
+        padding: 14px;
+        border-radius: 14px;
+        background: #fff8eb;
+        border: 1px solid #f4dfb0;
+        font-size: 12px;
+        font-weight: 700;
+        color: #b45309;
+        line-height: 1.6;
+        text-align: center;
+      ">
+        ${settings.paymentNote}
+      </div>
+    `
+            : ""
+        }
+
         <div class="footer">
           <div class="footer-inner">
-            <div class="thanks">Thank you for dining with us</div>
+            <div class="thanks">${settings?.receiptFooter || "Thank you for dining with us"}</div>
             <div class="footer-sub">
               Please keep this bill for your reference.<br/>
               Powered by FoodDash
@@ -686,17 +743,26 @@ const printBill = (tableOrders, tableKey) => {
       </div>
 
       <script>
-        window.onload = function() {
+        setTimeout(function () {
+          window.focus();
           window.print();
-        };
+        }, 400);
       </script>
     </body>
   </html>
-`);
+`;
 
+  const printWindow = window.open("", "_blank", "width=900,height=700");
+
+  if (!printWindow) {
+    toast.error("Popup blocked. Please allow popups and try again.");
+    return;
+  }
+
+  printWindow.document.open();
+  printWindow.document.write(billHtml);
   printWindow.document.close();
 };
-
 /* ───────────────── ORDER CARD ───────────────── */
 
 function OrderHistoryCard({
@@ -705,11 +771,18 @@ function OrderHistoryCard({
   deleteOrder,
   menu,
   printBill,
+  setSelectedBill,
 }) {
   const table = sessionOrders[0]?.table || sessionOrders[0]?.tableId || "—";
   const totalBatches = sessionOrders.length;
   const totalItemCount = getSessionItemCount(sessionOrders);
-  const sessionTotal = getSessionTotal(sessionOrders);
+  const sessionSubtotal = getSessionSubtotal(sessionOrders);
+  const sessionDiscount = getSessionDiscount(sessionOrders);
+  const sessionFinalTotal = getSessionFinalTotal(sessionOrders);
+  const sessionCoupon = getSessionCoupon(sessionOrders);
+
+  const sessionTotal = sessionFinalTotal;
+
   const completedMins = getCompletionMinutes(sessionOrders);
 
   const paymentMode = getPaymentMode(sessionOrders);
@@ -870,6 +943,26 @@ function OrderHistoryCard({
       {/* FOOTER */}
       <div className="px-5 py-4 border-t border-gray-100">
         <div className="flex items-end justify-between gap-4">
+          {sessionCoupon && sessionDiscount > 0 && (
+            <div className="px-4 py-3 mb-4 border rounded-xl border-emerald-100 bg-emerald-50">
+              <div className="flex items-center justify-between gap-3 text-xs font-bold">
+                <span className="text-emerald-700">
+                  Coupon Applied: {sessionCoupon.code}
+                </span>
+
+                <span className="text-emerald-700">
+                  -₹{Math.round(sessionDiscount)}
+                </span>
+              </div>
+
+              <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                <span>Subtotal: ₹{Math.round(sessionSubtotal)}</span>
+                <span>Final: ₹{Math.round(sessionFinalTotal)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="flex items-end justify-between gap-4">
           <div className="flex items-center gap-6 text-xs font-bold text-slate-500">
             <span className="inline-flex items-center gap-2">
               <Package size={17} />
@@ -886,16 +979,24 @@ function OrderHistoryCard({
             <p className="mb-1 text-[11px] font-bold text-slate-400">
               Total Amount
             </p>
-            <p
-              className="text-2xl font-black text-emerald-700"
+            <button
+              type="button"
+              onClick={() =>
+                setSelectedBill({
+                  tableOrders: sessionOrders,
+                  orderNo,
+                })
+              }
+              className="inline-flex items-center gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-2xl font-black text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100"
               style={{ fontFamily: "Georgia, serif" }}
             >
               ₹{sessionTotal}
-            </p>
+            </button>
           </div>
         </div>
 
         <button
+          type="button"
           onClick={() => printBill(sessionOrders, orderNo)}
           className="flex items-center justify-center w-full gap-2 py-2.5 mt-4 text-sm font-extrabold text-white bg-[#071832] rounded-lg shadow-[0_8px_18px_rgba(7,24,50,0.18)]"
         >
@@ -918,6 +1019,8 @@ export default function AdminHistory() {
   const [quick, setQuick] = useState("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [settings, setSettings] = useState(null);
+  const [selectedBill, setSelectedBill] = useState(null);
 
   const fetchOrders = async () => {
     try {
@@ -934,6 +1037,14 @@ export default function AdminHistory() {
   };
 
   useEffect(() => {
+    api
+      .get("/admin/settings")
+      .then((res) => {
+        setSettings(res.data);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
     fetchOrders();
   }, []);
 
@@ -1229,7 +1340,7 @@ export default function AdminHistory() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          {/* <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <Link
               to="/admin/dashboard"
               className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold text-white bg-[#071832] shadow-[0_8px_20px_rgba(7,24,50,0.20)] rounded"
@@ -1269,7 +1380,7 @@ export default function AdminHistory() {
               <Activity size={18} />
               Current Tables
             </Link>
-          </div>
+          </div> */}
         </div>
 
         {/* STATS */}
@@ -1415,6 +1526,7 @@ export default function AdminHistory() {
                 deleteOrder={deleteOrder}
                 menu={menu}
                 printBill={printBill}
+                setSelectedBill={setSelectedBill}
               />
             ))}
           </div>
@@ -1471,6 +1583,225 @@ export default function AdminHistory() {
           </div>
         )}
       </main>
+      {selectedBill && (
+        <BillSummaryModal
+          tableOrders={selectedBill.tableOrders}
+          orderNo={selectedBill.orderNo}
+          menu={menu}
+          onClose={() => setSelectedBill(null)}
+          printBill={printBill}
+        />
+      )}
+    </div>
+  );
+}
+
+function BillSummaryModal({ tableOrders, menu = [], onClose, printBill }) {
+  const table = tableOrders[0]?.table || tableOrders[0]?.tableId || "—";
+
+  const subtotal = tableOrders.reduce(
+    (sum, order) => sum + Number(order.subtotal || order.total || 0),
+    0,
+  );
+
+  const discount = tableOrders.reduce(
+    (sum, order) =>
+      sum + Number(order.discountAmount || order.coupon?.discountAmount || 0),
+    0,
+  );
+
+  const finalTotal = tableOrders.reduce(
+    (sum, order) => sum + Number(order.finalTotal || order.total || 0),
+    0,
+  );
+
+  const coupon = tableOrders.find((order) => order.coupon?.code)?.coupon;
+
+  const totalItems = tableOrders.reduce(
+    (sum, order) =>
+      sum +
+      (order.items || []).reduce(
+        (itemSum, item) => itemSum + Number(item.qty || 1),
+        0,
+      ),
+    0,
+  );
+
+  const getItemImage = (item) => {
+    if (item?.image) {
+      if (item.image.startsWith("http")) return item.image;
+      return `https://fooadash.onrender.com/uploads/${item.image}`;
+    }
+
+    const found = menu.find(
+      (m) => m.name?.toLowerCase() === item.name?.toLowerCase(),
+    );
+
+    if (!found?.image) return "";
+
+    if (found.image.startsWith("http")) return found.image;
+
+    return `https://fooadash.onrender.com/uploads/${found.image}`;
+  };
+
+  return (
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl overflow-hidden rounded-[28px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
+        <div className="flex items-start justify-between gap-4 border-b border-amber-100 bg-[#fffaf1] px-5 py-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">
+              Bill Summary
+            </p>
+
+            <h2 className="mt-1 text-2xl font-black tracking-tight text-[#111936]">
+              Table {table}
+            </h2>
+
+            <p className="mt-1 text-xs font-semibold text-slate-400">
+              {tableOrders.length} batch{tableOrders.length !== 1 ? "es" : ""} ·{" "}
+              {totalItems} item{totalItems !== 1 ? "s" : ""}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center justify-center w-10 h-10 transition bg-white rounded-full shadow-sm text-slate-500 hover:bg-red-50 hover:text-red-500"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="max-h-[62vh] overflow-y-auto px-5 py-4">
+          <div className="space-y-5">
+            {tableOrders.map((order, batchIndex) => (
+              <div
+                key={order._id || batchIndex}
+                className="p-4 bg-white border shadow-sm rounded-3xl border-amber-100"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-black text-[#111936]">
+                    Batch #{batchIndex + 1}
+                  </h3>
+
+                  <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-amber-700">
+                    ₹
+                    {(order.finalTotal || order.total || 0).toLocaleString(
+                      "en-IN",
+                    )}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {(order.items || []).map((item, index) => {
+                    const image = getItemImage(item);
+                    const itemTotal =
+                      Number(item.price || 0) * Number(item.qty || 1);
+
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center gap-3 rounded-2xl bg-[#fbfaf8] p-3"
+                      >
+                        <div className="flex items-center justify-center w-12 h-12 overflow-hidden bg-white shrink-0 rounded-2xl">
+                          {image ? (
+                            <img
+                              src={image}
+                              alt={item.name}
+                              className="object-cover w-full h-full"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <span className="text-xl">🍽</span>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-sm font-black text-[#111936]">
+                            {item.name}
+                          </p>
+
+                          {item.note && (
+                            <p className="mt-1 truncate text-[11px] font-semibold text-amber-700">
+                              Note: {item.note}
+                            </p>
+                          )}
+
+                          <p className="mt-1 text-xs font-semibold text-slate-400">
+                            ₹{Number(item.price || 0)} × {Number(item.qty || 1)}
+                          </p>
+                        </div>
+
+                        <p className="text-sm font-black text-slate-700">
+                          ₹{itemTotal}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-amber-100 bg-[#fffaf1] px-5 py-4">
+          <div className="p-4 space-y-2 bg-white rounded-3xl">
+            <PriceRow label="Subtotal" value={subtotal} />
+
+            {coupon && discount > 0 && (
+              <PriceRow
+                label={`Coupon ${coupon.code}`}
+                value={-Math.round(discount)}
+                discount
+              />
+            )}
+
+            <div className="my-3 border-t border-dashed border-slate-200" />
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-black uppercase tracking-[0.12em] text-[#111936]">
+                Final Payable
+              </span>
+
+              <span className="text-3xl font-black tracking-tight text-emerald-700">
+                ₹{Math.round(finalTotal)}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-12 text-sm font-black transition bg-white border rounded-2xl border-amber-200 text-slate-600 hover:bg-amber-50"
+            >
+              Close
+            </button>
+
+            <button
+              type="button"
+              onClick={() => printBill(tableOrders, orderNo)}
+              className="h-12 rounded-2xl bg-[#111936] text-sm font-black text-amber-300 transition hover:bg-[#1d2a56]"
+            >
+              Print Bill
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PriceRow({ label, value, discount }) {
+  return (
+    <div className="flex items-center justify-between text-sm font-bold">
+      <span className="text-slate-500">{label}</span>
+
+      <span className={discount ? "text-emerald-600" : "text-[#111936]"}>
+        {value < 0 ? "-" : ""}₹{Math.abs(Number(value || 0))}
+      </span>
     </div>
   );
 }

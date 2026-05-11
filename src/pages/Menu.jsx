@@ -177,38 +177,38 @@ function Menu() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => {
-    if (sessionCheckedRef.current) return;
-    sessionCheckedRef.current = true;
+  // useEffect(() => {
+  //   if (sessionCheckedRef.current) return;
+  //   sessionCheckedRef.current = true;
 
-    if (!token) {
-      toast.error("Please scan QR first");
-      localStorage.removeItem("token");
-      localStorage.removeItem("table");
-      clearCart();
-      navigate("/scan", { replace: true });
-      return;
-    }
+  //   if (!token) {
+  //     toast.error("Please scan QR first");
+  //     localStorage.removeItem("token");
+  //     localStorage.removeItem("table");
+  //     clearCart();
+  //     navigate("/scan", { replace: true });
+  //     return;
+  //   }
 
-    axios
-      .get(`${API}/session/${token}`)
-      .then((res) => {
-        setTable(res.data.table);
-        localStorage.setItem("table", res.data.table);
-        localStorage.setItem("token", token);
+  //   axios
+  //     .get(`${API}/session/${token}`)
+  //     .then((res) => {
+  //       setTable(res.data.table);
+  //       localStorage.setItem("table", res.data.table);
+  //       localStorage.setItem("token", token);
 
-        if (tokenFromUrl || queryToken) {
-          navigate("/order", { replace: true });
-        }
-      })
-      .catch(() => {
-        toast.error("Session expired. Please scan again.");
-        localStorage.removeItem("token");
-        localStorage.removeItem("table");
-        clearCart();
-        navigate("/thank-you", { replace: true });
-      });
-  }, [token, tokenFromUrl, queryToken, navigate, clearCart]);
+  //       if (tokenFromUrl || queryToken) {
+  //         navigate("/order", { replace: true });
+  //       }
+  //     })
+  //     .catch(() => {
+  //       toast.error("Session expired. Please scan again.");
+  //       localStorage.removeItem("token");
+  //       localStorage.removeItem("table");
+  //       clearCart();
+  //       navigate("/thank-you", { replace: true });
+  //     });
+  // }, [token, tokenFromUrl, queryToken, navigate, clearCart]);
 
   useEffect(() => {
     const handleSessionExpire = (data) => {

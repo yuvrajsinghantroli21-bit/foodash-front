@@ -461,46 +461,6 @@ export default function KitchenDisplay() {
               {soundEnabled ? <Bell size={18} /> : <BellOff size={18} />}
               {soundEnabled ? "Sound On" : "Enable Sound"}
             </button>
-
-            <Link
-              to="/admin/dashboard"
-              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold text-white bg-[#071832] shadow-[0_8px_20px_rgba(7,24,50,0.20)] rounded"
-            >
-              <Utensils size={18} />
-              Active Orders
-            </Link>
-
-            <Link
-              to="/admin/history"
-              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
-            >
-              <History size={18} />
-              History
-            </Link>
-
-            <Link
-              to="/admin/kitchen"
-              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
-            >
-              <Flame size={18} />
-              Kitchen
-            </Link>
-
-            <Link
-              to="/admin/tables/manage"
-              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
-            >
-              <QrCode size={18} />
-              Tables
-            </Link>
-
-            <Link
-              to="/admin/tables/current"
-              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
-            >
-              <Activity size={18} />
-              Current Tables
-            </Link>
           </div>
         </div>
 

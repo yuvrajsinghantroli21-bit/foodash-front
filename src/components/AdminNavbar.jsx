@@ -7,7 +7,6 @@ import {
   History,
   Menu as MenuIcon,
   QrCode,
-  Utensils,
   X,
   LayoutDashboard,
   ChevronDown,
@@ -15,12 +14,20 @@ import {
   LogOut,
   ShieldCheck,
   Inbox,
+  Star,
+  Settings,
+  MoreHorizontal,
+  TicketPercent,
 } from "lucide-react";
 
 function AdminNavbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const navigate = useNavigate();
+
+  const profileRef = useRef(null);
+  const moreRef = useRef(null);
 
   const adminUser = JSON.parse(localStorage.getItem("adminUser") || "null");
   const role = adminUser?.role || "";
@@ -40,24 +47,34 @@ function AdminNavbar() {
       path: "/admin/dashboard",
       roles: ["admin", "cashier"],
       icon: <LayoutDashboard size={17} />,
+      main: true,
     },
     {
-      label: "Menu",
-      path: "/admin/menu",
-      roles: ["admin"],
-      icon: <MenuIcon size={17} />,
-    },
-    {
-      label: "History",
+      label: "Orders",
       path: "/admin/history",
       roles: ["admin", "cashier"],
       icon: <History size={17} />,
+      main: true,
     },
     {
       label: "Kitchen",
       path: "/admin/kitchen",
       roles: ["admin", "kitchen"],
       icon: <Flame size={17} />,
+      main: true,
+    },
+    {
+      label: "Analytics",
+      path: "/admin/analytics",
+      roles: ["admin"],
+      icon: <BarChart3 size={17} />,
+      main: true,
+    },
+    {
+      label: "Menu",
+      path: "/admin/menu",
+      roles: ["admin"],
+      icon: <MenuIcon size={17} />,
     },
     {
       label: "QR Tables",
@@ -72,12 +89,6 @@ function AdminNavbar() {
       icon: <Activity size={17} />,
     },
     {
-      label: "Analytics",
-      path: "/admin/analytics",
-      roles: ["admin"],
-      icon: <BarChart3 size={17} />,
-    },
-    {
       label: "Staff",
       path: "/admin/staff",
       roles: ["admin"],
@@ -89,14 +100,38 @@ function AdminNavbar() {
       roles: ["admin", "cashier"],
       icon: <Inbox size={17} />,
     },
+    {
+      label: "Feedback",
+      path: "/admin/feedback",
+      roles: ["admin", "cashier"],
+      icon: <Star size={17} />,
+    },
+    {
+      label: "Settings",
+      path: "/admin/settings",
+      roles: ["admin"],
+      icon: <Settings size={17} />,
+    },
+    {
+      label: "Coupons",
+      path: "/admin/coupons",
+      roles: ["admin"],
+      icon: <TicketPercent size={17} />,
+    },
   ];
 
-  const profileRef = useRef(null);
+  const visibleLinks = navLinks.filter((link) => link.roles.includes(role));
+  const mainLinks = visibleLinks.filter((link) => link.main);
+  const moreLinks = visibleLinks.filter((link) => !link.main);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
         setProfileOpen(false);
+      }
+
+      if (moreRef.current && !moreRef.current.contains(e.target)) {
+        setMoreOpen(false);
       }
     };
 
@@ -108,8 +143,6 @@ function AdminNavbar() {
       document.removeEventListener("touchstart", handleClickOutside);
     };
   }, []);
-
-  const visibleLinks = navLinks.filter((link) => link.roles.includes(role));
 
   const logout = () => {
     localStorage.removeItem("adminToken");
@@ -124,7 +157,7 @@ function AdminNavbar() {
         : "text-gray-600 hover:text-[#d97707] hover:bg-orange-50"
     }`;
 
-  const mobileLinkClass = ({ isActive }) =>
+  const dropdownLinkClass = ({ isActive }) =>
     `flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-300 ${
       isActive
         ? "bg-[#d97707] text-white shadow-sm shadow-orange-200"
@@ -138,24 +171,23 @@ function AdminNavbar() {
     >
       <div className="max-w-[1800px] px-4 mx-auto sm:px-6">
         <div className="flex items-center justify-between h-20 gap-4">
-          {/* LEFT BRAND + DROPDOWN */}
+          {/* LEFT BRAND */}
           <div ref={profileRef} className="relative shrink-0">
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 setProfileOpen((prev) => !prev);
+                setMoreOpen(false);
                 setIsOpen(false);
               }}
               className="flex items-center gap-3 text-left"
             >
-              {/* LOGO CIRCLE */}
               <div className="flex items-center justify-center w-11 h-11 rounded-full bg-[#d97707] text-white font-extrabold border-4 border-orange-100 shadow-sm">
                 W
               </div>
 
-              {/* BRAND TEXT */}
-              <div className="leading-none">
+              <div className="hidden leading-none sm:block">
                 <h1 className="text-xl font-extrabold tracking-tight text-gray-900">
                   The White House
                 </h1>
@@ -181,7 +213,6 @@ function AdminNavbar() {
               </div>
             </button>
 
-            {/* PROFILE DROPDOWN */}
             {profileOpen && (
               <div className="absolute left-0 z-50 w-[260px] max-w-[calc(100vw-24px)] pt-3 top-full">
                 <div className="p-3 bg-white border border-gray-100 shadow-[0_14px_35px_rgba(15,23,42,0.12)] rounded-2xl">
@@ -235,38 +266,66 @@ function AdminNavbar() {
           </div>
 
           {/* DESKTOP NAV */}
-          <nav className="items-center justify-center hidden gap-2 xl:flex">
-            {visibleLinks.map((link) => (
-              <NavLink key={link.path} to={link.path} className={linkClass}>
-                {link.icon}
-                {link.label}
-              </NavLink>
-            ))}
-          </nav>
-
-          {/* TABLET NAV */}
-          <nav className="items-center justify-center hidden gap-2 lg:flex xl:hidden">
-            {visibleLinks.slice(0, 4).map((link) => (
+          <nav className="items-center justify-center hidden gap-2 lg:flex">
+            {mainLinks.map((link) => (
               <NavLink key={link.path} to={link.path} className={linkClass}>
                 {link.icon}
                 {link.label}
               </NavLink>
             ))}
 
-            {visibleLinks.length > 4 && (
-              <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="inline-flex items-center gap-2 px-3.5 py-2 text-[13px] font-semibold text-gray-600 transition-all duration-300 rounded-xl hover:text-[#d97707] hover:bg-orange-50"
-              >
-                {isOpen ? <X size={17} /> : <MenuIcon size={17} />}
-                More
-              </button>
+            {moreLinks.length > 0 && (
+              <div ref={moreRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreOpen((prev) => !prev);
+                    setProfileOpen(false);
+                  }}
+                  className={`inline-flex items-center gap-2 px-3.5 py-2 text-[13px] font-semibold rounded-xl transition-all duration-300 whitespace-nowrap ${
+                    moreOpen
+                      ? "bg-orange-50 text-[#d97707]"
+                      : "text-gray-600 hover:text-[#d97707] hover:bg-orange-50"
+                  }`}
+                >
+                  <MoreHorizontal size={17} />
+                  More
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform ${
+                      moreOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {moreOpen && (
+                  <div className="absolute right-0 z-50 w-[260px] pt-3 top-full">
+                    <div className="grid gap-1 p-3 bg-white border border-gray-100 shadow-[0_14px_35px_rgba(15,23,42,0.12)] rounded-2xl">
+                      {moreLinks.map((link) => (
+                        <NavLink
+                          key={link.path}
+                          to={link.path}
+                          onClick={() => setMoreOpen(false)}
+                          className={dropdownLinkClass}
+                        >
+                          {link.icon}
+                          {link.label}
+                        </NavLink>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </nav>
 
           {/* MOBILE HAMBURGER */}
           <button
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={() => {
+              setIsOpen(!isOpen);
+              setProfileOpen(false);
+              setMoreOpen(false);
+            }}
             className="inline-flex items-center justify-center w-11 h-11 transition border border-gray-200 shadow-sm rounded-2xl lg:hidden text-gray-700 hover:text-[#d97707] hover:bg-orange-50"
           >
             {isOpen ? <X size={22} /> : <MenuIcon size={22} />}
@@ -274,24 +333,23 @@ function AdminNavbar() {
         </div>
       </div>
 
-      {/* MOBILE / MORE MENU */}
+      {/* MOBILE MENU */}
       {isOpen && (
-        <div className="bg-white border-t border-gray-100 shadow-lg">
+        <div className="bg-white border-t border-gray-100 shadow-lg lg:hidden">
           <div className="max-w-[1800px] px-4 py-4 mx-auto sm:px-6">
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:hidden">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {visibleLinks.map((link) => (
                 <NavLink
                   key={link.path}
                   to={link.path}
                   onClick={() => setIsOpen(false)}
-                  className={mobileLinkClass}
+                  className={dropdownLinkClass}
                 >
                   {link.icon}
                   {link.label}
                 </NavLink>
               ))}
 
-              {/* MOBILE LOGOUT */}
               <button
                 onClick={logout}
                 className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-red-500 transition-all duration-300 rounded-xl hover:bg-red-50"

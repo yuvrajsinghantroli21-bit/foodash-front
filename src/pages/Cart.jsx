@@ -17,6 +17,8 @@ import {
   ShoppingBag,
   ReceiptText,
   Sparkles,
+  TicketPercent,
+  Loader2,
 } from "lucide-react";
 
 const Divider = () => (
@@ -111,6 +113,11 @@ const TRUST_BADGES = [
 function Cart() {
   const [notes, setNotes] = useState({});
   const [placing, setPlacing] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [finalTotal, setFinalTotal] = useState(0);
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const { cart, addToCart, removeItem, deleteItem, clearCart } =
     useContext(CartContext);
@@ -119,6 +126,55 @@ function Cart() {
   const navigate = useNavigate();
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+
+  const total = cart.reduce(
+    (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1),
+    0,
+  );
+
+  useEffect(() => {
+    setFinalTotal(total - discountAmount);
+  }, [total, discountAmount]);
+
+  const applyCoupon = () => {
+    if (!couponCode.trim()) {
+      toast.error("Enter coupon code");
+      return;
+    }
+
+    setCouponLoading(true);
+
+    api
+      .post("/coupons/validate", {
+        code: couponCode,
+        total,
+      })
+      .then((res) => {
+        setAppliedCoupon(res.data.coupon);
+
+        setDiscountAmount(Number(res.data.discount || 0));
+
+        setFinalTotal(Number(res.data.finalTotal || total));
+
+        toast.success(
+          `Coupon applied • Saved ₹${Math.round(
+            Number(res.data.discount || 0),
+          )}`,
+        );
+      })
+      .catch((err) => {
+        console.log(err);
+
+        setAppliedCoupon(null);
+        setDiscountAmount(0);
+        setFinalTotal(total);
+
+        toast.error(err.response?.data?.message || "Invalid coupon");
+      })
+      .finally(() => {
+        setCouponLoading(false);
+      });
+  };
 
   useEffect(() => {
     const handleSessionExpired = (data) => {
@@ -166,7 +222,21 @@ function Cart() {
       table,
       sessionId: currentToken,
       token: currentToken,
-      total: subtotal,
+
+      subtotal: total,
+      discountAmount: discountAmount,
+      finalTotal: finalTotal,
+      total: finalTotal,
+
+      coupon: appliedCoupon
+        ? {
+            code: appliedCoupon.code,
+            discountType: appliedCoupon.discountType,
+            discountValue: appliedCoupon.discountValue,
+            discountAmount: discountAmount,
+          }
+        : null,
+
       items: cart.map((item) => ({
         name: item.name,
         price: Number(item.price || 0),
@@ -174,6 +244,7 @@ function Cart() {
         note: notes[item._id] || "",
         image: item.image || "",
       })),
+
       paymentMode: "counter",
       paymentStatus: "due",
       status: "preparing",
@@ -185,6 +256,10 @@ function Cart() {
         toast.success("Order placed successfully! 🎉");
         clearCart();
         setNotes({});
+        setAppliedCoupon(null);
+        setCouponCode("");
+        setDiscountAmount(0);
+        setFinalTotal(0);
 
         setTimeout(() => {
           navigate("/my-order");
@@ -457,6 +532,81 @@ function Cart() {
                         ₹{subtotal}
                       </span>
                     </div>
+                  </div>
+
+                  {/* apply coupon code  */}
+                  <div className="w-full p-4 mt-5 overflow-hidden bg-white border shadow-sm rounded-3xl border-amber-100 sm:p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-2xl bg-amber-50 text-amber-700">
+                        <TicketPercent size={18} />
+                      </div>
+
+                      <div>
+                        <h3 className="text-[15px] font-extrabold tracking-tight text-[#111936]">
+                          Apply Coupon
+                        </h3>
+                        <p className="text-xs font-medium text-slate-400">
+                          Add a valid offer code to unlock savings
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_110px]">
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) =>
+                          setCouponCode(e.target.value.toUpperCase())
+                        }
+                        placeholder="Enter code"
+                        className="w-full min-w-0 h-12 rounded-2xl border border-amber-100 bg-[#fffaf1] px-4 text-[13px] font-extrabold uppercase tracking-[0.14em] text-[#111936] outline-none transition placeholder:font-semibold placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-300 focus:border-amber-300 focus:ring-4 focus:ring-amber-100"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={applyCoupon}
+                        disabled={couponLoading}
+                        className="flex items-center justify-center w-full h-12 gap-2 px-4 rounded-2xl bg-[#111936] text-[13px] font-extrabold text-amber-300 transition hover:bg-[#1c274f] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {couponLoading ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            <span>Wait</span>
+                          </>
+                        ) : (
+                          <>
+                            <TicketPercent size={16} />
+                            <span>Apply</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {appliedCoupon && (
+                      <div className="p-4 mt-4 border rounded-2xl border-emerald-100 bg-emerald-50">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-600">
+                              Coupon Applied
+                            </p>
+
+                            <h4 className="mt-1 truncate text-lg font-black tracking-tight text-[#111936]">
+                              {appliedCoupon.code}
+                            </h4>
+                          </div>
+
+                          <div className="sm:text-right">
+                            <p className="text-[11px] font-bold text-slate-400">
+                              Discount
+                            </p>
+
+                            <h4 className="text-2xl font-black tracking-tight text-emerald-600">
+                              -₹{Math.round(discountAmount)}
+                            </h4>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <button

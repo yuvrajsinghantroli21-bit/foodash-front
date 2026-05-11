@@ -5,11 +5,16 @@ import {
   BarChart3,
   CheckCircle2,
   Clock,
+  Coffee,
   CreditCard,
   IndianRupee,
+  MessageSquareText,
   RefreshCw,
   ShoppingBag,
+  Sparkles,
+  Star,
   Table2,
+  TrendingUp,
   Trophy,
   Utensils,
   Wallet,
@@ -68,6 +73,15 @@ const formatDuration = (minutes) => {
 
   if (hrs <= 0) return `${mins} min`;
   return `${hrs}h ${mins}m`;
+};
+
+const getHourLabel = (hour) => {
+  const h = Number(hour);
+
+  if (h === 0) return "12 AM";
+  if (h < 12) return `${h} AM`;
+  if (h === 12) return "12 PM";
+  return `${h - 12} PM`;
 };
 
 const chartColors = {
@@ -138,6 +152,7 @@ function KPI({ icon, label, value, sub, accent = "#d4a74f" }) {
     </div>
   );
 }
+
 /* ───────────────── PANEL ───────────────── */
 
 function Panel({ title, sub, icon, children, accent = "#d4a74f" }) {
@@ -181,10 +196,236 @@ function Empty({ text = "No data for this period" }) {
   );
 }
 
+/* ───────────────── HERO SUMMARY ───────────────── */
+
+function OwnerHero({
+  currentView,
+  kpi,
+  topItem,
+  peakHour,
+  quick,
+  feedbackStats,
+}) {
+  const periodText =
+    quick === "today"
+      ? "today"
+      : quick === "week"
+        ? "in the last 7 days"
+        : quick === "month"
+          ? "this month"
+          : "overall";
+
+  return (
+    <section className="relative mb-5 overflow-hidden rounded-[30px] border border-amber-100 bg-[#111936] p-5 text-white shadow-[0_20px_55px_rgba(17,25,54,0.18)] sm:p-6 lg:p-7">
+      <div className="absolute w-64 h-64 rounded-full -right-20 -top-20 bg-amber-400/20 blur-3xl" />
+      <div className="absolute rounded-full -bottom-24 left-20 h-72 w-72 bg-white/10 blur-3xl" />
+
+      <div className="relative z-10 grid gap-6 xl:grid-cols-[1.15fr_0.85fr] xl:items-end">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-amber-300 ring-1 ring-white/10">
+            <Coffee size={13} />
+            Owner Command Center
+          </div>
+
+          <h1
+            className="mt-5 max-w-3xl text-3xl font-black leading-[0.98] tracking-[-0.05em] sm:text-4xl lg:text-5xl"
+            style={{ fontFamily: "Georgia, serif" }}
+          >
+            The White House Café performance dashboard.
+          </h1>
+
+          <p className="max-w-2xl mt-4 text-sm font-semibold leading-7 text-white/62">
+            Showing {periodText} insights for{" "}
+            <span className="text-amber-300">{currentView}</span>. Track
+            revenue, orders, peak hours, feedback, table performance and payment
+            status in one premium view.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-2">
+          <HeroMini
+            label="Revenue"
+            value={`₹${kpi.totalRevenue.toLocaleString("en-IN")}`}
+            sub="Total sales"
+          />
+          <HeroMini
+            label="Orders"
+            value={kpi.totalOrders}
+            sub={`${kpi.completedCount} completed`}
+          />
+          <HeroMini
+            label="Rating"
+            value={`${feedbackStats.average}★`}
+            sub={`${feedbackStats.total} reviews`}
+          />
+          <HeroMini
+            label="Peak Hour"
+            value={peakHour?.hourLabel || "—"}
+            sub={
+              peakHour
+                ? `${peakHour.orders} orders · ₹${peakHour.revenue.toLocaleString(
+                    "en-IN",
+                  )}`
+                : "No hour data"
+            }
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HeroMini({ label, value, sub }) {
+  return (
+    <div className="rounded-[22px] border border-white/10 bg-white/[0.07] p-4 backdrop-blur">
+      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-300/80">
+        {label}
+      </p>
+      <h3 className="mt-2 text-xl font-black tracking-tight text-white truncate">
+        {value}
+      </h3>
+      <p className="mt-1 truncate text-[11px] font-semibold text-white/45">
+        {sub}
+      </p>
+    </div>
+  );
+}
+
+/* ───────────────── FEEDBACK PANEL ───────────────── */
+
+function FeedbackPanel({ feedbacks, feedbackStats, formatDate }) {
+  const latest = feedbackStats.latest;
+  const lowReviews = feedbacks.filter((item) => Number(item.rating || 0) <= 2);
+
+  return (
+    <Panel
+      title="Customer Feedback Pulse"
+      sub="Latest guest experience signals"
+      icon={<MessageSquareText size={16} />}
+      accent={chartColors.purple}
+    >
+      {feedbacks.length === 0 ? (
+        <Empty text="No feedback submitted yet" />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-[24px] border border-amber-100 bg-[#fffaf1] p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+              Customer Satisfaction
+            </p>
+
+            <div className="flex items-end gap-3 mt-4">
+              <h3 className="text-5xl font-black tracking-tight text-[#111936]">
+                {feedbackStats.average}
+              </h3>
+              <div className="pb-2">
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((num) => (
+                    <Star
+                      key={num}
+                      size={17}
+                      className={
+                        num <= Math.round(Number(feedbackStats.average))
+                          ? "fill-[#d4a74f] text-[#d4a74f]"
+                          : "text-amber-200"
+                      }
+                    />
+                  ))}
+                </div>
+                <p className="mt-1 text-xs font-bold text-slate-400">
+                  Based on {feedbackStats.total} reviews
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-5">
+              <div className="p-3 bg-white rounded-2xl">
+                <p className="text-[10px] font-black uppercase tracking-[0.13em] text-slate-400">
+                  5 Star
+                </p>
+                <p className="mt-1 text-2xl font-black text-emerald-600">
+                  {feedbackStats.fiveStar}
+                </p>
+              </div>
+
+              <div className="p-3 bg-white rounded-2xl">
+                <p className="text-[10px] font-black uppercase tracking-[0.13em] text-slate-400">
+                  Low Rating
+                </p>
+                <p className="mt-1 text-2xl font-black text-red-500">
+                  {feedbackStats.lowRating}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-amber-100 bg-white p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                  Latest Review
+                </p>
+
+                <h3 className="mt-2 text-lg font-black text-[#111936]">
+                  {latest?.customerName || "Guest Customer"}
+                </h3>
+
+                <div className="flex items-center gap-1 mt-2">
+                  {[1, 2, 3, 4, 5].map((num) => (
+                    <Star
+                      key={num}
+                      size={15}
+                      className={
+                        num <= Number(latest?.rating || 0)
+                          ? "fill-[#d4a74f] text-[#d4a74f]"
+                          : "text-amber-200"
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <span
+                className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${
+                  Number(latest?.rating || 0) <= 2
+                    ? "bg-red-50 text-red-500"
+                    : "bg-emerald-50 text-emerald-600"
+                }`}
+              >
+                {Number(latest?.rating || 0) <= 2 ? "Needs Care" : "Positive"}
+              </span>
+            </div>
+
+            <p className="mt-4 min-h-[70px] text-sm font-semibold leading-7 text-slate-600">
+              {latest?.message?.trim()
+                ? latest.message
+                : "No written message was added by the customer."}
+            </p>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-amber-100 pt-4 text-[11px] font-bold text-slate-400">
+              <span>{latest?.table ? `Table ${latest.table}` : "Table —"}</span>
+              <span>•</span>
+              <span>{formatDate(latest?.createdAt)}</span>
+              {lowReviews.length > 0 && (
+                <>
+                  <span>•</span>
+                  <span className="text-red-500">
+                    {lowReviews.length} low rating alert
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 /* ───────────────── MAIN ───────────────── */
 
 export default function AdminAnalytics() {
   const [orders, setOrders] = useState([]);
+  const [feedbacks, setFeedbacks] = useState([]);
   const [quick, setQuick] = useState("all");
   const [loading, setLoading] = useState(true);
   const [selectedTable, setSelectedTable] = useState("all");
@@ -192,10 +433,23 @@ export default function AdminAnalytics() {
   const fetchOrders = () => {
     setLoading(true);
 
-    api
-      .get("/orders")
-      .then((res) => {
-        setOrders(Array.isArray(res.data) ? res.data.filter(Boolean) : []);
+    Promise.all([
+      api.get("/orders"),
+      api
+        .get("/admin/feedback")
+        .then((res) => res)
+        .catch(() => ({ data: [] })),
+    ])
+      .then(([ordersRes, feedbackRes]) => {
+        setOrders(
+          Array.isArray(ordersRes.data) ? ordersRes.data.filter(Boolean) : [],
+        );
+
+        setFeedbacks(
+          Array.isArray(feedbackRes.data)
+            ? feedbackRes.data.filter(Boolean)
+            : [],
+        );
       })
       .catch((err) => {
         console.log(err);
@@ -208,8 +462,6 @@ export default function AdminAnalytics() {
     fetchOrders();
   }, []);
 
-  /* ───────────────── DATE FILTER ───────────────── */
-
   const filtered = useMemo(() => {
     const now = new Date();
     let result = [...orders];
@@ -217,7 +469,6 @@ export default function AdminAnalytics() {
     if (quick === "today") {
       const start = new Date(now);
       start.setHours(0, 0, 0, 0);
-
       result = result.filter((order) => new Date(order.createdAt) >= start);
     }
 
@@ -225,7 +476,6 @@ export default function AdminAnalytics() {
       const start = new Date(now);
       start.setDate(now.getDate() - 7);
       start.setHours(0, 0, 0, 0);
-
       result = result.filter((order) => new Date(order.createdAt) >= start);
     }
 
@@ -233,14 +483,81 @@ export default function AdminAnalytics() {
       const start = new Date(now);
       start.setDate(1);
       start.setHours(0, 0, 0, 0);
-
       result = result.filter((order) => new Date(order.createdAt) >= start);
     }
 
     return result;
   }, [orders, quick]);
 
-  /* ───────────────── TABLE OPTIONS ───────────────── */
+  const filteredFeedbacks = useMemo(() => {
+    const now = new Date();
+    let result = [...feedbacks];
+
+    if (quick === "today") {
+      const start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+      result = result.filter((item) => new Date(item.createdAt) >= start);
+    }
+
+    if (quick === "week") {
+      const start = new Date(now);
+      start.setDate(now.getDate() - 7);
+      start.setHours(0, 0, 0, 0);
+      result = result.filter((item) => new Date(item.createdAt) >= start);
+    }
+
+    if (quick === "month") {
+      const start = new Date(now);
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      result = result.filter((item) => new Date(item.createdAt) >= start);
+    }
+
+    if (selectedTable !== "all") {
+      result = result.filter(
+        (item) => String(item.table || "") === selectedTable,
+      );
+    }
+
+    return result;
+  }, [feedbacks, quick, selectedTable]);
+
+  const feedbackStats = useMemo(() => {
+    const total = filteredFeedbacks.length;
+
+    const average =
+      total > 0
+        ? (
+            filteredFeedbacks.reduce(
+              (sum, item) => sum + Number(item.rating || 0),
+              0,
+            ) / total
+          ).toFixed(1)
+        : "0.0";
+
+    const fiveStar = filteredFeedbacks.filter(
+      (item) => Number(item.rating || 0) === 5,
+    ).length;
+
+    const lowRating = filteredFeedbacks.filter(
+      (item) => Number(item.rating || 0) <= 2,
+    ).length;
+
+    const latest =
+      filteredFeedbacks.length > 0
+        ? [...filteredFeedbacks].sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+          )[0]
+        : null;
+
+    return {
+      total,
+      average,
+      fiveStar,
+      lowRating,
+      latest,
+    };
+  }, [filteredFeedbacks]);
 
   const tableOptions = useMemo(() => {
     const tables = new Set();
@@ -265,8 +582,6 @@ export default function AdminAnalytics() {
     });
   }, [filtered]);
 
-  /* ───────────────── ACTIVE ANALYTICS ORDERS ───────────────── */
-
   const analyticsOrders = useMemo(() => {
     if (selectedTable === "all") return filtered;
 
@@ -278,8 +593,6 @@ export default function AdminAnalytics() {
 
   const currentView =
     selectedTable === "all" ? "All Tables" : `Table ${selectedTable}`;
-
-  /* ───────────────── KPI DATA ───────────────── */
 
   const kpi = useMemo(() => {
     const totalRevenue = analyticsOrders.reduce(
@@ -343,8 +656,6 @@ export default function AdminAnalytics() {
       completedCount: completedOrders.length,
     };
   }, [analyticsOrders]);
-
-  /* ───────────────── SESSION ANALYTICS ───────────────── */
 
   const sessionStats = useMemo(() => {
     const map = {};
@@ -427,8 +738,6 @@ export default function AdminAnalytics() {
     };
   }, [analyticsOrders, selectedTable]);
 
-  /* ───────────────── CHART DATA ───────────────── */
-
   const revenueByDay = useMemo(() => {
     const map = {};
 
@@ -502,6 +811,46 @@ export default function AdminAnalytics() {
       .slice(0, 8);
   }, [filtered]);
 
+  const peakHours = useMemo(() => {
+    const map = {};
+
+    analyticsOrders.forEach((order) => {
+      if (!order.createdAt) return;
+
+      const hour = new Date(order.createdAt).getHours();
+
+      if (!map[hour]) {
+        map[hour] = {
+          hour,
+          hourLabel: getHourLabel(hour),
+          orders: 0,
+          revenue: 0,
+          items: 0,
+        };
+      }
+
+      map[hour].orders += 1;
+      map[hour].revenue += getOrderTotal(order);
+      map[hour].items += getItemsCount(order);
+    });
+
+    return Object.values(map)
+      .sort((a, b) => a.hour - b.hour)
+      .map((item) => ({
+        ...item,
+        name: item.hourLabel,
+      }));
+  }, [analyticsOrders]);
+
+  const peakHour = useMemo(() => {
+    if (peakHours.length === 0) return null;
+
+    return [...peakHours].sort((a, b) => {
+      if (b.orders !== a.orders) return b.orders - a.orders;
+      return b.revenue - a.revenue;
+    })[0];
+  }, [peakHours]);
+
   const paymentPie = useMemo(
     () => [
       { name: "Paid", value: kpi.paid, color: chartColors.emerald },
@@ -531,6 +880,18 @@ export default function AdminAnalytics() {
     [kpi.preparing, kpi.served, kpi.completedCount],
   );
 
+  const formatDate = (date) => {
+    if (!date) return "Just now";
+
+    return new Date(date).toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const QUICK_OPTS = [
     { value: "today", label: "Today" },
     { value: "week", label: "7 Days" },
@@ -544,7 +905,16 @@ export default function AdminAnalytics() {
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
       <main className="mx-auto max-w-[1600px] px-3 py-5 sm:px-5 lg:px-6">
-        {/* FILTER BAR - NO HEADER */}
+        <OwnerHero
+          currentView={currentView}
+          kpi={kpi}
+          topItem={topItems[0]}
+          peakHour={peakHour}
+          quick={quick}
+          feedbackStats={feedbackStats}
+        />
+
+        {/* FILTER BAR */}
         <div className="mb-5 rounded-[26px] border border-amber-100 bg-white p-4 shadow-[0_8px_28px_rgba(15,23,42,0.06)] sm:p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="min-w-0">
@@ -560,7 +930,6 @@ export default function AdminAnalytics() {
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:items-end">
-              {/* TABLE SELECT */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
                   Table
@@ -581,7 +950,6 @@ export default function AdminAnalytics() {
                 </select>
               </div>
 
-              {/* QUICK FILTER */}
               <div className="flex flex-col gap-1.5 sm:col-span-2 xl:col-span-1">
                 <label className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
                   Period
@@ -604,7 +972,6 @@ export default function AdminAnalytics() {
                 </div>
               </div>
 
-              {/* REFRESH BUTTON */}
               <button
                 onClick={fetchOrders}
                 disabled={loading}
@@ -649,6 +1016,43 @@ export default function AdminAnalytics() {
               />
 
               <KPI
+                icon={<Star size={22} />}
+                label="Avg Rating"
+                value={`${feedbackStats.average}★`}
+                sub={`${feedbackStats.total} customer reviews`}
+                accent={chartColors.gold}
+              />
+
+              <KPI
+                icon={<MessageSquareText size={22} />}
+                label="Low Reviews"
+                value={feedbackStats.lowRating}
+                sub="Ratings 1 or 2"
+                accent={
+                  feedbackStats.lowRating > 0
+                    ? chartColors.red
+                    : chartColors.emerald
+                }
+              />
+
+              <KPI
+                icon={<TrendingUp size={22} />}
+                label="Peak Hour"
+                value={peakHour?.hourLabel || "—"}
+                sub={
+                  peakHour
+                    ? `${peakHour.orders} orders · ₹${peakHour.revenue.toLocaleString(
+                        "en-IN",
+                      )}`
+                    : "No hour data"
+                }
+                accent={chartColors.orange}
+              />
+            </div>
+
+            {/* KPI ROW 2 */}
+            <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2 xl:grid-cols-4">
+              <KPI
                 icon={<Utensils size={22} />}
                 label="Items Sold"
                 value={kpi.totalItems}
@@ -671,33 +1075,6 @@ export default function AdminAnalytics() {
                 sub={`${kpi.paid} paid · ${kpi.due} due`}
                 accent={kpi.due > 0 ? chartColors.red : chartColors.emerald}
               />
-            </div>
-
-            {/* KPI ROW 2 */}
-            <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2 xl:grid-cols-4">
-              <KPI
-                icon={<CheckCircle2 size={20} />}
-                label="Completed"
-                value={kpi.completedCount}
-                sub="Finished orders"
-                accent={chartColors.emerald}
-              />
-
-              <KPI
-                icon={<Activity size={20} />}
-                label="Serving Now"
-                value={kpi.served}
-                sub="Served, not completed"
-                accent={chartColors.blue}
-              />
-
-              <KPI
-                icon={<Wallet size={20} />}
-                label="Counter Pay"
-                value={kpi.counter}
-                sub={`${kpi.online} online`}
-                accent={chartColors.slate}
-              />
 
               <KPI
                 icon={<Trophy size={20} />}
@@ -705,6 +1082,14 @@ export default function AdminAnalytics() {
                 value={topItems[0]?.name || "—"}
                 sub={topItems[0] ? `${topItems[0].qty} sold` : "No item data"}
                 accent={chartColors.gold}
+              />
+            </div>
+
+            <div className="mb-5">
+              <FeedbackPanel
+                feedbacks={filteredFeedbacks}
+                feedbackStats={feedbackStats}
+                formatDate={formatDate}
               />
             </div>
 
@@ -794,6 +1179,63 @@ export default function AdminAnalytics() {
                 </Panel>
               </div>
 
+              <Panel
+                title="Peak Ordering Hours"
+                sub={
+                  peakHour
+                    ? `Busiest time: ${peakHour.hourLabel}`
+                    : "Hourly order activity"
+                }
+                icon={<Sparkles size={16} />}
+                accent={chartColors.orange}
+              >
+                {peakHours.length > 0 ? (
+                  <div className="h-[280px] sm:h-[320px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={peakHours}
+                        margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          vertical={false}
+                          stroke="#f0ece3"
+                        />
+
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fill: "#9ca3af", fontSize: 11 }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+
+                        <YAxis
+                          tick={{ fill: "#9ca3af", fontSize: 11 }}
+                          axisLine={false}
+                          tickLine={false}
+                          allowDecimals={false}
+                        />
+
+                        <Tooltip content={<ChartTip />} />
+
+                        <Bar
+                          dataKey="orders"
+                          name="Orders"
+                          radius={[10, 10, 0, 0]}
+                          fill={chartColors.orange}
+                          barSize={28}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <Empty text="No hourly order data found" />
+                )}
+              </Panel>
+            </div>
+
+            {/* CHARTS ROW 2 */}
+            <div className="grid grid-cols-1 gap-5 mb-5 xl:grid-cols-3">
               <div className="xl:col-span-1">
                 <Panel
                   title={
@@ -842,67 +1284,69 @@ export default function AdminAnalytics() {
                   )}
                 </Panel>
               </div>
+
+              <div className="xl:col-span-2">
+                <Panel
+                  title={
+                    selectedTable === "all"
+                      ? "Top Selling Items"
+                      : `Top Items - Table ${selectedTable}`
+                  }
+                  sub="By quantity ordered"
+                  icon={<Trophy size={16} />}
+                  accent={chartColors.gold}
+                >
+                  {topItems.length > 0 ? (
+                    <div className="h-[320px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={topItems}
+                          layout="vertical"
+                          margin={{ left: 0, right: 12, top: 4, bottom: 4 }}
+                        >
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            horizontal={false}
+                            stroke="#f0ece3"
+                          />
+
+                          <XAxis
+                            type="number"
+                            tick={{ fill: "#9ca3af", fontSize: 11 }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+
+                          <YAxis
+                            dataKey="name"
+                            type="category"
+                            width={105}
+                            tick={{ fill: "#374151", fontSize: 11 }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+
+                          <Tooltip content={<ChartTip />} />
+
+                          <Bar
+                            dataKey="qty"
+                            name="Sold"
+                            radius={[0, 10, 10, 0]}
+                            fill={chartColors.gold}
+                            barSize={16}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <Empty />
+                  )}
+                </Panel>
+              </div>
             </div>
 
-            {/* CHARTS ROW 2 */}
+            {/* CHARTS ROW 3 */}
             <div className="grid grid-cols-1 gap-5 mb-5 xl:grid-cols-2">
-              <Panel
-                title={
-                  selectedTable === "all"
-                    ? "Top Selling Items"
-                    : `Top Items - Table ${selectedTable}`
-                }
-                sub="By quantity ordered"
-                icon={<Trophy size={16} />}
-                accent={chartColors.gold}
-              >
-                {topItems.length > 0 ? (
-                  <div className="h-[320px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={topItems}
-                        layout="vertical"
-                        margin={{ left: 0, right: 12, top: 4, bottom: 4 }}
-                      >
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          horizontal={false}
-                          stroke="#f0ece3"
-                        />
-
-                        <XAxis
-                          type="number"
-                          tick={{ fill: "#9ca3af", fontSize: 11 }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-
-                        <YAxis
-                          dataKey="name"
-                          type="category"
-                          width={105}
-                          tick={{ fill: "#374151", fontSize: 11 }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-
-                        <Tooltip content={<ChartTip />} />
-
-                        <Bar
-                          dataKey="qty"
-                          name="Sold"
-                          radius={[0, 10, 10, 0]}
-                          fill={chartColors.gold}
-                          barSize={16}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <Empty />
-                )}
-              </Panel>
-
               {selectedTable === "all" ? (
                 <Panel
                   title="Table Performance"
@@ -1003,10 +1447,7 @@ export default function AdminAnalytics() {
                   )}
                 </Panel>
               )}
-            </div>
 
-            {/* CHARTS ROW 3 */}
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
               <Panel
                 title="Daily Orders Volume"
                 sub="Number of orders per day"
@@ -1014,7 +1455,7 @@ export default function AdminAnalytics() {
                 accent={chartColors.slate}
               >
                 {revenueByDay.length > 0 ? (
-                  <div className="h-[260px]">
+                  <div className="h-[320px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={revenueByDay}
@@ -1056,7 +1497,10 @@ export default function AdminAnalytics() {
                   <Empty />
                 )}
               </Panel>
+            </div>
 
+            {/* CHARTS ROW 4 */}
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
               <Panel
                 title="Payment Mode Split"
                 sub="Counter vs online payments"

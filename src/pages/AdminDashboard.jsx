@@ -200,6 +200,7 @@ function CollapsedTableStatus({ tableOrders = [] }) {
 export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [orderToasts, setOrderToasts] = useState([]);
+  const [selectedBill, setSelectedBill] = useState(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [collapsed, setCollapsed] = useState({});
   const [tick, setTick] = useState(0);
@@ -1077,54 +1078,6 @@ export default function AdminDashboard() {
               {soundEnabled ? <Bell size={18} /> : <BellOff size={18} />}
               {soundEnabled ? "Sound On" : "Enable Sound"}
             </button>
-
-            <Link
-              to="/admin/dashboard"
-              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold text-white bg-[#071832] shadow-[0_8px_20px_rgba(7,24,50,0.20)] rounded"
-            >
-              <Utensils size={18} />
-              Active Orders
-            </Link>
-
-            <Link
-              to="/admin/history"
-              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
-            >
-              <History size={18} />
-              History
-            </Link>
-
-            <Link
-              to="/admin/kitchen"
-              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
-            >
-              <Flame size={18} />
-              Kitchen
-            </Link>
-
-            <Link
-              to="/admin/tables/manage"
-              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
-            >
-              <QrCode size={18} />
-              Tables
-            </Link>
-
-            <Link
-              to="/admin/tables/current"
-              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
-            >
-              <Activity size={18} />
-              Current Tables
-            </Link>
-
-            <Link
-              to="/admin/analytics"
-              className="inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-bold bg-white border border-gray-200 rounded shadow-sm text-slate-600"
-            >
-              <BarChart3 size={18} />
-              Analytics
-            </Link>
           </div>
         </div>
 
@@ -1204,6 +1157,7 @@ export default function AdminDashboard() {
               >
                 {/* TABLE HEADER */}
                 <button
+                  type="button"
                   onClick={() => toggleCollapse(tableKey)}
                   className="flex flex-col w-full gap-3 px-4 py-4 text-left bg-white border-b border-gray-100 sm:flex-row sm:items-center sm:justify-between sm:px-5"
                 >
@@ -1220,9 +1174,26 @@ export default function AdminDashboard() {
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between gap-4 sm:justify-end sm:gap-6">
-                    <span className="text-sm font-bold text-slate-500">
-                      Total ₹{total}
+                  <div className="flex items-center justify-between gap-3 sm:justify-end sm:gap-4">
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedBill(tableOrders);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.stopPropagation();
+                          setSelectedBill(tableOrders);
+                        }
+                      }}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-3.5 py-2 text-sm font-black text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100"
+                    >
+                      <span className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-600">
+                        Total
+                      </span>
+                      ₹{total}
                     </span>
 
                     {isCollapsed ? (
@@ -1241,7 +1212,19 @@ export default function AdminDashboard() {
                         <strong className="font-bold text-slate-600">
                           Total
                         </strong>{" "}
-                        ₹{total}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBill(tableOrders)}
+                          className="text-2xl font-black transition text-emerald-700 hover:scale-105 hover:text-emerald-800"
+                        >
+                          ₹
+                          {tableOrders.reduce(
+                            (sum, order) =>
+                              sum +
+                              Number(order.finalTotal || order.total || 0),
+                            0,
+                          )}
+                        </button>
                       </span>
 
                       <span className="hidden w-px h-5 bg-gray-200 sm:inline-block" />
@@ -1582,6 +1565,225 @@ export default function AdminDashboard() {
           />
         ))}
       </div>
+
+      {selectedBill && (
+        <BillSummaryModal
+          tableOrders={selectedBill}
+          menu={[]}
+          onClose={() => setSelectedBill(null)}
+          printBill={printBill}
+        />
+      )}
+    </div>
+  );
+}
+
+function BillSummaryModal({ tableOrders, menu = [], onClose, printBill }) {
+  const table = tableOrders[0]?.table || tableOrders[0]?.tableId || "—";
+
+  const subtotal = tableOrders.reduce(
+    (sum, order) => sum + Number(order.subtotal || order.total || 0),
+    0,
+  );
+
+  const discount = tableOrders.reduce(
+    (sum, order) =>
+      sum + Number(order.discountAmount || order.coupon?.discountAmount || 0),
+    0,
+  );
+
+  const finalTotal = tableOrders.reduce(
+    (sum, order) => sum + Number(order.finalTotal || order.total || 0),
+    0,
+  );
+
+  const coupon = tableOrders.find((order) => order.coupon?.code)?.coupon;
+
+  const totalItems = tableOrders.reduce(
+    (sum, order) =>
+      sum +
+      (order.items || []).reduce(
+        (itemSum, item) => itemSum + Number(item.qty || 1),
+        0,
+      ),
+    0,
+  );
+
+  const getItemImage = (item) => {
+    if (item?.image) {
+      if (item.image.startsWith("http")) return item.image;
+      return `https://fooadash.onrender.com/uploads/${item.image}`;
+    }
+
+    const found = menu.find(
+      (m) => m.name?.toLowerCase() === item.name?.toLowerCase(),
+    );
+
+    if (!found?.image) return "";
+
+    if (found.image.startsWith("http")) return found.image;
+
+    return `https://fooadash.onrender.com/uploads/${found.image}`;
+  };
+
+  return (
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl overflow-hidden rounded-[28px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
+        <div className="flex items-start justify-between gap-4 border-b border-amber-100 bg-[#fffaf1] px-5 py-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">
+              Bill Summary
+            </p>
+
+            <h2 className="mt-1 text-2xl font-black tracking-tight text-[#111936]">
+              Table {table}
+            </h2>
+
+            <p className="mt-1 text-xs font-semibold text-slate-400">
+              {tableOrders.length} batch{tableOrders.length !== 1 ? "es" : ""} ·{" "}
+              {totalItems} item{totalItems !== 1 ? "s" : ""}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center justify-center w-10 h-10 transition bg-white rounded-full shadow-sm text-slate-500 hover:bg-red-50 hover:text-red-500"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="max-h-[62vh] overflow-y-auto px-5 py-4">
+          <div className="space-y-5">
+            {tableOrders.map((order, batchIndex) => (
+              <div
+                key={order._id || batchIndex}
+                className="p-4 bg-white border shadow-sm rounded-3xl border-amber-100"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-black text-[#111936]">
+                    Batch #{batchIndex + 1}
+                  </h3>
+
+                  <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-amber-700">
+                    ₹
+                    {(order.finalTotal || order.total || 0).toLocaleString(
+                      "en-IN",
+                    )}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {(order.items || []).map((item, index) => {
+                    const image = getItemImage(item);
+                    const itemTotal =
+                      Number(item.price || 0) * Number(item.qty || 1);
+
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center gap-3 rounded-2xl bg-[#fbfaf8] p-3"
+                      >
+                        <div className="flex items-center justify-center w-12 h-12 overflow-hidden bg-white shrink-0 rounded-2xl">
+                          {image ? (
+                            <img
+                              src={image}
+                              alt={item.name}
+                              className="object-cover w-full h-full"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <span className="text-xl">🍽</span>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-sm font-black text-[#111936]">
+                            {item.name}
+                          </p>
+
+                          {item.note && (
+                            <p className="mt-1 truncate text-[11px] font-semibold text-amber-700">
+                              Note: {item.note}
+                            </p>
+                          )}
+
+                          <p className="mt-1 text-xs font-semibold text-slate-400">
+                            ₹{Number(item.price || 0)} × {Number(item.qty || 1)}
+                          </p>
+                        </div>
+
+                        <p className="text-sm font-black text-slate-700">
+                          ₹{itemTotal}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-amber-100 bg-[#fffaf1] px-5 py-4">
+          <div className="p-4 space-y-2 bg-white rounded-3xl">
+            <PriceRow label="Subtotal" value={subtotal} />
+
+            {coupon && discount > 0 && (
+              <PriceRow
+                label={`Coupon ${coupon.code}`}
+                value={-Math.round(discount)}
+                discount
+              />
+            )}
+
+            <div className="my-3 border-t border-dashed border-slate-200" />
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-black uppercase tracking-[0.12em] text-[#111936]">
+                Final Payable
+              </span>
+
+              <span className="text-3xl font-black tracking-tight text-emerald-700">
+                ₹{Math.round(finalTotal)}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-12 text-sm font-black transition bg-white border rounded-2xl border-amber-200 text-slate-600 hover:bg-amber-50"
+            >
+              Close
+            </button>
+
+            <button
+              type="button"
+              onClick={() => printBill(tableOrders, `T${table}`)}
+              className="h-12 rounded-2xl bg-[#111936] text-sm font-black text-amber-300 transition hover:bg-[#1d2a56]"
+            >
+              Print Bill
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PriceRow({ label, value, discount }) {
+  return (
+    <div className="flex items-center justify-between text-sm font-bold">
+      <span className="text-slate-500">{label}</span>
+
+      <span className={discount ? "text-emerald-600" : "text-[#111936]"}>
+        {value < 0 ? "-" : ""}₹{Math.abs(Number(value || 0))}
+      </span>
     </div>
   );
 }
