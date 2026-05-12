@@ -228,15 +228,6 @@ function Cart() {
       finalTotal: finalTotal,
       total: finalTotal,
 
-      coupon: appliedCoupon
-        ? {
-            code: appliedCoupon.code,
-            discountType: appliedCoupon.discountType,
-            discountValue: appliedCoupon.discountValue,
-            discountAmount: discountAmount,
-          }
-        : null,
-
       items: cart.map((item) => ({
         name: item.name,
         price: Number(item.price || 0),
@@ -247,7 +238,7 @@ function Cart() {
 
       paymentMode: "counter",
       paymentStatus: "due",
-      status: "preparing",
+      status: "pending",
     };
 
     api
@@ -256,9 +247,6 @@ function Cart() {
         toast.success("Order placed successfully! 🎉");
         clearCart();
         setNotes({});
-        setAppliedCoupon(null);
-        setCouponCode("");
-        setDiscountAmount(0);
         setFinalTotal(0);
 
         setTimeout(() => {
@@ -535,7 +523,7 @@ function Cart() {
                   </div>
 
                   {/* apply coupon code  */}
-                  <div className="w-full p-4 mt-5 overflow-hidden bg-white border shadow-sm rounded-3xl border-amber-100 sm:p-5">
+                  {/* <div className="w-full p-4 mt-5 overflow-hidden bg-white border shadow-sm rounded-3xl border-amber-100 sm:p-5">
                     <div className="flex items-center gap-2 mb-4">
                       <div className="flex items-center justify-center w-9 h-9 rounded-2xl bg-amber-50 text-amber-700">
                         <TicketPercent size={18} />
@@ -607,7 +595,7 @@ function Cart() {
                         </div>
                       </div>
                     )}
-                  </div>
+                  </div> */}
 
                   <button
                     onClick={placeOrder}
