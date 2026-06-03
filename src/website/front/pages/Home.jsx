@@ -315,27 +315,97 @@ function DashboardPreview() {
   );
 }
 
+function MobileHeroIllustration() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 34, scale: 0.92 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.9, delay: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      className="relative z-10 mx-auto mt-10 w-full max-w-[360px] md:mt-0 md:max-w-[330px] lg:hidden"
+    >
+      <motion.div
+        animate={{ y: [0, -10, 0], rotate: [0, 1.2, 0] }}
+        transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
+        className="relative overflow-hidden rounded-[2.1rem] border border-white/80 bg-white/28 p-2 shadow-[0_28px_70px_rgba(86,45,12,0.20)] backdrop-blur-sm"
+      >
+        <div className="pointer-events-none absolute inset-0 rounded-[2.1rem] bg-[radial-gradient(circle_at_18%_12%,rgba(255,255,255,0.94),transparent_34%),linear-gradient(135deg,rgba(240,162,26,0.15),transparent_42%)]" />
+        <img
+          src="/public/qzora-flat-vector1.png"
+          alt="Qzora QR restaurant ordering illustration"
+          className="relative z-10 h-auto w-full object-contain drop-shadow-[0_20px_35px_rgba(61,31,11,0.16)]"
+          loading="eager"
+          decoding="async"
+        />
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function FlyingHeroTitle() {
+  const words = [
+    {
+      text: "Your",
+      className: "text-[#2a1408]",
+      from: { x: -90, y: 22, rotate: -5 },
+    },
+    {
+      text: "Restaurant.",
+      className: "text-[#2a1408]",
+      from: { x: 90, y: 28, rotate: 4 },
+    },
+    {
+      text: "Smarter",
+      className: "text-[#e99411]",
+      from: { x: -70, y: -30, rotate: 3 },
+    },
+    {
+      text: "Ordering.",
+      className: "text-[#2a1408]",
+      from: { x: 80, y: -22, rotate: -4 },
+    },
+  ];
+
+  return (
+    <h1 className="font-display max-w-[15.75ch] text-[clamp(3.25rem,4.55vw,5.2rem)] font-black leading-[1.02] tracking-[-0.075em] text-[#2a1408] drop-shadow-[0_12px_34px_rgba(74,37,9,0.08)] max-sm:max-w-[9ch] max-sm:text-[3.1rem]">
+      {words.map((word, index) => (
+        <motion.span
+          key={word.text}
+          initial={{ opacity: 0, filter: "blur(10px)", ...word.from }}
+          animate={{ opacity: 1, x: 0, y: 0, rotate: 0, filter: "blur(0px)" }}
+          transition={{
+            duration: 0.95,
+            delay: 0.18 + index * 0.13,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+          className={`mr-[0.18em] inline-block will-change-transform ${word.className}`}
+        >
+          {word.text}
+        </motion.span>
+      ))}
+    </h1>
+  );
+}
+
 function HeroSection() {
   return (
-    <section className="font-body relative min-h-[calc(100svh-90px)] overflow-hidden bg-[#f7efe4] text-[#2a1408]">
+    <section className="font-body relative min-h-[calc(100svh-90px)] overflow-hidden bg-black text-[#2a1408]">
       <div
-        className="absolute inset-0 bg-cover bg-center opacity-[0.44]"
+        className="absolute inset-0 bg-center bg-cover opacity-100"
         style={{
           backgroundImage:
             "url('https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=2400&q=85')",
         }}
       />
 
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,#f7efe4_0%,rgba(247,239,228,0.99)_30%,rgba(247,239,228,0.64)_56%,rgba(247,239,228,0.05)_76%,rgba(37,18,7,0.78)_100%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_16%,rgba(255,255,255,0.96),transparent_30%),radial-gradient(circle_at_50%_78%,rgba(217,130,5,0.13),transparent_28%),radial-gradient(circle_at_90%_55%,rgba(217,130,5,0.24),transparent_26%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(246,239,228,0.04),transparent_50%,rgba(246,239,228,0.66)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(247,239,228,0.38)_0%,rgba(247,239,228,0.24)_34%,rgba(247,239,228,0.06)_58%,rgba(37,18,7,0.50)_100%)]" />
+
       <div className="absolute hidden w-64 h-64 rounded-full pointer-events-none -bottom-12 -left-16 bg-emerald-900/24 blur-3xl lg:block" />
 
       <motion.div
         initial="hidden"
         animate="show"
         transition={{ staggerChildren: 0.1 }}
-        className="relative z-10 mx-auto grid min-h-[calc(100svh-90px)] w-full max-w-[96rem] grid-cols-[0.95fr_1.05fr] items-start gap-8 px-6 pb-44 pt-10 lg:px-14 lg:pt-12 xl:px-20 max-lg:grid-cols-1 max-lg:pb-8"
+        className="relative z-10 mx-auto grid min-h-[calc(100svh-90px)] w-full max-w-[96rem] grid-cols-1 items-center gap-8 px-6 pb-12 pt-10 md:grid-cols-[minmax(0,1fr)_minmax(270px,0.82fr)] md:pb-14 lg:grid-cols-[0.95fr_1.05fr] lg:items-start lg:px-14 lg:pb-44 lg:pt-12 xl:px-20"
       >
         <div className="relative z-20 max-w-[720px] pt-4 lg:pt-10">
           <motion.div
@@ -346,13 +416,7 @@ function HeroSection() {
             All-in-One Restaurant Management Platform
           </motion.div>
 
-          <motion.h1
-            variants={fadeUp}
-            className="font-display max-w-[15.75ch] text-[clamp(3.25rem,4.55vw,5.2rem)] font-black leading-[1.02] tracking-[-0.075em] text-[#2a1408] drop-shadow-[0_12px_34px_rgba(74,37,9,0.08)] max-sm:max-w-[9ch] max-sm:text-[3.1rem]"
-          >
-            Your Restaurant. <span className="text-[#e99411]">Smarter</span>{" "}
-            Ordering.
-          </motion.h1>
+          <FlyingHeroTitle />
 
           <motion.p
             variants={fadeUp}
@@ -415,6 +479,8 @@ function HeroSection() {
             </div>
           </motion.div>
         </div>
+
+        <MobileHeroIllustration />
 
         <div className="relative items-center justify-end hidden h-full lg:flex">
           <DashboardPreview />
