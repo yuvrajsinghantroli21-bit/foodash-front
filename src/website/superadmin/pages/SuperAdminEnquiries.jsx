@@ -19,7 +19,7 @@ export default function SuperAdminEnquiries() {
 
   const fetchEnquiries = () => {
     api
-      .get("/superadmin/enquiries")
+      .get("/saas/superadmin/enquiries")
       .then((res) => setEnquiries(Array.isArray(res.data) ? res.data : []))
       .catch(() => toast.error("Failed to load enquiries"));
   };
@@ -30,7 +30,7 @@ export default function SuperAdminEnquiries() {
 
   const updateStatus = (id, status) => {
     api
-      .put(`/superadmin/enquiries/${id}/status`, { status })
+      .put(`/saas/superadmin/enquiries/${id}/status`, { status })
       .then(() => {
         toast.success("Status updated");
         fetchEnquiries();
@@ -42,7 +42,7 @@ export default function SuperAdminEnquiries() {
     if (!window.confirm("Delete this enquiry?")) return;
 
     api
-      .delete(`/superadmin/enquiries/${id}`)
+      .delete(`/saas/superadmin/enquiries/${id}`)
       .then(() => {
         toast.success("Enquiry deleted");
         fetchEnquiries();
@@ -74,7 +74,7 @@ export default function SuperAdminEnquiries() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 rounded-[2rem] bg-white p-6 shadow-xl">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
-            FoodDash Enquiries
+            Qzora Enquiries
           </p>
 
           <h1 className="mt-2 text-4xl font-black tracking-[-0.05em] text-slate-950">
@@ -82,7 +82,7 @@ export default function SuperAdminEnquiries() {
           </h1>
 
           <p className="mt-2 text-sm font-semibold text-slate-500">
-            See restaurant owners who contacted FoodDash from the SaaS website.
+            See restaurant owners who contacted Qzora from the SaaS website.
           </p>
         </div>
 
