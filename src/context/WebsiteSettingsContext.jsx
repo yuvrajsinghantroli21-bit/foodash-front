@@ -4,10 +4,45 @@ import { useParams } from "react-router-dom";
 
 const WebsiteSettingsContext = createContext(null);
 
+const getSlugFromHost = () => {
+  const host = window.location.hostname;
+
+  if (host.endsWith(".localhost") && host !== "localhost") {
+    return host.replace(".localhost", "");
+  }
+
+  if (
+    host.endsWith(".qzora.in") &&
+    host !== "qzora.in" &&
+    host !== "www.qzora.in"
+  ) {
+    return host.replace(".qzora.in", "");
+  }
+
+  if (
+    host.endsWith(".foodash.com") &&
+    host !== "foodash.com" &&
+    host !== "www.foodash.com"
+  ) {
+    return host.replace(".foodash.com", "");
+  }
+
+  return "";
+};
+
 export function WebsiteSettingsProvider({ children }) {
   const { restaurantSlug } = useParams();
 
   const [settings, setSettings] = useState({});
+  const [loadingSettings, setLoadingSettings] = useState(true);
+
+  const getSlug = () => {
+    const fromUrl = restaurantSlug;
+    const fromHost = getSlugFromHost();
+    const fromStorage = localStorage.getItem("restaurantSlug");
+
+    return fromUrl || fromHost || fromStorage || "white-house-cafe";
+  };
 
   useEffect(() => {
     if (!settings) return;
@@ -16,25 +51,38 @@ export function WebsiteSettingsProvider({ children }) {
     const path = window.location.pathname;
 
     const isSuperAdmin = path.startsWith("/superadmin");
-    const isFoodDashMainWebsite =
+
+    const isQzoraMainWebsite =
       host === "localhost" ||
       host === "127.0.0.1" ||
-      host === "foodash.com" ||
-      host === "www.foodash.com";
+      host === "qzora.in" ||
+      host === "www.qzora.in";
+
+    const isFoodDashMainWebsite =
+      host === "foodash.com" || host === "www.foodash.com";
+
+    const isMainWebsite = isQzoraMainWebsite || isFoodDashMainWebsite;
 
     const isRestaurantPage =
       path.startsWith("/r/") ||
       path.startsWith("/admin") ||
-      (!isFoodDashMainWebsite && !isSuperAdmin);
+      (!isMainWebsite && !isSuperAdmin);
 
     if (!isRestaurantPage || isSuperAdmin) {
-      document.title = "FoodDash";
-      const favicon = document.querySelector("link[rel='icon']");
-      if (favicon) favicon.href = "/favicon.ico";
+      document.title = "Qzora";
+
+      let favicon = document.querySelector("link[rel='icon']");
+      if (!favicon) {
+        favicon = document.createElement("link");
+        favicon.rel = "icon";
+        document.head.appendChild(favicon);
+      }
+
+      favicon.href = "/favicon.ico";
       return;
     }
 
-    document.title = settings.browserTitle || settings.cafeName || "FoodDash";
+    document.title = settings.browserTitle || settings.cafeName || "Qzora";
 
     let favicon = document.querySelector("link[rel='icon']");
 
@@ -46,22 +94,6 @@ export function WebsiteSettingsProvider({ children }) {
 
     favicon.href = settings.favicon || "/favicon.ico";
   }, [settings]);
-
-  const [loadingSettings, setLoadingSettings] = useState(true);
-
-  const getSlug = () => {
-    const fromUrl = restaurantSlug;
-
-    const fromStorage = localStorage.getItem("restaurantSlug");
-
-    const host = window.location.hostname;
-    const subdomain =
-      host.includes(".localhost") && !host.startsWith("www.")
-        ? host.split(".")[0]
-        : "";
-
-    return fromUrl || fromStorage || subdomain || "white-house-cafe";
-  };
 
   const fetchPublicSettings = () => {
     const slug = getSlug();
@@ -95,10 +127,16 @@ export function WebsiteSettingsProvider({ children }) {
       }
     };
 
+    const handleManualUpdate = () => {
+      fetchPublicSettings();
+    };
+
     window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("websiteSettingsUpdated", handleManualUpdate);
 
     return () => {
       window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("websiteSettingsUpdated", handleManualUpdate);
     };
   }, [restaurantSlug]);
 

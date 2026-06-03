@@ -10,6 +10,14 @@ export const getRestaurantSlug = () => {
   }
 
   if (
+    host.endsWith(".qzora.in") &&
+    host !== "qzora.in" &&
+    host !== "www.qzora.in"
+  ) {
+    return host.replace(".qzora.in", "");
+  }
+
+  if (
     host.endsWith(".foodash.com") &&
     host !== "foodash.com" &&
     host !== "www.foodash.com"
