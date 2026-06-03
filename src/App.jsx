@@ -358,6 +358,9 @@ function App() {
 
   const isRestaurantSite =
     isLocalhostSubdomain ||
+    (host.endsWith(".qzora.in") &&
+      host !== "qzora.in" &&
+      host !== "www.qzora.in") ||
     (host.endsWith(".foodash.com") &&
       host !== "foodash.com" &&
       host !== "www.foodash.com");
