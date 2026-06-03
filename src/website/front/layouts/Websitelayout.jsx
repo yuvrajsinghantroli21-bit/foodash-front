@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import WebsiteNavbar from "../components/WebsiteNavbar";
+import WebsiteFooter from "../components/WebsiteFooter";
 
 const WebsiteLayout = () => {
   return (
@@ -9,6 +10,7 @@ const WebsiteLayout = () => {
       <main className="flex-1">
         <Outlet />
       </main>
+      <WebsiteFooter />
     </div>
   );
 };
