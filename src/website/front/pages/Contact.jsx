@@ -36,7 +36,7 @@ export default function Contact() {
     setLoading(true);
 
     api
-      .post("/enquiries", form)
+      .post("/saas/enquiries", form)
       .then(() => {
         toast.success("Enquiry sent successfully");
         setForm({
