@@ -42,3 +42,74 @@ body {
 .animate-progress {
   animation: progress 10s linear forwards;
 }
+
+/* registration page css  */
+@media (max-width: 1100px) {
+  .fd-dashboard-bottom {
+    grid-template-columns: 1fr !important;
+  }
+
+  .fd-recent-orders-box {
+    border-right: none !important;
+    border-bottom: 1px solid rgba(254, 243, 199, 0.09) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .fd-order-row {
+    grid-template-columns: 48px minmax(0, 1fr) auto !important;
+    row-gap: 6px !important;
+  }
+
+  .fd-order-status {
+    grid-column: 2 / -1 !important;
+  }
+
+  .fd-popular-item-row {
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+  }
+
+  .fd-popular-img {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    border-radius: 11px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .fd-layout {
+    grid-template-columns: 1fr !important;
+    border-radius: 28px !important;
+    overflow: hidden !important;
+  }
+
+  .fd-left {
+    min-height: auto !important;
+    border-radius: 0 !important;
+  }
+
+  .fd-right {
+    border-top-left-radius: 28px !important;
+    border-top-right-radius: 28px !important;
+    border-bottom-left-radius: 0 !important;
+    min-height: auto !important;
+    box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.18) !important;
+  }
+}
+
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,650..900,35..100,0..1&family=DM+Sans:wght@400;500;600;700;800;900&display=swap");
+
+.font-display {
+  font-family: "Fraunces", Georgia, serif;
+  font-optical-sizing: none;
+  font-variation-settings:
+    "opsz" 14,
+    "wght" 790,
+    "SOFT" 78,
+    "WONK" 1;
+}
+
+.font-body {
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+}
