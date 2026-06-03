@@ -69,7 +69,7 @@ export function WebsiteSettingsProvider({ children }) {
       (!isMainWebsite && !isSuperAdmin);
 
     if (!isRestaurantPage || isSuperAdmin) {
-      document.title = "Qzora";
+      document.title = "Qzora - Restaurant QR Ordering Platform";
 
       let favicon = document.querySelector("link[rel='icon']");
       if (!favicon) {
@@ -78,11 +78,14 @@ export function WebsiteSettingsProvider({ children }) {
         document.head.appendChild(favicon);
       }
 
-      favicon.href = "/favicon.ico";
+      favicon.href = "/qzora_logo.png";
       return;
     }
 
-    document.title = settings.browserTitle || settings.cafeName || "Qzora";
+    document.title =
+      settings.browserTitle ||
+      settings.cafeName ||
+      "Restaurant Website - Qzora";
 
     let favicon = document.querySelector("link[rel='icon']");
 
