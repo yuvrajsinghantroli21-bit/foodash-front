@@ -88,7 +88,7 @@ function SuperAdminLogin() {
                 name="email"
                 value={form.email}
                 onChange={handleChange}
-                placeholder="admin@foodash.com"
+                placeholder="admin@qzora.in"
                 className="w-full text-sm font-bold bg-transparent outline-none text-stone-800 placeholder:text-stone-300"
               />
             </div>

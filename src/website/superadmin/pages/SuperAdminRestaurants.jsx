@@ -306,7 +306,7 @@ function SuperAdminRestaurants() {
       const encodedUser = encodeURIComponent(
         JSON.stringify({
           name: "SuperAdmin Support",
-          email: "support@foodash.com",
+          email: "support@qzora.com",
           role: "admin",
           restaurantId: r._id,
           restaurantName: r.name,
@@ -317,7 +317,7 @@ function SuperAdminRestaurants() {
         }),
       );
 
-      window.location.href = `http://${r.slug}.localhost:5173/admin/impersonate?token=${encodedToken}&user=${encodedUser}`;
+      window.location.href = `https://${r.slug}.qzora.in/admin/impersonate?token=${encodedToken}&user=${encodedUser}`;
     } catch (error) {
       toast.error(error?.response?.data?.message || "Failed to access admin");
     }

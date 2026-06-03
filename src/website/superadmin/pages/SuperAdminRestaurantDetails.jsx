@@ -715,7 +715,7 @@ function SuperAdminRestaurantDetails() {
             title="Website Overrides"
             sub="Custom CSS and typography"
           />
-          <FutureCard title="Custom Domain" sub="whitehouse.foodash.com" />
+          <FutureCard title="Custom Domain" sub="whitehouse.qzora.in" />
           <FutureCard
             title="Payment History"
             sub="Plan invoices and renewals"

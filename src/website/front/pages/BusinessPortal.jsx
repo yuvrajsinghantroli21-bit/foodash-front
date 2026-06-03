@@ -55,7 +55,7 @@ function BusinessPortal() {
 
   const activeOwner = freshOwner || ownerUser;
 
-  const ownerEmail = activeOwner.email || "owner@foodash.com";
+  const ownerEmail = activeOwner.email || "owner@qzora.in";
   const ownerName = activeOwner.name || "Restaurant Owner";
   const restaurantName =
     activeOwner.restaurantName ||
@@ -706,12 +706,12 @@ function getBusinessUrls(slug, hasAccess) {
     };
   }
 
-  const productionBase = `${protocol}//${slug}.foodash.com`;
+  const productionBase = `${protocol}//${slug}.qzora.in`;
   return {
     website: productionBase,
     admin: `${productionBase}/admin/login`,
-    displayWebsite: `${slug}.foodash.com`,
-    displayAdmin: `${slug}.foodash.com/admin/login`,
+    displayWebsite: `${slug}.qzora.in`,
+    displayAdmin: `${slug}.qzora.in/admin/login`,
   };
 }
 
@@ -725,7 +725,7 @@ function getStatusInfo(status) {
       description:
         "Your request is with the FoodDash team. You will get an update within 7 working days.",
       icon: Clock3,
-      supportEmail: "support@foodash.com",
+      supportEmail: "support@qzora.in",
       pill: "border-sky-200 bg-sky-50 text-sky-700",
       dot: "bg-sky-500 shadow-[0_0_0_6px_rgba(14,165,233,0.14)]",
       box: "border-sky-100 bg-sky-50 text-sky-900",
@@ -740,7 +740,7 @@ function getStatusInfo(status) {
       description:
         "Your restaurant setup has been approved. Website and admin access are enabled according to your plan.",
       icon: CheckCircle2,
-      supportEmail: "support@foodash.com",
+      supportEmail: "support@qzora.in",
       pill: "border-emerald-200 bg-emerald-50 text-emerald-700",
       dot: "bg-emerald-500 shadow-[0_0_0_6px_rgba(16,185,129,0.14)]",
       box: "border-emerald-100 bg-emerald-50 text-emerald-900",
@@ -755,7 +755,7 @@ function getStatusInfo(status) {
       description:
         "Renew your FoodDash plan to continue admin features and QR ordering access.",
       icon: AlertTriangle,
-      supportEmail: "support@foodash.com",
+      supportEmail: "support@qzora.in",
       pill: "border-red-200 bg-red-50 text-red-700",
       dot: "bg-red-500 shadow-[0_0_0_6px_rgba(239,68,68,0.14)]",
       box: "border-red-100 bg-red-50 text-red-900",
@@ -770,7 +770,7 @@ function getStatusInfo(status) {
       description:
         "FoodDash has not approved this request. Refund will be processed according to policy.",
       icon: XCircle,
-      supportEmail: "support@foodash.com",
+      supportEmail: "support@qzora.in",
       pill: "border-red-200 bg-red-50 text-red-700",
       dot: "bg-red-500 shadow-[0_0_0_6px_rgba(239,68,68,0.14)]",
       box: "border-red-100 bg-red-50 text-red-900",
@@ -785,7 +785,7 @@ function getStatusInfo(status) {
       description:
         "This request has been refunded. You can choose another plan anytime.",
       icon: CheckCircle2,
-      supportEmail: "support@foodash.com",
+      supportEmail: "support@qzora.in",
       pill: "border-stone-200 bg-stone-50 text-stone-700",
       dot: "bg-stone-500",
       box: "border-stone-100 bg-stone-50 text-stone-900",
@@ -799,7 +799,7 @@ function getStatusInfo(status) {
     description:
       "Choose a FoodDash plan from the pricing page to start your activation request.",
     icon: WalletCards,
-    supportEmail: "support@foodash.com",
+    supportEmail: "support@qzora.in",
     pill: "border-amber-200 bg-amber-50 text-amber-700",
     dot: "bg-amber-500 shadow-[0_0_0_6px_rgba(245,158,11,0.14)]",
     box: "border-amber-100 bg-amber-50 text-amber-900",
