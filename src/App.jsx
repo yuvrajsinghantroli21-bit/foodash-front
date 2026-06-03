@@ -70,6 +70,37 @@ import SubscriptionExpired from "./admin/pages/SubscriptionExpired.jsx";
 import AdminBasicSettings from "./admin/pages/AdminBasicSettings";
 import AdminImpersonate from "./admin/pages/AdminImpersonate";
 
+import { useEffect, useState } from "react";
+import axios from "axios";
+
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+const getRestaurantSlugFromHost = () => {
+  const host = window.location.hostname;
+
+  if (host.endsWith(".localhost") && host !== "localhost") {
+    return host.split(".")[0];
+  }
+
+  if (
+    host.endsWith(".qzora.in") &&
+    host !== "qzora.in" &&
+    host !== "www.qzora.in"
+  ) {
+    return host.replace(".qzora.in", "");
+  }
+
+  if (
+    host.endsWith(".foodash.com") &&
+    host !== "foodash.com" &&
+    host !== "www.foodash.com"
+  ) {
+    return host.replace(".foodash.com", "");
+  }
+
+  return "";
+};
+
 function AdminRoutes() {
   return (
     <>
@@ -365,6 +396,62 @@ function App() {
       host !== "foodash.com" &&
       host !== "www.foodash.com");
 
+  const restaurantSlug = getRestaurantSlugFromHost();
+
+  const [checkingRestaurant, setCheckingRestaurant] =
+    useState(isRestaurantSite);
+  const [restaurantExists, setRestaurantExists] = useState(false);
+
+  useEffect(() => {
+    if (!isRestaurantSite || !restaurantSlug) {
+      setCheckingRestaurant(false);
+      return;
+    }
+
+    axios
+      .get(`${API}/settings/public?slug=${restaurantSlug}`)
+      .then(() => {
+        setRestaurantExists(true);
+      })
+      .catch(() => {
+        setRestaurantExists(false);
+      })
+      .finally(() => {
+        setCheckingRestaurant(false);
+      });
+  }, [isRestaurantSite, restaurantSlug]);
+
+  if (checkingRestaurant) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#fff8ec]">
+        <p className="text-sm font-black text-amber-700">
+          Opening restaurant...
+        </p>
+      </div>
+    );
+  }
+
+  if (isRestaurantSite && !restaurantExists) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#fff8ec] px-4">
+        <div className="max-w-md rounded-[2rem] bg-white p-8 text-center shadow-xl">
+          <h1 className="text-3xl font-black text-[#2b170d]">
+            Restaurant Not Found
+          </h1>
+          <p className="mt-3 text-sm font-semibold text-stone-500">
+            This restaurant does not exist or is not active on Qzora.
+          </p>
+          <a
+            href="https://qzora.in"
+            className="inline-flex px-6 py-3 mt-6 text-sm font-black text-white rounded-full bg-amber-600"
+          >
+            Back to Qzora
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <BrowserRouter>
       <Toaster
@@ -409,5 +496,4 @@ function App() {
     </BrowserRouter>
   );
 }
-
 export default App;
