@@ -330,7 +330,7 @@ function MobileHeroIllustration() {
       >
         <div className="pointer-events-none absolute inset-0 rounded-[2.1rem] bg-[radial-gradient(circle_at_18%_12%,rgba(255,255,255,0.94),transparent_34%),linear-gradient(135deg,rgba(240,162,26,0.15),transparent_42%)]" />
         <img
-          src="/public/qzora-flat-vector1.png"
+          src="/qzora-flat-vector1.png"
           alt="Qzora QR restaurant ordering illustration"
           className="relative z-10 h-auto w-full object-contain drop-shadow-[0_20px_35px_rgba(61,31,11,0.16)]"
           loading="eager"
