@@ -20,6 +20,11 @@ import {
   BadgeIndianRupee,
   Trash2,
   Loader2,
+  IndianRupee,
+  Smartphone,
+  ShieldCheck,
+  BellRing,
+  LockKeyhole,
 } from "lucide-react";
 
 const money = (value) => Math.round(Number(value || 0)).toLocaleString("en-IN");
@@ -153,15 +158,20 @@ export default function MyOrder() {
   const [orders, setOrders] = useState([]);
   const [menu, setMenu] = useState([]);
   const [sessionBill, setSessionBill] = useState(null);
+  const [checkoutMeta, setCheckoutMeta] = useState(null);
+
   const [couponCode, setCouponCode] = useState("");
   const [loading, setLoading] = useState(true);
   const [couponLoading, setCouponLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const [selectedBill, setSelectedBill] = useState(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
-  // Prevent duplicate thank-you popup/toast/navigation when multiple socket events arrive.
+  const [selectedBill, setSelectedBill] = useState(null);
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+
   const completedRedirectStarted = useRef(false);
   const sessionExpiredHandled = useRef(false);
+  const billTokenRef = useRef("");
 
   const table = localStorage.getItem("table");
   const token = localStorage.getItem("token");
@@ -193,12 +203,13 @@ export default function MyOrder() {
     );
 
   const getOrderTotal = (order) =>
-    Number(order?.total || getOrderSubtotal(order));
+    Number(order?.total || order?.finalTotal || getOrderSubtotal(order));
 
   const getPaymentModeText = (mode) => {
     const clean = String(mode || "counter").toLowerCase();
     if (["online", "razorpay", "upi", "card"].includes(clean)) return "Online";
-    return "Pay at Counter";
+    if (["cash", "counter"].includes(clean)) return "Pay at Table";
+    return "Pay at Table";
   };
 
   const getPaymentStatusText = (status) => {
@@ -224,6 +235,21 @@ export default function MyOrder() {
         setOrders(sorted);
         setSessionBill(res.data.bill || null);
 
+        const meta = {
+          active: res.data.active,
+          hasOrder: res.data.hasOrder,
+          checkoutStatus: res.data.checkoutStatus || "open",
+          checkoutPaymentMode: res.data.checkoutPaymentMode || null,
+          checkoutRequestedAt: res.data.checkoutRequestedAt || null,
+          billToken: res.data.billToken || "",
+        };
+
+        setCheckoutMeta(meta);
+
+        if (meta.billToken) {
+          billTokenRef.current = meta.billToken;
+        }
+
         if (res.data.bill?.coupon?.code) {
           setCouponCode(res.data.bill.coupon.code);
         }
@@ -231,6 +257,7 @@ export default function MyOrder() {
       .catch(() => {
         setOrders([]);
         setSessionBill(null);
+        setCheckoutMeta(null);
       })
       .finally(() => {
         setLoading(false);
@@ -268,6 +295,17 @@ export default function MyOrder() {
       fetchSessionBill();
     };
 
+    const handlePaymentPaid = (data) => {
+      if (data?.token !== token) return;
+
+      if (data?.billToken) {
+        billTokenRef.current = data.billToken;
+      }
+
+      toast.success("Payment received ✅ Your paid bill is ready.");
+      fetchSessionBill();
+    };
+
     const handleSessionExpired = (data) => {
       if (data?.token !== token) return;
       if (sessionExpiredHandled.current) return;
@@ -275,28 +313,37 @@ export default function MyOrder() {
       sessionExpiredHandled.current = true;
       completedRedirectStarted.current = true;
 
-      toast.success("Session expired. Thank you! 🙏");
+      const finalBillToken =
+        data?.billToken ||
+        billTokenRef.current ||
+        checkoutMeta?.billToken ||
+        "";
+
+      toast.success("Session completed. Thank you! 🙏");
       localStorage.removeItem("token");
       localStorage.removeItem("table");
 
-      setTimeout(() => navigate("/thank-you"), 1200);
+      setTimeout(() => {
+        navigate(
+          finalBillToken ? `/thank-you?bill=${finalBillToken}` : "/thank-you",
+        );
+      }, 1200);
     };
 
     socket.on("orderUpdated", handleUpdate);
     socket.on("order-updated", handleUpdate);
-
-    // only bill/payment/table updates should refetch bill
     socket.on("tables-current-updated", handleTableUpdate);
-
+    socket.on("payment-paid", handlePaymentPaid);
     socket.on("session-expired", handleSessionExpired);
 
     return () => {
       socket.off("orderUpdated", handleUpdate);
       socket.off("order-updated", handleUpdate);
       socket.off("tables-current-updated", handleTableUpdate);
+      socket.off("payment-paid", handlePaymentPaid);
       socket.off("session-expired", handleSessionExpired);
     };
-  }, [token, navigate]);
+  }, [token, navigate, checkoutMeta?.billToken]);
 
   useEffect(() => {
     if (completedRedirectStarted.current) return;
@@ -309,15 +356,21 @@ export default function MyOrder() {
     completedRedirectStarted.current = true;
 
     const timer = setTimeout(() => {
+      const finalBillToken =
+        billTokenRef.current || checkoutMeta?.billToken || "";
+
       localStorage.removeItem("token");
       localStorage.removeItem("table");
       setOrders([]);
       toast.success("Dining completed 🍽️ Thank you!");
-      navigate("/thank-you");
+
+      navigate(
+        finalBillToken ? `/thank-you?bill=${finalBillToken}` : "/thank-you",
+      );
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, [orders, navigate]);
+  }, [orders, navigate, checkoutMeta?.billToken]);
 
   const applyCoupon = () => {
     const code = couponCode.trim().toUpperCase();
@@ -362,32 +415,102 @@ export default function MyOrder() {
       });
   };
 
-  const markPayAtCounter = () => {
-    setPaymentLoading(true);
+  const requestCheckout = () => {
+    if (!token) {
+      toast.error("Session not found");
+      return;
+    }
+
+    setCheckoutLoading(true);
 
     api
-      .put(`/session/${token}/payment`, {
-        paymentMode: "counter",
-        paymentStatus: "due",
-      })
-      .then(() => {
-        setSessionBill((prev) => ({
+      .post(`/session/${token}/request-checkout`)
+      .then((res) => {
+        const data = res.data;
+
+        if (data?.billToken) {
+          billTokenRef.current = data.billToken;
+        }
+
+        setCheckoutMeta((prev) => ({
           ...(prev || {}),
-          paymentMode: "counter",
-          paymentStatus: "due",
+          checkoutStatus: data.checkoutStatus || "checkout_requested",
+          checkoutPaymentMode: data.checkoutPaymentMode || null,
+          billToken: data.billToken || prev?.billToken || "",
         }));
 
-        toast.success("Payment selected: Pay at Counter");
+        if (data?.bill) {
+          setSessionBill((prev) => ({
+            ...(prev || {}),
+            ...data.bill,
+            paymentStatus: data.paymentStatus || prev?.paymentStatus || "due",
+          }));
+        }
+
+        setCheckoutModalOpen(true);
       })
-      .catch(() => {
-        toast.error("Failed to update payment");
+      .catch((err) => {
+        toast.error(
+          err.response?.data?.message || "Failed to request checkout",
+        );
+      })
+      .finally(() => {
+        setCheckoutLoading(false);
+      });
+  };
+
+  const selectPaymentMethod = async (mode) => {
+    const res = await api.put(`/session/${token}/select-payment-method`, {
+      mode,
+    });
+
+    const data = res.data;
+
+    if (data?.billToken) {
+      billTokenRef.current = data.billToken;
+    }
+
+    setCheckoutMeta((prev) => ({
+      ...(prev || {}),
+      checkoutStatus: data.checkoutStatus || "checkout_requested",
+      checkoutPaymentMode: data.checkoutPaymentMode || mode,
+      billToken: data.billToken || prev?.billToken || "",
+    }));
+
+    setSessionBill((prev) => ({
+      ...(prev || {}),
+      ...(data.bill || {}),
+      paymentMode: data.paymentMode || mode,
+      paymentStatus: data.paymentStatus || "due",
+    }));
+
+    return data;
+  };
+
+  const choosePayAtTable = () => {
+    if (paymentStatus === "Paid") {
+      toast.success("Payment is already completed");
+      return;
+    }
+
+    setPaymentLoading(true);
+
+    selectPaymentMethod("cash")
+      .then(() => {
+        setCheckoutModalOpen(false);
+        toast.success("Staff has been notified for payment collection.");
+      })
+      .catch((err) => {
+        toast.error(
+          err.response?.data?.message || "Failed to select cash payment",
+        );
       })
       .finally(() => {
         setPaymentLoading(false);
       });
   };
 
-  const payOnline = () => {
+  const payOnline = async () => {
     if (!token) {
       toast.error("Session not found");
       return;
@@ -400,91 +523,89 @@ export default function MyOrder() {
 
     setPaymentLoading(true);
 
-    loadRazorpayScript()
-      .then((loaded) => {
-        if (!loaded) {
-          toast.error("Razorpay failed to load. Please check your internet.");
-          setPaymentLoading(false);
-          return null;
-        }
+    try {
+      await selectPaymentMethod("online");
 
-        return api.post(`/session/${token}/create-payment`);
-      })
-      .then((res) => {
-        if (!res) return;
+      const loaded = await loadRazorpayScript();
 
-        const data = res.data;
+      if (!loaded) {
+        toast.error("Razorpay failed to load. Please check your internet.");
+        return;
+      }
 
-        const options = {
-          key: data.keyId,
-          amount: Math.round(Number(data.amount || 0) * 100),
-          currency: data.currency || "INR",
-          name: data.restaurantName || "FoodDash",
-          description: "Table Order Payment",
-          order_id: data.razorpayOrderId,
+      const res = await api.post(`/session/${token}/create-payment`);
+      const data = res.data;
 
-          config: {
-            display: {
-              blocks: {
-                upi: {
-                  name: "Pay using UPI",
-                  instruments: [
-                    {
-                      method: "upi",
-                    },
-                  ],
-                },
-              },
+      const options = {
+        key: data.keyId,
+        amount: Math.round(Number(data.amount || 0) * 100),
+        currency: data.currency || "INR",
+        name: data.restaurantName || "Qzora",
+        description: "Table Order Payment",
+        order_id: data.razorpayOrderId,
 
-              sequence: ["block.upi"],
-
-              preferences: {
-                show_default_blocks: true,
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: "Pay using UPI",
+                instruments: [{ method: "upi" }],
               },
             },
-          },
-
-          handler: function (response) {
-            api
-              .post(`/session/${token}/verify-payment`, response)
-              .then(() => {
-                toast.success("Payment successful ✅");
-
-                setSessionBill((prev) => ({
-                  ...(prev || {}),
-                  paymentMode: "online",
-                  paymentStatus: "paid",
-                }));
-
-                fetchSessionBill();
-              })
-              .catch((err) => {
-                toast.error(
-                  err.response?.data?.message || "Payment verification failed",
-                );
-              });
-          },
-
-          modal: {
-            ondismiss: function () {
-              toast.error("Payment cancelled");
+            sequence: ["block.upi"],
+            preferences: {
+              show_default_blocks: true,
             },
           },
+        },
 
-          theme: {
-            color: "#3d2412",
+        handler: function (response) {
+          api
+            .post(`/session/${token}/verify-payment`, response)
+            .then(() => {
+              toast.success("Payment successful ✅");
+
+              setCheckoutModalOpen(false);
+
+              setSessionBill((prev) => ({
+                ...(prev || {}),
+                paymentMode: "online",
+                paymentStatus: "paid",
+              }));
+
+              setCheckoutMeta((prev) => ({
+                ...(prev || {}),
+                checkoutStatus: "paid",
+                checkoutPaymentMode: "online",
+              }));
+
+              fetchSessionBill();
+            })
+            .catch((err) => {
+              toast.error(
+                err.response?.data?.message || "Payment verification failed",
+              );
+            });
+        },
+
+        modal: {
+          ondismiss: function () {
+            toast.error("Payment cancelled");
           },
-        };
+        },
 
-        const razorpay = new window.Razorpay(options);
-        razorpay.open();
-      })
-      .catch((err) => {
-        toast.error(err.response?.data?.message || "Payment failed");
-      })
-      .finally(() => {
-        setPaymentLoading(false);
-      });
+        theme: {
+          color: "#3d2412",
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Payment failed");
+    } finally {
+      setPaymentLoading(false);
+    }
   };
 
   const subtotal =
@@ -502,6 +623,16 @@ export default function MyOrder() {
 
   const paymentMode = getPaymentModeText(sessionBill?.paymentMode);
   const paymentStatus = getPaymentStatusText(sessionBill?.paymentStatus);
+
+  const checkoutStatus = checkoutMeta?.checkoutStatus || "open";
+  const checkoutPaymentMode = checkoutMeta?.checkoutPaymentMode || null;
+  const billToken = checkoutMeta?.billToken || billTokenRef.current || "";
+
+  const checkoutStarted = ["checkout_requested", "paid", "completed"].includes(
+    checkoutStatus,
+  );
+
+  const isPaid = paymentStatus === "Paid" || checkoutStatus === "paid";
 
   const totalItems = orders.reduce(
     (sum, o) =>
@@ -551,9 +682,61 @@ export default function MyOrder() {
           <Divider />
 
           <p className="mx-auto max-w-md text-sm font-medium leading-6 text-[#7b5b42]">
-            Track your batches, apply coupon on the full table bill, and choose
-            your payment option.
+            Track your batches, view your bill, and request checkout when you
+            are ready to leave.
           </p>
+
+          {checkoutStarted && (
+            <div
+              className={`mx-auto mt-5 max-w-xl rounded-[1.4rem] border px-4 py-3 text-left ${
+                isPaid
+                  ? "border-emerald-200 bg-emerald-50"
+                  : "border-amber-200 bg-amber-50"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={`mt-0.5 flex h-9 w-9 items-center justify-center rounded-2xl ${
+                    isPaid
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-amber-100 text-amber-700"
+                  }`}
+                >
+                  {isPaid ? (
+                    <ShieldCheck size={18} />
+                  ) : (
+                    <LockKeyhole size={18} />
+                  )}
+                </div>
+
+                <div>
+                  <p
+                    className={`text-sm font-black ${
+                      isPaid ? "text-emerald-800" : "text-amber-800"
+                    }`}
+                  >
+                    {isPaid
+                      ? "Payment received. Your paid bill is ready."
+                      : "Checkout mode is active."}
+                  </p>
+
+                  <p
+                    className={`mt-1 text-xs font-semibold leading-5 ${
+                      isPaid ? "text-emerald-700/75" : "text-amber-800/70"
+                    }`}
+                  >
+                    {isPaid
+                      ? "You can view or download your paid bill. Staff will complete your table shortly."
+                      : checkoutPaymentMode === "cash"
+                        ? "A staff member has been notified and will arrive at your table for payment collection."
+                        : checkoutPaymentMode === "online"
+                          ? "Online payment is selected. Please complete payment to close your bill."
+                          : "New orders cannot be placed after checkout has started."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <button
             onClick={() => navigate("/order")}
@@ -738,10 +921,16 @@ export default function MyOrder() {
               paymentMode={paymentMode}
               paymentStatus={paymentStatus}
               paymentLoading={paymentLoading}
-              markPayAtCounter={markPayAtCounter}
+              checkoutLoading={checkoutLoading}
+              checkoutStarted={checkoutStarted}
+              checkoutPaymentMode={checkoutPaymentMode}
+              isPaid={isPaid}
+              requestCheckout={requestCheckout}
               payOnline={payOnline}
+              choosePayAtTable={choosePayAtTable}
               totalBatches={totalBatches}
               totalItems={totalItems}
+              billToken={billToken}
               onOpenBill={() =>
                 setSelectedBill({
                   orders,
@@ -773,6 +962,16 @@ export default function MyOrder() {
           paymentStatus={paymentStatus}
         />
       )}
+
+      {checkoutModalOpen && (
+        <CheckoutModal
+          finalTotal={finalTotal}
+          paymentLoading={paymentLoading}
+          onClose={() => setCheckoutModalOpen(false)}
+          onPayOnline={payOnline}
+          onPayAtTable={choosePayAtTable}
+        />
+      )}
     </div>
   );
 }
@@ -790,12 +989,20 @@ function SessionBillCard({
   paymentMode,
   paymentStatus,
   paymentLoading,
-  markPayAtCounter,
+  checkoutLoading,
+  checkoutStarted,
+  checkoutPaymentMode,
+  isPaid,
+  requestCheckout,
   payOnline,
+  choosePayAtTable,
   totalBatches,
   totalItems,
+  billToken,
   onOpenBill,
 }) {
+  const couponLocked = checkoutStarted || isPaid;
+
   return (
     <div className="relative overflow-hidden rounded-[2.2rem] border border-amber-100 bg-white p-5 shadow-[0_18px_55px_rgba(59,33,24,0.10)]">
       <div className="pointer-events-none absolute -right-3 bottom-0 text-[110px] opacity-10">
@@ -815,7 +1022,7 @@ function SessionBillCard({
             </h2>
 
             <p className="mt-1 text-sm font-semibold text-[#7b5b42]">
-              Coupon and payment apply on the full table bill.
+              View your bill and request checkout when you are ready.
             </p>
           </div>
 
@@ -866,10 +1073,24 @@ function SessionBillCard({
         </div>
 
         <div className="mt-5 rounded-[1.7rem] border border-amber-100 bg-[#fffaf1] p-4">
-          <div className="mb-3 flex items-center gap-2 text-sm font-black text-[#241309]">
-            <TicketPercent size={17} className="text-amber-700" />
-            Apply Coupon
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2 text-sm font-black text-[#241309]">
+              <TicketPercent size={17} className="text-amber-700" />
+              Apply Coupon
+            </div>
+
+            {couponLocked && (
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
+                Locked
+              </span>
+            )}
           </div>
+
+          {couponLocked && (
+            <p className="mb-3 text-xs font-semibold text-slate-500">
+              Coupon cannot be changed after checkout has started.
+            </p>
+          )}
 
           {activeCoupon?.code ? (
             <div className="p-4 border rounded-2xl border-emerald-100 bg-emerald-50">
@@ -889,8 +1110,8 @@ function SessionBillCard({
                 <button
                   type="button"
                   onClick={removeCoupon}
-                  disabled={couponLoading}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-black text-red-500 transition bg-white shadow-sm rounded-2xl hover:bg-red-50 disabled:opacity-60"
+                  disabled={couponLoading || couponLocked}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-black text-red-500 transition bg-white shadow-sm rounded-2xl hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {couponLoading ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -907,14 +1128,15 @@ function SessionBillCard({
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                 placeholder="Enter coupon code"
-                className="h-12 rounded-2xl border border-amber-200 bg-white px-4 text-sm font-black uppercase tracking-[0.12em] text-[#241309] outline-none transition placeholder:text-slate-300 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                disabled={couponLocked}
+                className="h-12 rounded-2xl border border-amber-200 bg-white px-4 text-sm font-black uppercase tracking-[0.12em] text-[#241309] outline-none transition placeholder:text-slate-300 focus:border-amber-400 focus:ring-4 focus:ring-amber-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
               />
 
               <button
                 type="button"
                 onClick={applyCoupon}
-                disabled={couponLoading}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-amber-600 px-6 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-amber-700 disabled:opacity-60"
+                disabled={couponLoading || couponLocked}
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-amber-600 px-6 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {couponLoading && (
                   <Loader2 size={16} className="animate-spin" />
@@ -952,7 +1174,7 @@ function SessionBillCard({
         <div className="mt-5 rounded-[1.7rem] border border-amber-100 bg-[#fffaf1] p-4">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div>
-              <p className="text-sm font-black text-[#241309]">Payment</p>
+              <p className="text-sm font-black text-[#241309]">Checkout</p>
               <p className="mt-1 text-xs font-bold text-slate-500">
                 {paymentMode} · {paymentStatus}
               </p>
@@ -960,44 +1182,238 @@ function SessionBillCard({
 
             <span
               className={`rounded-full px-3 py-1 text-xs font-black ${
-                paymentStatus === "Paid"
+                isPaid
                   ? "bg-emerald-100 text-emerald-700"
-                  : "bg-red-100 text-red-600"
+                  : checkoutStarted
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-red-100 text-red-600"
               }`}
             >
-              {paymentStatus}
+              {isPaid ? "Paid" : checkoutStarted ? "Checkout" : "Due"}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {!checkoutStarted && (
             <button
               type="button"
-              onClick={payOnline}
-              disabled={paymentLoading || paymentStatus === "Paid"}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={requestCheckout}
+              disabled={checkoutLoading}
+              className="inline-flex h-13 min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[#3d2412] px-5 text-sm font-black text-amber-100 shadow-lg transition hover:-translate-y-0.5 hover:bg-[#2c190d] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {paymentLoading ? (
+              {checkoutLoading ? (
                 <Loader2 size={17} className="animate-spin" />
               ) : (
-                <CreditCard size={17} />
+                <ReceiptText size={17} />
               )}
-              {paymentStatus === "Paid" ? "Already Paid" : "Pay Online"}
+              Request Checkout
             </button>
+          )}
 
-            <button
-              type="button"
-              onClick={markPayAtCounter}
-              disabled={paymentLoading || paymentStatus === "Paid"}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#3d2412] px-5 text-sm font-black text-amber-100 shadow-lg transition hover:-translate-y-0.5 hover:bg-[#2c190d] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {paymentLoading ? (
-                <Loader2 size={17} className="animate-spin" />
-              ) : (
-                <Wallet size={17} />
-              )}
-              {paymentStatus === "Paid" ? "Payment Done" : "Pay at Counter"}
-            </button>
+          {checkoutStarted && !isPaid && (
+            <div className="space-y-3">
+              <div className="px-4 py-3 bg-white border rounded-2xl border-amber-100">
+                <p className="flex items-center gap-2 text-sm font-black text-amber-800">
+                  <BellRing size={16} />
+                  {checkoutPaymentMode === "cash"
+                    ? "Staff has been notified."
+                    : checkoutPaymentMode === "online"
+                      ? "Online payment selected."
+                      : "Checkout requested."}
+                </p>
+
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                  {checkoutPaymentMode === "cash"
+                    ? "Please remain seated. A staff member will arrive at your table for payment collection."
+                    : checkoutPaymentMode === "online"
+                      ? "Complete your online payment using UPI, cards, wallets, or net banking."
+                      : "Choose a payment method to continue."}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={payOnline}
+                  disabled={paymentLoading}
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {paymentLoading ? (
+                    <Loader2 size={17} className="animate-spin" />
+                  ) : (
+                    <CreditCard size={17} />
+                  )}
+                  {checkoutPaymentMode === "online"
+                    ? "Pay Online Now"
+                    : "Change to Online"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={choosePayAtTable}
+                  disabled={paymentLoading}
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#3d2412] px-5 text-sm font-black text-amber-100 shadow-lg transition hover:-translate-y-0.5 hover:bg-[#2c190d] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {paymentLoading ? (
+                    <Loader2 size={17} className="animate-spin" />
+                  ) : (
+                    <Wallet size={17} />
+                  )}
+                  {checkoutPaymentMode === "cash"
+                    ? "Pay at Table Selected"
+                    : "Change to Pay at Table"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isPaid && (
+            <div className="px-4 py-4 border rounded-2xl border-emerald-100 bg-emerald-50">
+              <p className="flex items-center gap-2 text-sm font-black text-emerald-800">
+                <ShieldCheck size={17} />
+                Payment received successfully.
+              </p>
+
+              <p className="mt-1 text-xs font-semibold leading-5 text-emerald-700/75">
+                Your paid bill is ready. Staff will complete your table shortly.
+              </p>
+
+              <div className="flex flex-col gap-2 mt-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={onOpenBill}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-sm font-black text-emerald-700 shadow-sm transition hover:-translate-y-0.5"
+                >
+                  <ReceiptText size={16} />
+                  View Paid Bill
+                </button>
+
+                {billToken && (
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard?.writeText(billToken)}
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-100 px-4 text-sm font-black text-emerald-800 transition hover:-translate-y-0.5"
+                  >
+                    <ShieldCheck size={16} />
+                    Bill Ready
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CheckoutModal({
+  finalTotal,
+  paymentLoading,
+  onClose,
+  onPayOnline,
+  onPayAtTable,
+}) {
+  return (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/55 px-4 backdrop-blur-md">
+      <div className="w-full max-w-3xl overflow-hidden rounded-[2.4rem] bg-[#fffaf1] shadow-[0_28px_90px_rgba(0,0,0,0.35)]">
+        <div className="relative px-5 py-5 text-center border-b border-amber-100 sm:px-8">
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute flex items-center justify-center w-10 h-10 transition bg-white rounded-full shadow-sm right-4 top-4 text-slate-500 hover:bg-red-50 hover:text-red-500"
+          >
+            <X size={18} />
+          </button>
+
+          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-amber-700">
+            Request Checkout
+          </p>
+
+          <h2 className="mt-2 text-3xl font-black tracking-[-0.05em] text-[#241309] sm:text-4xl">
+            Choose Payment Method
+          </h2>
+
+          <p className="mx-auto mt-2 max-w-md text-sm font-semibold leading-6 text-[#7b5b42]">
+            Your table will be locked for checkout. New items cannot be added
+            after this step.
+          </p>
+
+          <div className="inline-flex items-center gap-2 px-5 py-2 mx-auto mt-4 text-sm font-black bg-white rounded-full shadow-sm text-emerald-700">
+            <IndianRupee size={16} />
+            Payable ₹{money(finalTotal)}
           </div>
+        </div>
+
+        <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
+          <button
+            type="button"
+            onClick={onPayOnline}
+            disabled={paymentLoading}
+            className="group rounded-[2rem] border border-emerald-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-emerald-50 text-emerald-700 transition group-hover:scale-105">
+              {paymentLoading ? (
+                <Loader2 size={26} className="animate-spin" />
+              ) : (
+                <Smartphone size={28} />
+              )}
+            </div>
+
+            <h3 className="text-2xl font-black tracking-[-0.04em] text-[#241309]">
+              Pay Online
+            </h3>
+
+            <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+              Pay instantly using UPI, cards, wallets, or net banking. Your bill
+              will be marked paid after successful payment.
+            </p>
+
+            <div className="flex flex-wrap gap-2 mt-5">
+              {["UPI", "Cards", "Wallets"].map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={onPayAtTable}
+            disabled={paymentLoading}
+            className="group rounded-[2rem] border border-amber-100 bg-[#3d2412] p-5 text-left text-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-amber-100 text-[#3d2412] transition group-hover:scale-105">
+              {paymentLoading ? (
+                <Loader2 size={26} className="animate-spin" />
+              ) : (
+                <Wallet size={28} />
+              )}
+            </div>
+
+            <h3 className="text-2xl font-black tracking-[-0.04em] text-amber-50">
+              Pay at Table
+            </h3>
+
+            <p className="mt-2 text-sm font-semibold leading-6 text-amber-100/75">
+              A staff member will be notified and will arrive at your table to
+              collect payment. Please keep your bill amount ready.
+            </p>
+
+            <div className="flex flex-wrap gap-2 mt-5">
+              {["Cash", "UPI to Staff", "Card Machine"].map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-100"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          </button>
         </div>
       </div>
     </div>

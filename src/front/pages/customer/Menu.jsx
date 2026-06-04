@@ -358,8 +358,19 @@ const MenuCard = memo(function MenuCard({
   removeItem,
   settings,
   headingFont,
+  orderLocked = false,
+  onLockedOrder = () => {},
 }) {
   const image = item.image;
+
+  const safeAddToCart = (selectedItem) => {
+    if (orderLocked) {
+      onLockedOrder();
+      return;
+    }
+
+    addToCart(selectedItem);
+  };
 
   const cardBg =
     settings?.menuCardBg || settings?.menuPreviewCardBg || "#ffffff";
@@ -586,6 +597,8 @@ const MenuCard = memo(function MenuCard({
             isAvailable={isAvailable}
             addToCart={addToCart}
             removeItem={removeItem}
+            orderLocked={orderLocked}
+            lockMessage={lockMessage}
           />
         </div>
       </div>
@@ -632,6 +645,9 @@ function Menu() {
   const [showScroll, setShowScroll] = useState(false);
   const [vegOnly, setVegOnly] = useState(false);
   const [dbCategories, setDbCategories] = useState([]);
+
+  const [orderLocked, setOrderLocked] = useState(false);
+  const [lockReason, setLockReason] = useState("");
 
   const [showIntro, setShowIntro] = useState(false);
   const [curtainStep, setCurtainStep] = useState("welcome");
@@ -735,6 +751,8 @@ function Menu() {
 
     if (!token) {
       setSessionReady(true);
+      setOrderLocked(false);
+      setLockReason("");
       toast.error("Please scan QR first");
       localStorage.removeItem("token");
       localStorage.removeItem("table");
@@ -755,6 +773,23 @@ function Menu() {
         setTable(res.data.table);
         localStorage.setItem("table", res.data.table);
         localStorage.setItem("token", token);
+
+        const locked = Boolean(res.data.orderLocked);
+        setOrderLocked(locked);
+        setLockReason(res.data.lockReason || "");
+
+        if (locked) {
+          if (res.data.lockReason === "another_active_ordering_token") {
+            toast.error(
+              "This table already has an active ordering session. Please use the original QR session or ask staff.",
+            );
+          } else {
+            toast.error(
+              "This table is in checkout mode. New orders cannot be placed.",
+            );
+          }
+        }
+
         setSessionReady(true);
 
         if (tokenFromUrl || queryToken) {
@@ -763,6 +798,8 @@ function Menu() {
       })
       .catch(() => {
         setSessionReady(true);
+        setOrderLocked(false);
+        setLockReason("");
         toast.error("Session expired. Please scan again.");
         localStorage.removeItem("token");
         localStorage.removeItem("table");
@@ -783,7 +820,14 @@ function Menu() {
         localStorage.removeItem("table");
 
         setTimeout(() => {
-          navigate("/thank-you", { replace: true });
+          navigate(
+            data?.billToken
+              ? `/thank-you?bill=${data.billToken}`
+              : "/thank-you",
+            {
+              replace: true,
+            },
+          );
         }, 900);
       }
     };
@@ -960,6 +1004,19 @@ function Menu() {
     },
     [menu],
   );
+
+  const handleLockedOrder = useCallback(() => {
+    if (lockReason === "another_active_ordering_token") {
+      toast.error(
+        "This table already has an active ordering session. Please use the original QR session or ask staff.",
+      );
+      return;
+    }
+
+    toast.error(
+      "Checkout has started for this table. New orders cannot be placed on this bill.",
+    );
+  }, [lockReason]);
 
   const filteredMenu = useMemo(() => {
     const safeMenu = Array.isArray(menu) ? menu : [];
@@ -1230,6 +1287,25 @@ function Menu() {
             {settings?.menuSubtitle ||
               "Browse our menu, add items to your cart, and place your order — all from your table."}
           </motion.p>
+
+          {orderLocked && (
+            <motion.div
+              initial={false}
+              animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : 10 }}
+              transition={{ delay: 0.16, duration: 0.32 }}
+              className="max-w-xl px-4 py-3 mx-auto mt-5 text-center border shadow-sm rounded-2xl border-amber-200 bg-amber-50/90"
+            >
+              <p className="text-sm font-black text-amber-800">
+                {lockReason === "another_active_ordering_token"
+                  ? "Another active ordering session already exists for this table."
+                  : "Checkout mode is active for this table."}
+              </p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-amber-700/80">
+                New items cannot be added now. Please ask staff if you need
+                help.
+              </p>
+            </motion.div>
+          )}
         </div>
       </div>
 
@@ -1469,6 +1545,8 @@ function Menu() {
                   removeItem={removeItem}
                   settings={settings}
                   headingFont={headingFont}
+                  orderLocked={orderLocked}
+                  onLockedOrder={handleLockedOrder}
                 />
               );
             })}

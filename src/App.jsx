@@ -69,6 +69,7 @@ import NotFound from "./context/NotFound.jsx";
 import SubscriptionExpired from "./admin/pages/SubscriptionExpired.jsx";
 import AdminBasicSettings from "./admin/pages/AdminBasicSettings";
 import AdminImpersonate from "./admin/pages/AdminImpersonate";
+import BillPage from "./front/pages/customer/BillPage";
 
 import { useEffect, useState } from "react";
 import axios from "axios";
@@ -311,10 +312,12 @@ function RestaurantRoutes() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/session-required" element={<SessionGate />} />
         <Route path="/thank-you" element={<ThankYou />} />
+
         <Route path="/my-order" element={<MyOrder />} />
 
         <Route path="/preview/home" element={<PreviewHome />} />
       </Route>
+      <Route path="/bill/:billToken" element={<BillPage />} />
 
       {AdminRoutes()}
     </>

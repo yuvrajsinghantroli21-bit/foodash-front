@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -13,6 +13,7 @@ import {
   MessageSquareText,
   Sparkles,
   Star,
+  ReceiptText,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../../api/api";
@@ -32,10 +33,18 @@ function ThankYou() {
   const token = useMemo(() => localStorage.getItem("token") || "", []);
 
   useEffect(() => {
+    const billToken = localStorage.getItem("billToken");
+
+    if (billToken) {
+      sessionStorage.setItem("lastBillToken", billToken);
+    }
+
     localStorage.removeItem("token");
     localStorage.removeItem("table");
     localStorage.removeItem("cart");
   }, []);
+
+  const lastBillToken = sessionStorage.getItem("lastBillToken") || "";
 
   const activeRating = hoverRating || rating;
 
@@ -77,6 +86,7 @@ function ThankYou() {
       })
       .then(() => {
         setSubmitted(true);
+
         toast.success("Thank you for your feedback");
         fetchRewardCoupon();
       })
@@ -109,6 +119,12 @@ function ThankYou() {
 
     return `${discount}${minOrder}`;
   };
+
+  const [searchParams] = useSearchParams();
+
+  const billTokenFromUrl = searchParams.get("bill") || "";
+
+  const billToken = billTokenFromUrl || lastBillToken;
 
   return (
     <div
@@ -173,6 +189,31 @@ function ThankYou() {
               <h1 className="whc-display max-w-xl text-[clamp(3rem,8vw,5.8rem)] font-[650] leading-[0.88] tracking-[-0.065em] text-[#2f1d12]">
                 Thank you for dining with us.
               </h1>
+
+              <div className="mt-6 rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">
+                  Payment Complete
+                </p>
+
+                <h3 className="mt-2 text-xl font-black text-emerald-800">
+                  Your bill has been settled.
+                </h3>
+
+                <p className="mt-2 text-sm font-semibold text-emerald-700/80">
+                  A digital receipt is available for viewing and download.
+                </p>
+              </div>
+
+              {billToken && (
+                <Link
+                  to={`/bill/${billToken}`}
+                  className="mt-5 inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-600 px-6 py-3 text-sm font-black uppercase tracking-[0.14em] text-white shadow-[0_18px_35px_rgba(5,150,105,0.22)] transition hover:-translate-y-0.5 hover:bg-emerald-700"
+                >
+                  <ReceiptText size={17} />
+                  View Final Bill
+                  <ArrowRight size={17} />
+                </Link>
+              )}
 
               <div className="flex items-center gap-3 my-7">
                 <div className="h-px w-16 bg-[#c9a55a]" />

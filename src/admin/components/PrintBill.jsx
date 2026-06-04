@@ -604,7 +604,7 @@ export const printBill = ({
           }</div>
 
           <div class="sub">
-            ${billSettings.address || "FoodDash Smart Ordering Receipt"}
+            ${billSettings.address || "Qzora Smart Ordering Receipt"}
           </div>
 
           ${
@@ -762,7 +762,7 @@ export const printBill = ({
 
             <div class="footer-sub">
               Please keep this bill for your reference.<br/>
-              Powered by FoodDash
+              Powered by Qzora
             </div>
           </div>
         </div>

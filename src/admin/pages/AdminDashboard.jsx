@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import api from "../../api/api";
 import socket from "../../socket/socket";
+import toast from "react-hot-toast";
 import OrderToast from "../components/OrderToast";
 import { printBill } from "../components/PrintBill";
 import {
@@ -207,15 +208,30 @@ export default function AdminDashboard() {
 
     const dueAmount = Math.max(0, finalTotal - paidAmount);
 
+    const sessionPaymentStatus = String(
+      bill?.paymentStatus || "due",
+    ).toLowerCase();
+    const sessionPaidAmount =
+      sessionPaymentStatus === "paid"
+        ? Number(bill?.paidAmount || finalTotal || 0)
+        : Number(bill?.paidAmount || 0);
+
     return {
       subtotal,
       discountAmount,
       finalTotal,
+      paidAmount: sessionPaidAmount,
+      dueAmount: Math.max(0, finalTotal - sessionPaidAmount),
 
       coupon: bill?.coupon || null,
 
       paymentMode: bill?.paymentMode || "counter",
       paymentStatus: bill?.paymentStatus || "due",
+
+      checkoutStatus: bill?.checkoutStatus || "open",
+      checkoutPaymentMode: bill?.checkoutPaymentMode || null,
+      checkoutRequestedAt: bill?.checkoutRequestedAt || null,
+      billToken: bill?.billToken || "",
 
       razorpayPaymentId: bill?.razorpayPaymentId || "",
       razorpayOrderId: bill?.razorpayOrderId || "",
@@ -241,7 +257,7 @@ export default function AdminDashboard() {
       return "Online";
     }
 
-    return "Pay at Counter";
+    return "Pay at Table";
   };
 
   const fetchSessionBills = (activeOrders = []) => {
@@ -257,9 +273,20 @@ export default function AdminDashboard() {
       api
         .get(`/session/${token}/bill`)
         .then((res) => {
+          const data = res.data || {};
           setSessionBills((prev) => ({
             ...prev,
-            [token]: res.data.bill,
+            [token]: {
+              ...(data.bill || {}),
+              token,
+              table: data.table,
+              active: data.active,
+              hasOrder: data.hasOrder,
+              checkoutStatus: data.checkoutStatus || "open",
+              checkoutPaymentMode: data.checkoutPaymentMode || null,
+              checkoutRequestedAt: data.checkoutRequestedAt || null,
+              billToken: data.billToken || data.bill?.billToken || "",
+            },
           }));
         })
         .catch((err) => console.log(err));
@@ -374,11 +401,23 @@ export default function AdminDashboard() {
       fetchOrders();
     };
 
+    const handleCheckoutRequest = () => {
+      fetchOrders();
+
+      if (soundEnabled && audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => {});
+      }
+    };
+
     socket.on("new-order", handleNewOrder);
     socket.on("orderUpdated", handleOrderUpdated);
     socket.on("order-updated", handleOrderUpdated);
     socket.on("order-deleted", handleOrderDeleted);
     socket.on("tables-current-updated", handleSessionBillUpdate);
+    socket.on("checkout-requested", handleCheckoutRequest);
+    socket.on("checkout-payment-method-selected", handleCheckoutRequest);
+    socket.on("payment-paid", handleCheckoutRequest);
 
     return () => {
       socket.off("new-order", handleNewOrder);
@@ -386,6 +425,9 @@ export default function AdminDashboard() {
       socket.off("order-updated", handleOrderUpdated);
       socket.off("order-deleted", handleOrderDeleted);
       socket.off("tables-current-updated", handleSessionBillUpdate);
+      socket.off("checkout-requested", handleCheckoutRequest);
+      socket.off("checkout-payment-method-selected", handleCheckoutRequest);
+      socket.off("payment-paid", handleCheckoutRequest);
     };
   }, [soundEnabled]);
 
@@ -430,6 +472,31 @@ export default function AdminDashboard() {
   const served = orders.filter((o) => o?.status === "served").length;
 
   const delayed = orders.filter((o) => isDelayed(o?.createdAt)).length;
+
+  const checkoutRequests = tableKeys
+    .map((tableKey) => {
+      const tableOrders = (grouped[tableKey] || [])
+        .filter(Boolean)
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+      const bill = getTableBill(tableOrders);
+      const status = String(bill.checkoutStatus || "open").toLowerCase();
+      const paymentStatus = String(bill.paymentStatus || "due").toLowerCase();
+
+      if (status !== "checkout_requested" || paymentStatus === "paid") {
+        return null;
+      }
+
+      return {
+        tableKey,
+        tableOrders,
+        bill,
+        token: getTokenFromOrders(tableOrders),
+      };
+    })
+    .filter(Boolean);
+
+  const checkoutRequestCount = checkoutRequests.length;
 
   const updateBatchStatus = (id, status) => {
     if (!id) return;
@@ -573,21 +640,70 @@ export default function AdminDashboard() {
 
     api
       .put(`/session/${token}/payment`, {
-        paymentMode: "counter",
+        paymentMode: paymentStatus === "paid" ? "cash" : "counter",
         paymentStatus,
       })
-      .then(() => {
+      .then((res) => {
         setSessionBills((prev) => ({
           ...prev,
           [token]: {
             ...(prev[token] || {}),
-            paymentMode: "counter",
+            ...(res.data || {}),
+            paymentMode: paymentStatus === "paid" ? "cash" : "counter",
             paymentStatus,
+            checkoutStatus:
+              paymentStatus === "paid"
+                ? "paid"
+                : prev[token]?.checkoutStatus || "open",
           },
         }));
+
+        toast.success(
+          paymentStatus === "paid"
+            ? "Payment marked paid"
+            : "Payment marked due",
+        );
+        fetchOrders();
       })
       .catch((err) => {
         console.log(err);
+        toast.error(err.response?.data?.message || "Failed to update payment");
+      });
+  };
+
+  const markCashPaid = (tableOrders = []) => {
+    const token = getTokenFromOrders(tableOrders);
+
+    if (!token) return;
+
+    api
+      .put(`/session/${token}/mark-cash-paid`)
+      .then((res) => {
+        const data = res.data || {};
+
+        setSessionBills((prev) => ({
+          ...prev,
+          [token]: {
+            ...(prev[token] || {}),
+            ...(data.bill || {}),
+            token,
+            table: data.table,
+            billToken: data.billToken,
+            paymentMode: data.paymentMode || "cash",
+            paymentStatus: data.paymentStatus || "paid",
+            checkoutStatus: data.checkoutStatus || "paid",
+            checkoutPaymentMode: data.checkoutPaymentMode || "cash",
+            paidAmount: data.paidAmount || data.bill?.finalTotal || 0,
+            paidAt: data.paidAt || new Date().toISOString(),
+          },
+        }));
+
+        toast.success("Cash payment marked paid ✅");
+        fetchOrders();
+      })
+      .catch((err) => {
+        console.log(err);
+        toast.error(err.response?.data?.message || "Failed to mark cash paid");
       });
   };
 
@@ -601,6 +717,14 @@ export default function AdminDashboard() {
 
     if (!token) return;
 
+    const bill = sessionBills[token];
+    if (String(bill?.paymentStatus || "due").toLowerCase() !== "paid") {
+      toast.error(
+        "Payment pending. Mark payment as paid before completing table.",
+      );
+      return;
+    }
+
     api
       .put(`/table/complete/${token}`)
       .then(() => {
@@ -608,6 +732,7 @@ export default function AdminDashboard() {
       })
       .catch((err) => {
         console.log(err);
+        toast.error(err.response?.data?.message || "Failed to complete table");
       });
   };
 
@@ -711,7 +836,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* STATS */}
-        <div className="grid grid-cols-1 gap-4 mb-5 sm:grid-cols-2 lg:grid-cols-5 lg:gap-6">
+        <div className="grid grid-cols-1 gap-4 mb-5 sm:grid-cols-2 lg:grid-cols-6 lg:gap-6">
           <StatCard
             icon={<Users size={28} />}
             value={activeTables}
@@ -746,7 +871,134 @@ export default function AdminDashboard() {
             label="Delayed"
             tone="red"
           />
+
+          <StatCard
+            icon={<Bell size={28} />}
+            value={checkoutRequestCount}
+            label="Checkout Requests"
+            tone="orange"
+          />
         </div>
+
+        {checkoutRequests.length > 0 && (
+          <div className="mb-5 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/80 shadow-[0_10px_32px_rgba(217,119,6,0.12)]">
+            <div className="flex flex-col gap-2 px-5 py-4 border-b border-amber-200/70 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-black text-amber-900">
+                  <Bell size={20} />
+                  Checkout Requests
+                </h2>
+                <p className="mt-1 text-sm font-semibold text-amber-800/70">
+                  Customers are ready to settle their bill. Collect cash or wait
+                  for online payment.
+                </p>
+              </div>
+
+              <span className="rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-amber-700 shadow-sm">
+                {checkoutRequests.length} Active
+              </span>
+            </div>
+
+            <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+              {checkoutRequests.map(
+                ({ tableKey, tableOrders, bill, token }) => {
+                  const isCash =
+                    bill.checkoutPaymentMode === "cash" ||
+                    bill.paymentMode === "cash";
+                  const isOnline =
+                    bill.checkoutPaymentMode === "online" ||
+                    bill.paymentMode === "online";
+
+                  return (
+                    <div
+                      key={token || tableKey}
+                      className="p-4 bg-white border shadow-sm rounded-2xl border-amber-200"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-600">
+                            Table Checkout
+                          </p>
+                          <h3 className="mt-1 text-2xl font-black text-[#111936]">
+                            Table {tableKey}
+                          </h3>
+                        </div>
+
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-black ${
+                            isOnline
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          {isOnline
+                            ? "Online"
+                            : isCash
+                              ? "Pay at Table"
+                              : "Method Pending"}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 mt-4">
+                        <div className="p-3 rounded-2xl bg-slate-50">
+                          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                            Amount
+                          </p>
+                          <p className="mt-1 text-xl font-black text-emerald-700">
+                            ₹{money(bill.finalTotal)}
+                          </p>
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-slate-50">
+                          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                            Status
+                          </p>
+                          <p className="mt-1 text-sm font-black text-red-500">
+                            Due
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2 mt-4 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedBill({
+                              tableOrders,
+                              tableKey,
+                              sessionBill: bill,
+                            })
+                          }
+                          className="min-h-[42px] rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm font-black text-amber-800 transition hover:bg-amber-50"
+                        >
+                          View Bill
+                        </button>
+
+                        {isCash ? (
+                          <button
+                            type="button"
+                            onClick={() => markCashPaid(tableOrders)}
+                            className="min-h-[42px] rounded-xl bg-emerald-600 px-3 py-2 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
+                          >
+                            Mark Cash Paid
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled
+                            className="min-h-[42px] cursor-not-allowed rounded-xl bg-slate-100 px-3 py-2 text-sm font-black text-slate-400"
+                          >
+                            Waiting Payment
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                },
+              )}
+            </div>
+          </div>
+        )}
 
         {tableKeys.length === 0 && (
           <div className="flex flex-col items-center justify-center py-28 text-slate-400">
@@ -781,6 +1033,18 @@ export default function AdminDashboard() {
               tableBill.paymentStatus || "due",
             ).toLowerCase();
             const paidTable = paymentStatus === "paid";
+            const checkoutStatus = String(
+              tableBill.checkoutStatus || "open",
+            ).toLowerCase();
+            const checkoutPaymentMode = String(
+              tableBill.checkoutPaymentMode || tableBill.paymentMode || "",
+            ).toLowerCase();
+            const checkoutRequested =
+              checkoutStatus === "checkout_requested" && !paidTable;
+            const cashCheckoutRequested =
+              checkoutRequested &&
+              (checkoutPaymentMode === "cash" ||
+                tableBill.paymentMode === "cash");
 
             return (
               <section
@@ -806,6 +1070,20 @@ export default function AdminDashboard() {
                       <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-3 py-1 text-[11px] font-black text-emerald-700">
                         <TicketPercent size={13} />
                         {tableBill.coupon.code}
+                      </span>
+                    )}
+
+                    {checkoutRequested && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-3 py-1 text-[11px] font-black text-amber-700">
+                        <Bell size={13} />
+                        Checkout Requested
+                      </span>
+                    )}
+
+                    {paidTable && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-3 py-1 text-[11px] font-black text-emerald-700">
+                        <CheckCircle2 size={13} />
+                        Paid
                       </span>
                     )}
                   </div>
@@ -1128,6 +1406,36 @@ export default function AdminDashboard() {
                       );
                     })}
 
+                    {checkoutRequested && (
+                      <div className="p-4 mb-4 border rounded-2xl border-amber-200 bg-amber-50">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="flex items-center gap-2 text-sm font-black text-amber-900">
+                              <Bell size={16} />
+                              Checkout requested by customer
+                            </p>
+                            <p className="mt-1 text-xs font-semibold text-amber-800/70">
+                              {cashCheckoutRequested
+                                ? "Customer selected Pay at Table. Collect cash/payment at the table and mark paid."
+                                : checkoutPaymentMode === "online"
+                                  ? "Customer selected online payment. Wait for successful payment before completing the table."
+                                  : "Customer requested checkout but has not selected a payment method yet."}
+                            </p>
+                          </div>
+
+                          {cashCheckoutRequested && (
+                            <button
+                              type="button"
+                              onClick={() => markCashPaid(tableOrders)}
+                              className="min-h-[42px] rounded-xl bg-emerald-600 px-4 py-2 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
+                            >
+                              Mark Cash Paid
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* SESSION BILL ROW */}
                     <div className="grid grid-cols-1 gap-4 py-4 border-b border-gray-100 md:grid-cols-2">
                       <div className="space-y-2 rounded-2xl bg-[#fffaf1] p-4">
@@ -1195,30 +1503,44 @@ export default function AdminDashboard() {
                             Payment Status:
                           </span>
 
-                          <div className="flex items-center gap-3">
+                          <div className="flex flex-wrap items-center gap-3">
                             <span
                               className={`h-2.5 w-2.5 rounded-full ${
                                 paidTable ? "bg-emerald-500" : "bg-red-500"
                               }`}
                             />
 
-                            <select
-                              value={paymentStatus}
-                              onChange={(e) =>
-                                updateTablePaymentStatus(
-                                  tableOrders,
-                                  e.target.value,
-                                )
-                              }
-                              className={`h-9 rounded-md border bg-white px-3 text-sm font-black outline-none ${
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-black ${
                                 paidTable
-                                  ? "border-emerald-200 text-emerald-600"
-                                  : "border-red-200 text-red-500"
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-red-50 text-red-600"
                               }`}
                             >
-                              <option value="paid">Paid</option>
-                              <option value="due">Due</option>
-                            </select>
+                              {paidTable ? "Paid" : "Due"}
+                            </span>
+
+                            {!paidTable && cashCheckoutRequested && (
+                              <button
+                                type="button"
+                                onClick={() => markCashPaid(tableOrders)}
+                                className="px-3 py-2 text-xs font-black text-white transition rounded-md bg-emerald-600 hover:bg-emerald-700"
+                              >
+                                Mark Cash Paid
+                              </button>
+                            )}
+
+                            {!paidTable && !cashCheckoutRequested && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  updateTablePaymentStatus(tableOrders, "paid")
+                                }
+                                className="px-3 py-2 text-xs font-black transition bg-white border rounded-md border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                              >
+                                Mark Paid
+                              </button>
+                            )}
                           </div>
                         </div>
                         {tableBill.razorpayPaymentId && (
@@ -1238,7 +1560,15 @@ export default function AdminDashboard() {
                     {/* TABLE ACTIONS */}
                     <div className="grid grid-cols-1 gap-3 pt-4 sm:grid-cols-3">
                       <button
+                        disabled={!paidTable}
                         onClick={() => {
+                          if (!paidTable) {
+                            toast.error(
+                              "Payment pending. Mark payment paid first.",
+                            );
+                            return;
+                          }
+
                           getNextHistoryOrderNo().then((nextOrderNo) => {
                             printBill({
                               tableOrders,
@@ -1253,18 +1583,27 @@ export default function AdminDashboard() {
                             }, 800);
                           });
                         }}
-                        className="flex min-h-[46px] items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-3 text-sm font-black text-slate-700"
+                        className={`flex min-h-[46px] items-center justify-center gap-2 rounded-md border px-3 py-3 text-sm font-black ${
+                          paidTable
+                            ? "border-gray-200 bg-white text-slate-700"
+                            : "cursor-not-allowed border-amber-200 bg-amber-50 text-amber-600"
+                        }`}
                       >
                         <Printer size={17} />
-                        Print & Complete
+                        {paidTable ? "Print & Complete" : "Payment Pending"}
                       </button>
 
                       <button
+                        disabled={!paidTable}
                         onClick={() => completeTable(tableOrders)}
-                        className="flex min-h-[46px] items-center justify-center gap-2 rounded-md bg-[#071832] px-3 py-3 text-sm font-black text-white shadow-[0_8px_18px_rgba(7,24,50,0.18)]"
+                        className={`flex min-h-[46px] items-center justify-center gap-2 rounded-md px-3 py-3 text-sm font-black shadow-[0_8px_18px_rgba(7,24,50,0.18)] ${
+                          paidTable
+                            ? "bg-[#071832] text-white"
+                            : "cursor-not-allowed bg-slate-100 text-slate-400 shadow-none"
+                        }`}
                       >
                         <CheckCircle2 size={17} />
-                        Complete Table
+                        {paidTable ? "Complete Table" : "Cannot Complete"}
                       </button>
 
                       <button
@@ -1382,6 +1721,11 @@ function BillSummaryModal({
   const discount = Number(sessionBill?.discountAmount || 0);
 
   const finalTotal = Math.max(0, subtotal - discount);
+  const paidAmount =
+    String(sessionBill?.paymentStatus || "due").toLowerCase() === "paid"
+      ? Number(sessionBill?.paidAmount || finalTotal || 0)
+      : Number(sessionBill?.paidAmount || 0);
+  const dueAmount = Math.max(0, finalTotal - paidAmount);
 
   const coupon = sessionBill?.coupon || null;
 
@@ -1549,7 +1893,7 @@ function BillSummaryModal({
                     Paid
                   </p>
                   <p className="mt-1 text-xl font-black text-emerald-700">
-                    ₹{money(sessionBill?.paidAmount || 0)}
+                    ₹{money(paidAmount)}
                   </p>
                 </div>
 
@@ -1558,7 +1902,7 @@ function BillSummaryModal({
                     Due
                   </p>
                   <p className="mt-1 text-xl font-black text-red-600">
-                    ₹{money(sessionBill?.dueAmount || 0)}
+                    ₹{money(dueAmount)}
                   </p>
                 </div>
               </div>

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import toast from "react-hot-toast";
 
 export default function AddToCartButton({
   item,
@@ -6,6 +7,10 @@ export default function AddToCartButton({
   isAvailable,
   addToCart,
   removeItem,
+
+  // new checkout lock props
+  orderLocked = false,
+  lockMessage = "Checkout has started. New orders cannot be placed on this bill.",
 }) {
   const pillRef = useRef(null);
   const knobRef = useRef(null);
@@ -19,6 +24,10 @@ export default function AddToCartButton({
   const [returning, setReturning] = useState(false);
 
   const isStepperMode = qty > 0;
+
+  const showLockedToast = () => {
+    toast.error(lockMessage);
+  };
 
   const getCircleRight = () => {
     if (!pillRef.current) return 4;
@@ -41,6 +50,11 @@ export default function AddToCartButton({
   };
 
   const finishAdd = () => {
+    if (orderLocked) {
+      showLockedToast();
+      return;
+    }
+
     if (sliding || returning) return;
 
     const right = getCircleRight();
@@ -64,6 +78,13 @@ export default function AddToCartButton({
       return;
     }
 
+    if (orderLocked) {
+      e.preventDefault();
+      e.stopPropagation();
+      showLockedToast();
+      return;
+    }
+
     if (isStepperMode) {
       addToCart(item);
       return;
@@ -77,6 +98,11 @@ export default function AddToCartButton({
   const handleKnobClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (orderLocked) {
+      showLockedToast();
+      return;
+    }
 
     if (movedRef.current) return;
 
@@ -106,6 +132,11 @@ export default function AddToCartButton({
   };
 
   const startDrag = (e) => {
+    if (orderLocked) {
+      showLockedToast();
+      return;
+    }
+
     if (isStepperMode || sliding || returning) return;
 
     e.preventDefault();
@@ -170,6 +201,18 @@ export default function AddToCartButton({
     );
   }
 
+  if (orderLocked && qty <= 0) {
+    return (
+      <button
+        type="button"
+        onClick={showLockedToast}
+        className="w-full rounded-full border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-amber-800"
+      >
+        Checkout Locked
+      </button>
+    );
+  }
+
   const green = "#16a34a";
   const darkGreen = "#15803d";
   const softGreen = "#ecfdf5";
@@ -192,7 +235,6 @@ export default function AddToCartButton({
           transition: "all 0.35s cubic-bezier(0.22,1,0.36,1)",
         }}
       >
-        {/* Add label */}
         <span
           style={{
             position: "absolute",
@@ -215,7 +257,6 @@ export default function AddToCartButton({
           Add to Cart
         </span>
 
-        {/* Qty */}
         <span
           style={{
             position: "absolute",
@@ -235,7 +276,6 @@ export default function AddToCartButton({
           {qty}
         </span>
 
-        {/* Plus knob */}
         <span
           ref={knobRef}
           onClick={handleKnobClick}
@@ -272,7 +312,6 @@ export default function AddToCartButton({
         </span>
       </button>
 
-      {/* Minus */}
       {(isStepperMode || returning) && (
         <button
           type="button"

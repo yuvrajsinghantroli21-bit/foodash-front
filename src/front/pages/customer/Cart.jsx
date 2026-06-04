@@ -19,6 +19,8 @@ import {
   Sparkles,
   TicketPercent,
   Loader2,
+  LockKeyhole,
+  AlertTriangle,
 } from "lucide-react";
 
 const Divider = () => (
@@ -118,11 +120,14 @@ function Cart() {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [finalTotal, setFinalTotal] = useState(0);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [sessionChecking, setSessionChecking] = useState(true);
+  const [sessionInfo, setSessionInfo] = useState(null);
 
   const { cart, addToCart, removeItem, deleteItem, clearCart } =
     useContext(CartContext);
 
   const table = localStorage.getItem("table");
+  const token = localStorage.getItem("token");
   const navigate = useNavigate();
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
@@ -132,9 +137,94 @@ function Cart() {
     0,
   );
 
+  const checkoutStatus = sessionInfo?.checkoutStatus || "open";
+  const paymentStatus = String(
+    sessionInfo?.paymentStatus || "due",
+  ).toLowerCase();
+
+  const orderLocked =
+    Boolean(sessionInfo?.orderLocked) ||
+    checkoutStatus === "checkout_requested" ||
+    checkoutStatus === "paid" ||
+    checkoutStatus === "completed" ||
+    paymentStatus === "paid";
+
+  const lockMessage =
+    sessionInfo?.lockReason === "another_active_ordering_token"
+      ? "Another active ordering session already exists for this table. Please use the original QR session or ask staff to reset the table."
+      : paymentStatus === "paid" || checkoutStatus === "paid"
+        ? "Payment has already been completed for this bill. New orders cannot be placed."
+        : checkoutStatus === "checkout_requested"
+          ? "Checkout has already started for this table. New orders cannot be placed on this bill."
+          : checkoutStatus === "completed"
+            ? "This table session has been completed. Please scan the QR again."
+            : "";
+
+  const checkSessionLock = async ({ silent = false } = {}) => {
+    const currentToken = localStorage.getItem("token");
+
+    if (!currentToken) {
+      setSessionInfo(null);
+      setSessionChecking(false);
+      return null;
+    }
+
+    try {
+      if (!silent) setSessionChecking(true);
+
+      const res = await api.get(`/session/${currentToken}`);
+      setSessionInfo(res.data || null);
+      return res.data || null;
+    } catch (err) {
+      setSessionInfo(null);
+
+      if (!silent) {
+        toast.error(err.response?.data?.message || "Session expired");
+      }
+
+      if (err.response?.status === 404 || err.response?.status === 410) {
+        clearCart();
+        localStorage.removeItem("token");
+        localStorage.removeItem("table");
+
+        setTimeout(() => {
+          navigate(
+            data?.billToken
+              ? `/thank-you?bill=${data.billToken}`
+              : "/thank-you",
+          );
+        }, 800);
+      }
+
+      return null;
+    } finally {
+      if (!silent) setSessionChecking(false);
+    }
+  };
+
   useEffect(() => {
     setFinalTotal(total - discountAmount);
   }, [total, discountAmount]);
+
+  useEffect(() => {
+    checkSessionLock({ silent: true }).finally(() => setSessionChecking(false));
+
+    const handleTableUpdate = () => {
+      checkSessionLock({ silent: true });
+    };
+
+    socket.on("tables-current-updated", handleTableUpdate);
+    socket.on("checkout-requested", handleTableUpdate);
+    socket.on("checkout-payment-method-selected", handleTableUpdate);
+    socket.on("payment-paid", handleTableUpdate);
+
+    return () => {
+      socket.off("tables-current-updated", handleTableUpdate);
+      socket.off("checkout-requested", handleTableUpdate);
+      socket.off("checkout-payment-method-selected", handleTableUpdate);
+      socket.off("payment-paid", handleTableUpdate);
+    };
+  }, []);
 
   const applyCoupon = () => {
     if (!couponCode.trim()) {
@@ -202,7 +292,7 @@ function Cart() {
   const handleNoteChange = (id, value) =>
     setNotes((prev) => ({ ...prev, [id]: value }));
 
-  const placeOrder = () => {
+  const placeOrder = async () => {
     const currentToken = localStorage.getItem("token");
 
     if (!currentToken) {
@@ -213,6 +303,30 @@ function Cart() {
 
     if (cart.length === 0) {
       toast.error("Your cart is empty.");
+      return;
+    }
+
+    const latestSession = await checkSessionLock({ silent: true });
+
+    const latestCheckoutStatus = latestSession?.checkoutStatus || "open";
+    const latestPaymentStatus = String(
+      latestSession?.paymentStatus || "due",
+    ).toLowerCase();
+
+    const latestLocked =
+      Boolean(latestSession?.orderLocked) ||
+      latestCheckoutStatus === "checkout_requested" ||
+      latestCheckoutStatus === "paid" ||
+      latestCheckoutStatus === "completed" ||
+      latestPaymentStatus === "paid";
+
+    if (latestLocked) {
+      toast.error(
+        latestSession?.lockReason === "another_active_ordering_token"
+          ? "Another active ordering session already exists for this table."
+          : "Checkout or payment has already started. New orders cannot be placed.",
+      );
+      navigate("/my-order");
       return;
     }
 
@@ -254,22 +368,29 @@ function Cart() {
         }, 1200);
       })
       .catch((err) => {
-        if (err.response?.status === 401) {
-          if (err.response?.data?.orderLocked) {
-            toast.error(
-              "Payment already completed. Please ask staff to reopen the table.",
-            );
-            navigate("/my-order");
-            return;
-          }
-          toast.error("Session expired");
+        const status = err.response?.status;
+        const data = err.response?.data || {};
+
+        if (status === 401 || status === 410) {
+          toast.error(data.message || "Session expired");
           localStorage.removeItem("token");
           localStorage.removeItem("table");
           clearCart();
           navigate("/thank-you");
-        } else {
-          toast.error("Error placing order. Try again.");
+          return;
         }
+
+        if (status === 403 || data.orderLocked) {
+          toast.error(
+            data.message ||
+              "Checkout or payment has already started. New orders cannot be placed.",
+          );
+          checkSessionLock({ silent: true });
+          navigate("/my-order");
+          return;
+        }
+
+        toast.error(data.message || "Error placing order. Try again.");
       })
       .finally(() => setPlacing(false));
   };
@@ -310,17 +431,47 @@ function Cart() {
             </div>
 
             <button
-              onClick={() => navigate(-1)}
+              onClick={() =>
+                orderLocked ? navigate("/my-order") : navigate(-1)
+              }
               className="group inline-flex items-center justify-center gap-2 rounded-full border border-amber-200 bg-white/80 px-6 py-3 text-sm font-black text-amber-800 shadow-[0_12px_30px_rgba(120,72,20,0.10)] transition-all hover:-translate-y-1 hover:bg-amber-50 active:scale-95"
             >
               <ArrowLeft
                 size={17}
                 className="transition group-hover:-translate-x-1"
               />
-              Add More Items
+              {orderLocked ? "View Bill" : "Add More Items"}
             </button>
           </div>
         </div>
+
+        {orderLocked && (
+          <div className="mt-6 rounded-[1.7rem] border border-amber-200 bg-amber-50/95 p-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="flex items-center justify-center h-11 w-11 shrink-0 rounded-2xl bg-amber-100 text-amber-800">
+                <LockKeyhole size={20} />
+              </div>
+
+              <div>
+                <h3 className="text-base font-black text-amber-900">
+                  Ordering is locked for this table
+                </h3>
+                <p className="mt-1 text-sm font-semibold leading-6 text-amber-800/75">
+                  {lockMessage ||
+                    "Checkout has already started. New orders cannot be placed on this bill."}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate("/my-order")}
+                  className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#3d2412] px-5 py-2.5 text-xs font-black uppercase tracking-[0.14em] text-amber-100 shadow-sm transition hover:-translate-y-0.5"
+                >
+                  <ReceiptText size={15} />
+                  View My Bill
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {cart.length === 0 && (
           <div className="relative mt-8 rounded-[2rem] border border-amber-100/70 bg-white/80 px-6 py-20 text-center shadow-xl backdrop-blur-xl">
@@ -402,7 +553,16 @@ function Cart() {
                           </div>
 
                           <button
-                            onClick={() => deleteItem(item._id)}
+                            onClick={() => {
+                              if (orderLocked) {
+                                toast.error(
+                                  "Checkout has started. Cart changes are locked.",
+                                );
+                                return;
+                              }
+                              deleteItem(item._id);
+                            }}
+                            disabled={orderLocked}
                             className="flex shrink-0 items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-500 transition hover:bg-red-100"
                           >
                             <Trash2 size={12} />
@@ -413,7 +573,16 @@ function Cart() {
                         <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
                           <div className="flex items-center overflow-hidden rounded-full border border-amber-100 bg-[#fffaf1] shadow-inner">
                             <button
-                              onClick={() => removeItem(item._id)}
+                              onClick={() => {
+                                if (orderLocked) {
+                                  toast.error(
+                                    "Checkout has started. Cart changes are locked.",
+                                  );
+                                  return;
+                                }
+                                removeItem(item._id);
+                              }}
+                              disabled={orderLocked}
                               className="flex h-9 w-9 items-center justify-center text-[#7b5b42] transition hover:bg-amber-100"
                             >
                               <Minus size={14} />
@@ -424,7 +593,16 @@ function Cart() {
                             </span>
 
                             <button
-                              onClick={() => addToCart(item)}
+                              onClick={() => {
+                                if (orderLocked) {
+                                  toast.error(
+                                    "Checkout has started. New items cannot be added.",
+                                  );
+                                  return;
+                                }
+                                addToCart(item);
+                              }}
+                              disabled={orderLocked}
                               className="flex h-9 w-9 items-center justify-center text-[#7b5b42] transition hover:bg-amber-100"
                             >
                               <Plus size={14} />
@@ -444,6 +622,7 @@ function Cart() {
                             onChange={(e) =>
                               handleNoteChange(item._id, e.target.value)
                             }
+                            disabled={orderLocked}
                             className="w-full rounded-2xl border border-amber-100 bg-[#fffaf1] px-4 py-3 text-xs font-medium text-gray-600 placeholder:text-gray-400 outline-none transition focus:border-amber-300 focus:ring-4 focus:ring-amber-100"
                           />
                         </div>
@@ -469,7 +648,7 @@ function Cart() {
                   </h2>
 
                   <p className="mt-1 text-center text-xs font-semibold uppercase tracking-[0.22em] text-amber-100/65">
-                    Table {table || "…"} • Counter Payment
+                    Table {table || "…"} • Kitchen Order
                   </p>
                 </div>
 
@@ -604,12 +783,31 @@ function Cart() {
                     )}
                   </div> */}
 
+                  {orderLocked && (
+                    <div className="px-4 py-3 mt-5 border rounded-2xl border-amber-200 bg-amber-50">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle
+                          size={17}
+                          className="mt-0.5 shrink-0 text-amber-700"
+                        />
+                        <p className="text-xs font-bold leading-5 text-amber-800">
+                          {lockMessage ||
+                            "Checkout has already started. Please view your bill in My Order."}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     onClick={placeOrder}
-                    disabled={placing}
+                    disabled={placing || sessionChecking || orderLocked}
                     className="mt-5 w-full rounded-2xl bg-gradient-to-r from-[#3d2412] via-[#7b3817] to-[#3d2412] py-4 text-sm font-black uppercase tracking-[0.14em] text-white shadow-[0_18px_40px_rgba(61,36,18,0.25)] transition hover:-translate-y-1 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {placing ? "Placing Order…" : "Place Order"}
+                    {placing
+                      ? "Placing Order…"
+                      : orderLocked
+                        ? "Ordering Locked"
+                        : "Place Order"}
                   </button>
 
                   <div className="flex items-center justify-center gap-2 px-4 py-3 mt-4 border rounded-2xl border-amber-100 bg-amber-50/70">
