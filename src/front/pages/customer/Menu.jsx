@@ -381,6 +381,8 @@ const MenuCard = memo(function MenuCard({
   const priceGradient =
     settings?.menuPriceGradient || "linear-gradient(135deg,#b45309,#d97706)";
 
+  const lockMessage =
+    "Checkout has started. New orders cannot be placed on this bill.";
   return (
     <motion.div
       layout={false}
