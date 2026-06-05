@@ -165,6 +165,9 @@ export default function MyOrder() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [phoneSaving, setPhoneSaving] = useState(false);
+  const [phoneSaved, setPhoneSaved] = useState(false);
 
   const [selectedBill, setSelectedBill] = useState(null);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
@@ -247,7 +250,12 @@ export default function MyOrder() {
           checkoutPaymentMode: res.data.checkoutPaymentMode || null,
           checkoutRequestedAt: res.data.checkoutRequestedAt || null,
           billToken: res.data.billToken || "",
+          customerPhone: res.data.customerPhone || "",
         };
+
+        const phoneFromSession = res.data.customerPhone || "";
+        setCustomerPhone(phoneFromSession);
+        setPhoneSaved(Boolean(phoneFromSession));
 
         setCheckoutMeta(meta);
 
@@ -324,6 +332,14 @@ export default function MyOrder() {
       toast.success("Assistance completed. Thank you for waiting 🤍");
     };
 
+    const handleCustomerPhoneUpdated = (data) => {
+      if (data?.token !== token) return;
+
+      const phone = data?.customerPhone || "";
+      setCustomerPhone(phone);
+      setPhoneSaved(Boolean(phone));
+    };
+
     const handleSessionExpired = (data) => {
       if (data?.token !== token) return;
       if (sessionExpiredHandled.current) return;
@@ -353,6 +369,7 @@ export default function MyOrder() {
     socket.on("tables-current-updated", handleTableUpdate);
     socket.on("payment-paid", handlePaymentPaid);
     socket.on("assistance-completed", handleAssistanceCompleted);
+    socket.on("customer-phone-updated", handleCustomerPhoneUpdated);
     socket.on("session-expired", handleSessionExpired);
 
     return () => {
@@ -361,6 +378,7 @@ export default function MyOrder() {
       socket.off("tables-current-updated", handleTableUpdate);
       socket.off("payment-paid", handlePaymentPaid);
       socket.off("assistance-completed", handleAssistanceCompleted);
+      socket.off("customer-phone-updated", handleCustomerPhoneUpdated);
       socket.off("session-expired", handleSessionExpired);
     };
   }, [token, navigate, checkoutMeta?.billToken]);
@@ -391,6 +409,45 @@ export default function MyOrder() {
 
     return () => clearTimeout(timer);
   }, [orders, navigate, checkoutMeta?.billToken]);
+
+  const saveCustomerPhone = () => {
+    if (!token) {
+      toast.error("Session not found. Please scan QR again.");
+      return;
+    }
+
+    const cleanPhone = String(customerPhone || "").replace(/\D/g, "");
+
+    if (!cleanPhone || cleanPhone.length < 10) {
+      toast.error("Please enter a valid WhatsApp number");
+      return;
+    }
+
+    setPhoneSaving(true);
+
+    api
+      .put(`/session/${token}/customer-phone`, {
+        phone: cleanPhone,
+      })
+      .then((res) => {
+        const phone = res.data?.customerPhone || cleanPhone;
+
+        setCustomerPhone(phone);
+        setPhoneSaved(true);
+
+        toast.success(
+          "WhatsApp number saved. Your final bill can be sent after table completion.",
+        );
+      })
+      .catch((err) => {
+        toast.error(
+          err.response?.data?.message || "Failed to save WhatsApp number",
+        );
+      })
+      .finally(() => {
+        setPhoneSaving(false);
+      });
+  };
 
   const requestAssistance = () => {
     if (!token) {
@@ -988,6 +1045,14 @@ export default function MyOrder() {
               applyCoupon={applyCoupon}
               removeCoupon={removeCoupon}
               couponLoading={couponLoading}
+              customerPhone={customerPhone}
+              setCustomerPhone={(value) => {
+                setCustomerPhone(value);
+                setPhoneSaved(false);
+              }}
+              phoneSaving={phoneSaving}
+              phoneSaved={phoneSaved}
+              saveCustomerPhone={saveCustomerPhone}
               paymentMode={paymentMode}
               paymentStatus={paymentStatus}
               paymentLoading={paymentLoading}
@@ -1062,6 +1127,11 @@ function SessionBillCard({
   applyCoupon,
   removeCoupon,
   couponLoading,
+  customerPhone,
+  setCustomerPhone,
+  phoneSaving,
+  phoneSaved,
+  saveCustomerPhone,
   paymentMode,
   paymentStatus,
   paymentLoading,
@@ -1304,6 +1374,59 @@ function SessionBillCard({
               </button>
             </div>
           )}
+        </div>
+
+        <div className="mt-5 rounded-[1.7rem] border border-emerald-100 bg-emerald-50/70 p-4 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="flex items-center justify-center bg-white shadow-sm h-11 w-11 shrink-0 rounded-2xl text-emerald-700">
+                <Smartphone size={20} />
+              </div>
+
+              <div>
+                <p className="text-sm font-black text-[#241309]">
+                  Get your bill on WhatsApp
+                </p>
+
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                  Share your WhatsApp number and your final bill can be sent
+                  after the table is completed.
+                </p>
+
+                {phoneSaved && (
+                  <p className="mt-2 inline-flex rounded-full bg-white px-3 py-1 text-[11px] font-black text-emerald-700">
+                    Number saved. You’ll receive the final bill on WhatsApp
+                    after completion.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid w-full gap-2 sm:grid-cols-[1fr_auto] lg:max-w-md">
+              <input
+                type="tel"
+                inputMode="numeric"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="Enter WhatsApp number"
+                className="h-12 rounded-2xl border border-emerald-100 bg-white px-4 text-sm font-black text-[#241309] outline-none transition placeholder:font-semibold placeholder:text-slate-300 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100"
+              />
+
+              <button
+                type="button"
+                onClick={saveCustomerPhone}
+                disabled={phoneSaving}
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {phoneSaving ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <ShieldCheck size={16} />
+                )}
+                {phoneSaved ? "Update" : "Save"}
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="mt-5 rounded-[1.7rem] border border-amber-100 bg-white p-4">

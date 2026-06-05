@@ -24,6 +24,8 @@ import {
   Printer,
   Wallet,
   TicketPercent,
+  MessageCircle,
+  Send,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -248,6 +250,7 @@ export default function AdminDashboard() {
       checkoutPaymentMode: bill?.checkoutPaymentMode || null,
       checkoutRequestedAt: bill?.checkoutRequestedAt || null,
       billToken: bill?.billToken || "",
+      customerPhone: bill?.customerPhone || "",
 
       razorpayPaymentId: bill?.razorpayPaymentId || "",
       razorpayOrderId: bill?.razorpayOrderId || "",
@@ -302,6 +305,8 @@ export default function AdminDashboard() {
               checkoutPaymentMode: data.checkoutPaymentMode || null,
               checkoutRequestedAt: data.checkoutRequestedAt || null,
               billToken: data.billToken || data.bill?.billToken || "",
+              customerPhone:
+                data.customerPhone || data.bill?.customerPhone || "",
             },
           }));
         })
@@ -512,6 +517,23 @@ export default function AdminDashboard() {
       );
     };
 
+    const handleCustomerPhoneUpdated = (payload = {}) => {
+      const token = payload.token || payload.sessionId || "";
+
+      if (!token) {
+        fetchOrders();
+        return;
+      }
+
+      setSessionBills((prev) => ({
+        ...prev,
+        [token]: {
+          ...(prev[token] || {}),
+          customerPhone: payload.customerPhone || "",
+        },
+      }));
+    };
+
     socket.on("new-order", handleNewOrder);
     socket.on("orderUpdated", handleOrderUpdated);
     socket.on("order-updated", handleOrderUpdated);
@@ -522,6 +544,7 @@ export default function AdminDashboard() {
     socket.on("payment-paid", handleCheckoutRequest);
     socket.on("assistance-requested", handleAssistanceRequested);
     socket.on("assistance-completed", handleAssistanceCompleted);
+    socket.on("customer-phone-updated", handleCustomerPhoneUpdated);
 
     return () => {
       socket.off("new-order", handleNewOrder);
@@ -534,6 +557,7 @@ export default function AdminDashboard() {
       socket.off("payment-paid", handleCheckoutRequest);
       socket.off("assistance-requested", handleAssistanceRequested);
       socket.off("assistance-completed", handleAssistanceCompleted);
+      socket.off("customer-phone-updated", handleCustomerPhoneUpdated);
     };
   }, [soundEnabled]);
 
@@ -927,6 +951,59 @@ export default function AdminDashboard() {
     });
   };
 
+  const getCustomerPhone = (bill = {}) => {
+    const rawPhone = String(bill?.customerPhone || "").replace(/\D/g, "");
+
+    if (!rawPhone) return "";
+
+    return rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
+  };
+
+  const getBillShareUrl = (bill = {}) => {
+    const billToken = bill?.billToken || "";
+
+    if (!billToken) return "";
+
+    const host = window.location.host;
+    const protocol = window.location.protocol;
+
+    return `${protocol}//${host}/bill/${billToken}`;
+  };
+
+  const sendBillOnWhatsApp = ({ tableKey, bill }) => {
+    const phone = getCustomerPhone(bill);
+
+    if (!phone) {
+      toast.error("Customer WhatsApp number is not saved yet.");
+      return;
+    }
+
+    const billUrl = getBillShareUrl(bill);
+
+    if (!billUrl) {
+      toast.error("Bill link is not ready yet.");
+      return;
+    }
+
+    const cafeName = settings?.cafeName || "The White House Café";
+
+    const message = `Hello 👋
+
+Thank you for visiting ${cafeName}.
+
+Your table ${tableKey} bill amount is ₹${money(bill.finalTotal)}.
+
+View your bill here:
+${billUrl}
+
+We hope to see you again soon.`;
+
+    window.open(
+      `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
+      "_blank",
+    );
+  };
+
   const toggleCollapse = (key) =>
     setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
 
@@ -1191,6 +1268,18 @@ export default function AdminDashboard() {
                         </div>
                       </div>
 
+                      {bill.customerPhone && (
+                        <div className="p-3 mt-4 border rounded-2xl border-emerald-100 bg-emerald-50">
+                          <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-emerald-700">
+                            <MessageCircle size={13} />
+                            WhatsApp Bill
+                          </p>
+                          <p className="mt-1 text-sm font-black text-slate-700">
+                            +{getCustomerPhone(bill)}
+                          </p>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-1 gap-2 mt-4 sm:grid-cols-2">
                         <button
                           type="button"
@@ -1205,6 +1294,21 @@ export default function AdminDashboard() {
                         >
                           View Bill
                         </button>
+
+                        {bill.customerPhone && bill.billToken && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              sendBillOnWhatsApp({ tableKey, bill })
+                            }
+                            className="min-h-[42px] rounded-xl bg-emerald-600 px-3 py-2 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700 sm:col-span-2"
+                          >
+                            <span className="inline-flex items-center justify-center gap-2">
+                              <Send size={15} />
+                              Send Bill on WhatsApp
+                            </span>
+                          </button>
+                        )}
 
                         {isCash ? (
                           <button
@@ -1805,6 +1909,37 @@ export default function AdminDashboard() {
                           </div>
                         </div>
 
+                        {tableBill.customerPhone && (
+                          <div className="p-3 border rounded-2xl border-emerald-100 bg-emerald-50">
+                            <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-emerald-700">
+                              <MessageCircle size={13} />
+                              Customer WhatsApp
+                            </p>
+
+                            <div className="flex flex-col gap-2 mt-2 sm:flex-row sm:items-center sm:justify-between">
+                              <span className="text-sm font-black text-slate-700">
+                                +{getCustomerPhone(tableBill)}
+                              </span>
+
+                              {tableBill.billToken && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    sendBillOnWhatsApp({
+                                      tableKey,
+                                      bill: tableBill,
+                                    })
+                                  }
+                                  className="inline-flex min-h-[38px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white transition hover:bg-emerald-700"
+                                >
+                                  <Send size={14} />
+                                  Send Bill
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         <div className="flex flex-col gap-2">
                           <span className="text-sm font-bold text-slate-500">
                             Payment Status:
@@ -2003,6 +2138,7 @@ export default function AdminDashboard() {
           settings={settings}
           onClose={() => setSelectedBill(null)}
           printBill={printBill}
+          sendBillOnWhatsApp={sendBillOnWhatsApp}
         />
       )}
     </div>
@@ -2017,6 +2153,7 @@ function BillSummaryModal({
   settings,
   onClose,
   printBill,
+  sendBillOnWhatsApp,
 }) {
   const table =
     tableKey || tableOrders[0]?.table || tableOrders[0]?.tableId || "—";
