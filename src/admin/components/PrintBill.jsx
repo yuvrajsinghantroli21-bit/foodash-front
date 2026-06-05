@@ -32,6 +32,27 @@ export const printBill = ({
       ? Number(sessionBill.discountAmount)
       : 0;
 
+  const charges = Array.isArray(sessionBill?.billChargesSnapshot)
+    ? sessionBill.billChargesSnapshot
+    : [];
+
+  const chargesTotal = Number(sessionBill?.chargesTotal || 0);
+
+  const chargesHtml = charges
+    .map(
+      (charge) => `
+      <div class="price-row">
+        <span>${charge.name}</span>
+        <span>
+          ${Number(charge.amount) >= 0 ? "+" : "-"}₹${Math.abs(
+            Number(charge.amount),
+          ).toFixed(2)}
+        </span>
+      </div>
+    `,
+    )
+    .join("");
+
   const finalTotal =
     sessionBill?.finalTotal !== undefined && sessionBill?.finalTotal !== null
       ? Number(sessionBill.finalTotal)
@@ -686,6 +707,19 @@ export const printBill = ({
               <span>Subtotal</span>
               <span>₹${Math.round(subtotal)}</span>
             </div>
+
+            ${chargesHtml}
+
+            ${
+              charges.length > 0
+                ? `
+      <div class="price-row">
+        <span><strong>Total Charges</strong></span>
+        <span><strong>₹${Math.round(chargesTotal)}</strong></span>
+      </div>
+    `
+                : ""
+            }
 
             ${
               coupon && discount > 0

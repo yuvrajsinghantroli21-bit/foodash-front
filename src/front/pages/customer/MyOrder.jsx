@@ -614,6 +614,12 @@ export default function MyOrder() {
 
   const discountAmount = Number(sessionBill?.discountAmount || 0);
 
+  const charges = Array.isArray(sessionBill?.billChargesSnapshot)
+    ? sessionBill.billChargesSnapshot
+    : [];
+
+  const chargesTotal = Number(sessionBill?.chargesTotal || 0);
+
   const finalTotal =
     sessionBill?.finalTotal !== undefined && sessionBill?.finalTotal !== null
       ? Number(sessionBill.finalTotal)
@@ -911,6 +917,8 @@ export default function MyOrder() {
             <SessionBillCard
               subtotal={subtotal}
               discountAmount={discountAmount}
+              charges={charges}
+              chargesTotal={chargesTotal}
               finalTotal={finalTotal}
               activeCoupon={activeCoupon}
               couponCode={couponCode}
@@ -979,6 +987,8 @@ export default function MyOrder() {
 function SessionBillCard({
   subtotal,
   discountAmount,
+  charges = [],
+  chargesTotal = 0,
   finalTotal,
   activeCoupon,
   couponCode,
@@ -1149,6 +1159,18 @@ function SessionBillCard({
 
         <div className="mt-5 rounded-[1.7rem] border border-amber-100 bg-white p-4">
           <PriceRow label="Subtotal" value={subtotal} />
+
+          {charges.map((charge, index) => (
+            <PriceRow
+              key={`${charge.name || "charge"}-${index}`}
+              label={charge.name || "Charge"}
+              value={Number(charge.amount || 0)}
+            />
+          ))}
+
+          {charges.length > 0 && (
+            <PriceRow label="Total Charges" value={chargesTotal} />
+          )}
 
           {discountAmount > 0 && (
             <PriceRow
@@ -1462,6 +1484,10 @@ function CustomerBillMiniBox({
 
   const coupon = isFullBill ? sessionBill?.coupon : null;
 
+  const charges = isFullBill ? sessionBill?.billChargesSnapshot || [] : [];
+
+  const chargesTotal = isFullBill ? Number(sessionBill?.chargesTotal || 0) : 0;
+
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
       <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
@@ -1565,6 +1591,17 @@ function CustomerBillMiniBox({
         <div className="border-t border-amber-100 bg-[#fffaf1] px-5 py-4">
           <div className="p-4 space-y-2 bg-white rounded-3xl">
             <PriceRow label="Subtotal" value={subtotal} />
+            {charges.map((charge, index) => (
+              <PriceRow
+                key={index}
+                label={charge.name}
+                value={Number(charge.amount || 0)}
+              />
+            ))}
+
+            {charges.length > 0 && (
+              <PriceRow label="Total Charges" value={chargesTotal} />
+            )}
 
             {coupon?.code && discount > 0 && (
               <PriceRow
@@ -1630,12 +1667,19 @@ function CustomerBillMiniBox({
 }
 
 function PriceRow({ label, value, discount }) {
+  const numericValue = Number(value || 0);
+  const isNegative = numericValue < 0;
+
   return (
     <div className="flex items-center justify-between text-sm font-bold">
       <span className="text-slate-500">{label}</span>
 
-      <span className={discount ? "text-emerald-600" : "text-[#241309]"}>
-        {value < 0 ? "-" : ""}₹{money(Math.abs(Number(value || 0)))}
+      <span
+        className={
+          discount || isNegative ? "text-emerald-600" : "text-[#241309]"
+        }
+      >
+        {isNegative ? "-" : ""}₹{money(Math.abs(numericValue))}
       </span>
     </div>
   );

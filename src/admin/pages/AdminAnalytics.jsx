@@ -55,6 +55,52 @@ const getOrderTotal = (order) => {
   );
 };
 
+const getOrderSubtotal = (order) => {
+  if (order?.subtotal !== undefined && order?.subtotal !== null) {
+    return Number(order.subtotal || 0);
+  }
+
+  return (order?.items || []).reduce(
+    (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1),
+    0,
+  );
+};
+
+const getOrderChargesTotal = (order) => {
+  if (order?.chargesTotal !== undefined && order?.chargesTotal !== null) {
+    return Number(order.chargesTotal || 0);
+  }
+
+  if (Array.isArray(order?.billChargesSnapshot)) {
+    return order.billChargesSnapshot.reduce(
+      (sum, charge) => sum + Number(charge.amount || 0),
+      0,
+    );
+  }
+
+  return 0;
+};
+
+const getOrderDiscount = (order) =>
+  Number(order?.discountAmount || order?.coupon?.discountAmount || 0);
+
+const getOrderGrossCollection = (order) => {
+  if (order?.finalTotal !== undefined && order?.finalTotal !== null) {
+    return Number(order.finalTotal || 0);
+  }
+
+  if (order?.total !== undefined && order?.total !== null) {
+    return Number(order.total || 0);
+  }
+
+  return Math.max(
+    0,
+    getOrderSubtotal(order) +
+      getOrderChargesTotal(order) -
+      getOrderDiscount(order),
+  );
+};
+
 const getItemsCount = (order) =>
   (order?.items || []).reduce((sum, item) => sum + Number(item.qty || 1), 0);
 
@@ -111,7 +157,12 @@ function ChartTip({ active, payload, label }) {
 
       {payload.map((p, i) => (
         <p key={i} style={{ color: p.color || "#111936" }}>
-          {p.name}: {p.name?.toLowerCase().includes("revenue") ? "₹" : ""}
+          {p.name}:{" "}
+          {["revenue", "collection", "sales", "tax", "discount"].some((word) =>
+            p.name?.toLowerCase().includes(word),
+          )
+            ? "₹"
+            : ""}
           {Number(p.value || 0).toLocaleString("en-IN")}
         </p>
       ))}
@@ -120,6 +171,24 @@ function ChartTip({ active, payload, label }) {
 }
 
 /* ───────────────── KPI CARD ───────────────── */
+
+function TicketDiscountIcon() {
+  return (
+    <div className="relative">
+      <Sparkles size={22} />
+      <span className="absolute -right-1 -top-1 text-[10px] font-black">₹</span>
+    </div>
+  );
+}
+
+function ReceiptTaxIcon() {
+  return (
+    <div className="relative">
+      <IndianRupee size={22} />
+      <span className="absolute -right-1 -top-1 text-[9px] font-black">%</span>
+    </div>
+  );
+}
 
 function KPI({ icon, label, value, sub, accent = "#d4a74f" }) {
   return (
@@ -188,6 +257,24 @@ function Panel({ title, sub, icon, children, accent = "#d4a74f" }) {
   );
 }
 
+function BreakdownRow({ label, value, color }) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-2xl border border-amber-100 bg-[#fffaf1] px-4 py-3">
+      <div className="flex items-center gap-3">
+        <span
+          className="h-2.5 w-2.5 rounded-full"
+          style={{ background: color }}
+        />
+        <span className="text-sm font-black text-slate-600">{label}</span>
+      </div>
+
+      <span className="text-lg font-black text-[#111936]">
+        ₹{Number(value || 0).toLocaleString("en-IN")}
+      </span>
+    </div>
+  );
+}
+
 function Empty({ text = "No data for this period" }) {
   return (
     <div className="flex h-[260px] items-center justify-center rounded-3xl border border-dashed border-amber-200 bg-amber-50/40 px-4 text-center text-sm font-bold text-slate-400">
@@ -244,9 +331,9 @@ function OwnerHero({
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-2">
           <HeroMini
-            label="Revenue"
-            value={`₹${kpi.totalRevenue.toLocaleString("en-IN")}`}
-            sub="Total sales"
+            label="Gross Collection"
+            value={`₹${kpi.grossCollection.toLocaleString("en-IN")}`}
+            sub="Final collected amount"
           />
           <HeroMini
             label="Orders"
@@ -595,8 +682,23 @@ export default function AdminAnalytics() {
     selectedTable === "all" ? "All Tables" : `Table ${selectedTable}`;
 
   const kpi = useMemo(() => {
-    const totalRevenue = analyticsOrders.reduce(
-      (sum, order) => sum + getOrderTotal(order),
+    const netFoodSales = analyticsOrders.reduce(
+      (sum, order) => sum + getOrderSubtotal(order),
+      0,
+    );
+
+    const taxCollected = analyticsOrders.reduce(
+      (sum, order) => sum + getOrderChargesTotal(order),
+      0,
+    );
+
+    const discountGiven = analyticsOrders.reduce(
+      (sum, order) => sum + getOrderDiscount(order),
+      0,
+    );
+
+    const grossCollection = analyticsOrders.reduce(
+      (sum, order) => sum + getOrderGrossCollection(order),
       0,
     );
 
@@ -604,8 +706,13 @@ export default function AdminAnalytics() {
       (order) => normalize(order.status) === "completed",
     );
 
-    const completedRevenue = completedOrders.reduce(
-      (sum, order) => sum + getOrderTotal(order),
+    const completedGrossCollection = completedOrders.reduce(
+      (sum, order) => sum + getOrderGrossCollection(order),
+      0,
+    );
+
+    const completedNetFoodSales = completedOrders.reduce(
+      (sum, order) => sum + getOrderSubtotal(order),
       0,
     );
 
@@ -637,12 +744,18 @@ export default function AdminAnalytics() {
 
     const avgOrder =
       analyticsOrders.length > 0
-        ? Math.round(totalRevenue / analyticsOrders.length)
+        ? Math.round(grossCollection / analyticsOrders.length)
         : 0;
 
     return {
-      totalRevenue,
-      completedRevenue,
+      totalRevenue: grossCollection,
+      grossCollection,
+      netFoodSales,
+      taxCollected,
+      discountGiven,
+      completedRevenue: completedGrossCollection,
+      completedGrossCollection,
+      completedNetFoodSales,
       totalItems,
       paid,
       due,
@@ -677,7 +790,7 @@ export default function AdminAnalytics() {
       }
 
       map[key].orders.push(order);
-      map[key].revenue += getOrderTotal(order);
+      map[key].revenue += getOrderGrossCollection(order);
       map[key].items += getItemsCount(order);
     });
 
@@ -749,12 +862,25 @@ export default function AdminAnalytics() {
         map[sortKey] = {
           sortKey,
           date: fmtDate(order.createdAt),
+          grossCollection: 0,
+          netFoodSales: 0,
+          taxCollected: 0,
+          discountGiven: 0,
           revenue: 0,
           orders: 0,
         };
       }
 
-      map[sortKey].revenue += getOrderTotal(order);
+      const gross = getOrderGrossCollection(order);
+      const net = getOrderSubtotal(order);
+      const tax = getOrderChargesTotal(order);
+      const discount = getOrderDiscount(order);
+
+      map[sortKey].grossCollection += gross;
+      map[sortKey].netFoodSales += net;
+      map[sortKey].taxCollected += tax;
+      map[sortKey].discountGiven += discount;
+      map[sortKey].revenue += gross;
       map[sortKey].orders += 1;
     });
 
@@ -803,7 +929,7 @@ export default function AdminAnalytics() {
       }
 
       map[table].orders += 1;
-      map[table].revenue += getOrderTotal(order);
+      map[table].revenue += getOrderGrossCollection(order);
     });
 
     return Object.values(map)
@@ -830,7 +956,7 @@ export default function AdminAnalytics() {
       }
 
       map[hour].orders += 1;
-      map[hour].revenue += getOrderTotal(order);
+      map[hour].revenue += getOrderGrossCollection(order);
       map[hour].items += getItemsCount(order);
     });
 
@@ -997,12 +1123,26 @@ export default function AdminAnalytics() {
             <div className="grid grid-cols-1 gap-4 mb-4 sm:grid-cols-2 xl:grid-cols-5">
               <KPI
                 icon={<IndianRupee size={22} />}
-                label={
-                  selectedTable === "all" ? "Total Revenue" : "Table Revenue"
-                }
-                value={`₹${kpi.totalRevenue.toLocaleString("en-IN")}`}
-                sub={`Completed ₹${kpi.completedRevenue.toLocaleString("en-IN")}`}
+                label="Gross Collection"
+                value={`₹${kpi.grossCollection.toLocaleString("en-IN")}`}
+                sub={`Final bill amount · completed ₹${kpi.completedGrossCollection.toLocaleString("en-IN")}`}
                 accent={chartColors.gold}
+              />
+
+              <KPI
+                icon={<Utensils size={22} />}
+                label="Net Food Sales"
+                value={`₹${kpi.netFoodSales.toLocaleString("en-IN")}`}
+                sub={`Food subtotal · completed ₹${kpi.completedNetFoodSales.toLocaleString("en-IN")}`}
+                accent={chartColors.emerald}
+              />
+
+              <KPI
+                icon={<ReceiptTaxIcon />}
+                label="Tax Collected"
+                value={`₹${kpi.taxCollected.toLocaleString("en-IN")}`}
+                sub="GST / SGST / service charges"
+                accent={chartColors.orange}
               />
 
               <KPI
@@ -1013,26 +1153,6 @@ export default function AdminAnalytics() {
                 value={kpi.totalOrders}
                 sub={`${kpi.active} active now`}
                 accent={chartColors.blue}
-              />
-
-              <KPI
-                icon={<Star size={22} />}
-                label="Avg Rating"
-                value={`${feedbackStats.average}★`}
-                sub={`${feedbackStats.total} customer reviews`}
-                accent={chartColors.gold}
-              />
-
-              <KPI
-                icon={<MessageSquareText size={22} />}
-                label="Low Reviews"
-                value={feedbackStats.lowRating}
-                sub="Ratings 1 or 2"
-                accent={
-                  feedbackStats.lowRating > 0
-                    ? chartColors.red
-                    : chartColors.emerald
-                }
               />
 
               <KPI
@@ -1051,7 +1171,7 @@ export default function AdminAnalytics() {
             </div>
 
             {/* KPI ROW 2 */}
-            <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2 xl:grid-cols-5">
               <KPI
                 icon={<Utensils size={22} />}
                 label="Items Sold"
@@ -1077,6 +1197,14 @@ export default function AdminAnalytics() {
               />
 
               <KPI
+                icon={<TicketDiscountIcon />}
+                label="Discount Given"
+                value={`₹${kpi.discountGiven.toLocaleString("en-IN")}`}
+                sub="Coupon / bill discounts"
+                accent={chartColors.red}
+              />
+
+              <KPI
                 icon={<Trophy size={20} />}
                 label="Top Item"
                 value={topItems[0]?.name || "—"}
@@ -1085,12 +1213,44 @@ export default function AdminAnalytics() {
               />
             </div>
 
-            <div className="mb-5">
-              <FeedbackPanel
-                feedbacks={filteredFeedbacks}
-                feedbackStats={feedbackStats}
-                formatDate={formatDate}
-              />
+            <div className="grid grid-cols-1 gap-5 mb-5 xl:grid-cols-3">
+              <Panel
+                title="Collection Breakdown"
+                sub="How the final bill amount is split"
+                icon={<IndianRupee size={16} />}
+                accent={chartColors.gold}
+              >
+                <div className="space-y-3">
+                  <BreakdownRow
+                    label="Gross Collection"
+                    value={kpi.grossCollection}
+                    color={chartColors.goldDark}
+                  />
+                  <BreakdownRow
+                    label="Net Food Sales"
+                    value={kpi.netFoodSales}
+                    color={chartColors.emerald}
+                  />
+                  <BreakdownRow
+                    label="Tax / Charges Collected"
+                    value={kpi.taxCollected}
+                    color={chartColors.orange}
+                  />
+                  <BreakdownRow
+                    label="Discount Given"
+                    value={kpi.discountGiven}
+                    color={chartColors.red}
+                  />
+                </div>
+              </Panel>
+
+              <div className="xl:col-span-2">
+                <FeedbackPanel
+                  feedbacks={filteredFeedbacks}
+                  feedbackStats={feedbackStats}
+                  formatDate={formatDate}
+                />
+              </div>
             </div>
 
             {/* CHARTS ROW 1 */}
@@ -1099,10 +1259,10 @@ export default function AdminAnalytics() {
                 <Panel
                   title={
                     selectedTable === "all"
-                      ? "Revenue Over Time"
-                      : `Revenue Over Time - Table ${selectedTable}`
+                      ? "Collection vs Sales Over Time"
+                      : `Collection vs Sales - Table ${selectedTable}`
                   }
-                  sub="Daily revenue trend"
+                  sub="Gross collection, net food sales and tax collected"
                   icon={<BarChart3 size={16} />}
                   accent={chartColors.gold}
                 >
@@ -1157,8 +1317,8 @@ export default function AdminAnalytics() {
 
                           <Area
                             type="monotone"
-                            dataKey="revenue"
-                            name="Revenue"
+                            dataKey="grossCollection"
+                            name="Gross Collection"
                             stroke={chartColors.goldDark}
                             strokeWidth={2.8}
                             fill="url(#rev)"
@@ -1169,6 +1329,26 @@ export default function AdminAnalytics() {
                               stroke: "#fff",
                               strokeWidth: 2,
                             }}
+                          />
+
+                          <Area
+                            type="monotone"
+                            dataKey="netFoodSales"
+                            name="Net Food Sales"
+                            stroke={chartColors.emerald}
+                            strokeWidth={2.4}
+                            fill="transparent"
+                            dot={false}
+                          />
+
+                          <Area
+                            type="monotone"
+                            dataKey="taxCollected"
+                            name="Tax Collected"
+                            stroke={chartColors.orange}
+                            strokeWidth={2.2}
+                            fill="transparent"
+                            dot={false}
                           />
                         </AreaChart>
                       </ResponsiveContainer>

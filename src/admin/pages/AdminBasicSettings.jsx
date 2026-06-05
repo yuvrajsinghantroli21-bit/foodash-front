@@ -98,6 +98,10 @@ const initialForm = {
   printBillTheme: "premiumCafe",
   receiptFontStyle: "sans",
 
+  // Billing charges / taxes
+  billCharges: [],
+  couponApplyOn: "subtotal",
+
   // Razorpay nested values are flattened in UI and sent as razorpay object
   razorpayEnabled: false,
   razorpayMode: "test",
@@ -124,10 +128,56 @@ function AdminBasicSettings() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const addBillCharge = () => {
+    setForm((prev) => ({
+      ...prev,
+      billCharges: [
+        ...(Array.isArray(prev.billCharges) ? prev.billCharges : []),
+        {
+          name: "",
+          mode: "add",
+          valueType: "percentage",
+          value: 0,
+          active: true,
+        },
+      ],
+    }));
+  };
+
+  const updateBillCharge = (index, key, value) => {
+    setForm((prev) => {
+      const charges = [
+        ...(Array.isArray(prev.billCharges) ? prev.billCharges : []),
+      ];
+
+      charges[index] = {
+        ...charges[index],
+        [key]: key === "value" ? Number(value || 0) : value,
+      };
+
+      return {
+        ...prev,
+        billCharges: charges,
+      };
+    });
+  };
+
+  const removeBillCharge = (index) => {
+    setForm((prev) => ({
+      ...prev,
+      billCharges: (Array.isArray(prev.billCharges)
+        ? prev.billCharges
+        : []
+      ).filter((_, i) => i !== index),
+    }));
+  };
+
   const normalizeSettings = (data = {}) => {
     return {
       ...initialForm,
       ...data,
+      billCharges: Array.isArray(data?.billCharges) ? data.billCharges : [],
+      couponApplyOn: data?.couponApplyOn || "subtotal",
       razorpayEnabled: data?.razorpay?.enabled || false,
       razorpayMode: data?.razorpay?.mode || "test",
       razorpayKeyId: data?.razorpay?.keyId || "",
@@ -690,6 +740,110 @@ function AdminBasicSettings() {
                 value={form.receiptFooter}
                 onChange={(v) => updateField("receiptFooter", v)}
               />
+
+              <div className="rounded-[1.6rem] border border-amber-100 bg-[#fffdf8] p-4">
+                <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">
+                      Billing Configuration
+                    </p>
+                    <p className="mt-1 text-xs font-semibold leading-relaxed text-stone-400">
+                      Add GST, SGST, service charge, packaging fee, or custom
+                      deductions. These rows appear on customer bill and printed
+                      receipt.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={addBillCharge}
+                    className="inline-flex items-center justify-center rounded-2xl bg-[#2b1608] px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#3d2412]"
+                  >
+                    + Add Charge
+                  </button>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Select
+                    label="Coupon Applies On"
+                    value={form.couponApplyOn}
+                    onChange={(v) => updateField("couponApplyOn", v)}
+                    options={["subtotal", "after_charges"]}
+                  />
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {(Array.isArray(form.billCharges) ? form.billCharges : [])
+                    .length === 0 && (
+                    <div className="p-4 text-sm font-bold border border-dashed rounded-2xl border-amber-200 bg-amber-50/50 text-stone-500">
+                      No bill charges added yet. Example: GST 5%, SGST 2.5%,
+                      Service Charge 10%, Packaging ₹20.
+                    </div>
+                  )}
+
+                  {(Array.isArray(form.billCharges)
+                    ? form.billCharges
+                    : []
+                  ).map((charge, index) => (
+                    <div
+                      key={index}
+                      className="p-4 bg-white border rounded-2xl border-amber-100"
+                    >
+                      <div className="grid gap-3 md:grid-cols-[1.2fr_0.8fr_0.9fr_0.7fr_auto] md:items-end">
+                        <Input
+                          label="Charge Name"
+                          value={charge.name}
+                          onChange={(v) => updateBillCharge(index, "name", v)}
+                          placeholder="GST / SGST / Service Charge"
+                        />
+
+                        <Select
+                          label="Mode"
+                          value={charge.mode || "add"}
+                          onChange={(v) => updateBillCharge(index, "mode", v)}
+                          options={["add", "deduct"]}
+                        />
+
+                        <Select
+                          label="Value Type"
+                          value={charge.valueType || "percentage"}
+                          onChange={(v) =>
+                            updateBillCharge(index, "valueType", v)
+                          }
+                          options={["percentage", "fixed"]}
+                        />
+
+                        <Input
+                          label={
+                            charge.valueType === "fixed"
+                              ? "Amount ₹"
+                              : "Percent %"
+                          }
+                          value={charge.value}
+                          onChange={(v) => updateBillCharge(index, "value", v)}
+                          placeholder="5"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => removeBillCharge(index)}
+                          className="flex items-center justify-center h-12 px-4 text-sm font-black text-red-500 transition rounded-2xl bg-red-50 hover:bg-red-100"
+                        >
+                          Remove
+                        </button>
+                      </div>
+
+                      <div className="mt-3">
+                        <Toggle
+                          label="Active on bill"
+                          value={charge.active}
+                          onChange={(v) => updateBillCharge(index, "active", v)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </Section>
 
             <Section
@@ -1035,6 +1189,38 @@ function LivePreview({ form, saving, onSave }) {
           <p className="mt-1 text-xs text-white/60">
             {form.receiptFooter || "Receipt footer not added"}
           </p>
+
+          <div className="pt-3 mt-4 space-y-2 border-t border-white/10">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">
+              Charges
+            </p>
+
+            {(Array.isArray(form.billCharges) ? form.billCharges : [])
+              .filter((charge) => charge?.active && charge?.name)
+              .slice(0, 4)
+              .map((charge, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between text-xs font-bold text-white/70"
+                >
+                  <span>{charge.name}</span>
+                  <span>
+                    {charge.mode === "deduct" ? "-" : "+"}
+                    {charge.valueType === "fixed" ? "₹" : ""}
+                    {charge.value || 0}
+                    {charge.valueType === "percentage" ? "%" : ""}
+                  </span>
+                </div>
+              ))}
+
+            {(Array.isArray(form.billCharges) ? form.billCharges : []).filter(
+              (charge) => charge?.active && charge?.name,
+            ).length === 0 && (
+              <p className="text-xs font-semibold text-white/40">
+                No active charges.
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="p-4 text-xs font-bold border rounded-2xl border-emerald-100 bg-emerald-50 text-emerald-800">

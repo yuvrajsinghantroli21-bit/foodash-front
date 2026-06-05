@@ -323,22 +323,22 @@ function BillPage() {
                 <div className="space-y-3">
                   <PriceRow label="Subtotal" value={subtotal} />
 
-                  {chargesTotal > 0 && (
-                    <PriceRow label="Charges" value={chargesTotal} />
-                  )}
+                  {(bill.billChargesSnapshot || []).map((charge, index) => {
+                    const amount = Number(charge.amount || 0);
 
-                  {(bill.billChargesSnapshot || []).map((charge, index) => (
-                    <PriceRow
-                      key={`${charge.name}-${index}`}
-                      label={charge.name || "Charge"}
-                      value={
-                        charge.mode === "deduct"
-                          ? -charge.amount
-                          : charge.amount
-                      }
-                      discount={charge.mode === "deduct"}
-                    />
-                  ))}
+                    return (
+                      <PriceRow
+                        key={`${charge.name || "charge"}-${index}`}
+                        label={charge.name || "Charge"}
+                        value={amount}
+                        discount={amount < 0}
+                      />
+                    );
+                  })}
+
+                  {(bill.billChargesSnapshot || []).length > 0 && (
+                    <PriceRow label="Total Charges" value={chargesTotal} />
+                  )}
 
                   {discountAmount > 0 && (
                     <PriceRow
@@ -430,11 +430,18 @@ function InfoCard({ icon, label, value, dark = false }) {
 }
 
 function PriceRow({ label, value, discount = false }) {
+  const numericValue = Number(value || 0);
+  const isNegative = numericValue < 0;
+
   return (
     <div className="flex items-center justify-between gap-4 text-sm font-bold">
       <span className="text-slate-500">{label}</span>
-      <span className={discount ? "text-emerald-600" : "text-[#241309]"}>
-        {value < 0 ? "-" : ""}₹{money(Math.abs(Number(value || 0)))}
+      <span
+        className={
+          discount || isNegative ? "text-emerald-600" : "text-[#241309]"
+        }
+      >
+        {isNegative ? "-" : ""}₹{money(Math.abs(numericValue))}
       </span>
     </div>
   );

@@ -104,6 +104,30 @@ const getSessionFinalTotal = (sessionOrders) =>
 const getSessionCoupon = (sessionOrders) =>
   sessionOrders.find((order) => order.coupon?.code)?.coupon || null;
 
+const getSessionCharges = (sessionOrders) =>
+  sessionOrders.flatMap((order) =>
+    Array.isArray(order.billChargesSnapshot) ? order.billChargesSnapshot : [],
+  );
+
+const getSessionChargesTotal = (sessionOrders) =>
+  getSessionCharges(sessionOrders).reduce(
+    (sum, charge) => sum + Number(charge.amount || 0),
+    0,
+  );
+
+const getSessionBillSnapshot = (sessionOrders) => ({
+  subtotal: getSessionSubtotal(sessionOrders),
+  chargesTotal: getSessionChargesTotal(sessionOrders),
+  billChargesSnapshot: getSessionCharges(sessionOrders),
+  discountAmount: getSessionDiscount(sessionOrders),
+  finalTotal: getSessionFinalTotal(sessionOrders),
+  coupon: getSessionCoupon(sessionOrders),
+  paymentMode:
+    getPaymentMode(sessionOrders) === "Online" ? "online" : "counter",
+  paymentStatus: getPaymentStatus(sessionOrders) === "Paid" ? "paid" : "due",
+  razorpayPaymentId: getRazorpayPaymentId(sessionOrders),
+});
+
 const getSessionItemCount = (sessionOrders) =>
   sessionOrders.reduce(
     (sum, order) =>
@@ -262,9 +286,12 @@ function OrderHistoryCard({
   const totalBatches = sessionOrders.length;
   const totalItemCount = getSessionItemCount(sessionOrders);
   const sessionSubtotal = getSessionSubtotal(sessionOrders);
+  const sessionCharges = getSessionCharges(sessionOrders);
+  const sessionChargesTotal = getSessionChargesTotal(sessionOrders);
   const sessionDiscount = getSessionDiscount(sessionOrders);
   const sessionFinalTotal = getSessionFinalTotal(sessionOrders);
   const sessionCoupon = getSessionCoupon(sessionOrders);
+  const sessionBillSnapshot = getSessionBillSnapshot(sessionOrders);
 
   const sessionTotal = sessionFinalTotal;
 
@@ -440,7 +467,36 @@ function OrderHistoryCard({
 
       {/* FOOTER */}
       <div className="px-5 py-4 border-t border-gray-100">
-        <div className="flex items-end justify-between gap-4">
+        <div className="flex flex-col gap-3">
+          {sessionCharges.length > 0 && (
+            <div className="px-4 py-3 border rounded-xl border-amber-100 bg-amber-50/70">
+              <div className="flex items-center justify-between gap-3 text-xs font-bold">
+                <span className="text-amber-800">Bill Charges</span>
+                <span className="text-amber-800">
+                  ₹{Math.round(sessionChargesTotal)}
+                </span>
+              </div>
+
+              <div className="mt-2 space-y-1">
+                {sessionCharges.map((charge, index) => {
+                  const amount = Number(charge.amount || 0);
+
+                  return (
+                    <div
+                      key={`${charge.name || "charge"}-${index}`}
+                      className="flex items-center justify-between text-[11px] font-semibold text-slate-500"
+                    >
+                      <span>{charge.name || "Charge"}</span>
+                      <span>
+                        {amount < 0 ? "-" : "+"}₹{Math.round(Math.abs(amount))}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {sessionCoupon && sessionDiscount > 0 && (
             <div className="px-4 py-3 mb-4 border rounded-xl border-emerald-100 bg-emerald-50">
               <div className="flex items-center justify-between gap-3 text-xs font-bold">
@@ -483,6 +539,7 @@ function OrderHistoryCard({
                 setSelectedBill({
                   tableOrders: sessionOrders,
                   orderNo,
+                  sessionBill: sessionBillSnapshot,
                 })
               }
               className="inline-flex items-center gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-2xl font-black text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100"
@@ -501,15 +558,7 @@ function OrderHistoryCard({
               tableKey: sessionOrders[0]?.table,
               orderNo: orderNo,
               settings: settings,
-              sessionBill: {
-                paymentMode:
-                  getPaymentMode(sessionOrders) === "Online"
-                    ? "online"
-                    : "counter",
-                paymentStatus:
-                  getPaymentStatus(sessionOrders) === "Paid" ? "paid" : "due",
-                razorpayPaymentId: getRazorpayPaymentId(sessionOrders),
-              },
+              sessionBill: sessionBillSnapshot,
             })
           }
           className="flex items-center justify-center w-full gap-2 py-2.5 mt-4 text-sm font-extrabold text-white bg-[#071832] rounded-lg shadow-[0_8px_18px_rgba(7,24,50,0.18)]"
@@ -1102,6 +1151,7 @@ export default function AdminHistory() {
         <BillSummaryModal
           tableOrders={selectedBill.tableOrders}
           orderNo={selectedBill.orderNo}
+          sessionBill={selectedBill.sessionBill}
           menu={menu}
           settings={settings}
           printBill={printBill}
@@ -1115,6 +1165,7 @@ export default function AdminHistory() {
 function BillSummaryModal({
   tableOrders,
   orderNo,
+  sessionBill = null,
   menu = [],
   settings,
   onClose,
@@ -1122,23 +1173,46 @@ function BillSummaryModal({
 }) {
   const table = tableOrders[0]?.table || tableOrders[0]?.tableId || "—";
 
-  const subtotal = tableOrders.reduce(
-    (sum, order) => sum + Number(order.subtotal || order.total || 0),
-    0,
-  );
+  const subtotal =
+    sessionBill?.subtotal !== undefined && sessionBill?.subtotal !== null
+      ? Number(sessionBill.subtotal || 0)
+      : tableOrders.reduce(
+          (sum, order) => sum + Number(order.subtotal || order.total || 0),
+          0,
+        );
 
-  const discount = tableOrders.reduce(
-    (sum, order) =>
-      sum + Number(order.discountAmount || order.coupon?.discountAmount || 0),
-    0,
-  );
+  const charges = Array.isArray(sessionBill?.billChargesSnapshot)
+    ? sessionBill.billChargesSnapshot
+    : getSessionCharges(tableOrders);
 
-  const finalTotal = tableOrders.reduce(
-    (sum, order) => sum + Number(order.finalTotal || order.total || 0),
-    0,
-  );
+  const chargesTotal =
+    sessionBill?.chargesTotal !== undefined &&
+    sessionBill?.chargesTotal !== null
+      ? Number(sessionBill.chargesTotal || 0)
+      : charges.reduce((sum, charge) => sum + Number(charge.amount || 0), 0);
 
-  const coupon = tableOrders.find((order) => order.coupon?.code)?.coupon;
+  const discount =
+    sessionBill?.discountAmount !== undefined &&
+    sessionBill?.discountAmount !== null
+      ? Number(sessionBill.discountAmount || 0)
+      : tableOrders.reduce(
+          (sum, order) =>
+            sum +
+            Number(order.discountAmount || order.coupon?.discountAmount || 0),
+          0,
+        );
+
+  const finalTotal =
+    sessionBill?.finalTotal !== undefined && sessionBill?.finalTotal !== null
+      ? Number(sessionBill.finalTotal || 0)
+      : tableOrders.reduce(
+          (sum, order) => sum + Number(order.finalTotal || order.total || 0),
+          0,
+        );
+
+  const coupon =
+    sessionBill?.coupon ||
+    tableOrders.find((order) => order.coupon?.code)?.coupon;
   const paymentMode = getPaymentMode(tableOrders);
   const paymentStatus = getPaymentStatus(tableOrders);
   const razorpayPaymentId = getRazorpayPaymentId(tableOrders);
@@ -1276,6 +1350,23 @@ function BillSummaryModal({
           <div className="p-4 space-y-2 bg-white rounded-3xl">
             <PriceRow label="Subtotal" value={subtotal} />
 
+            {charges.map((charge, index) => {
+              const amount = Number(charge.amount || 0);
+
+              return (
+                <PriceRow
+                  key={`${charge.name || "charge"}-${index}`}
+                  label={charge.name || "Charge"}
+                  value={amount}
+                  discount={amount < 0}
+                />
+              );
+            })}
+
+            {charges.length > 0 && (
+              <PriceRow label="Total Charges" value={chargesTotal} />
+            )}
+
             {coupon && discount > 0 && (
               <PriceRow
                 label={`Coupon ${coupon.code}`}
@@ -1350,6 +1441,12 @@ function BillSummaryModal({
                   orderNo,
                   settings,
                   sessionBill: {
+                    subtotal,
+                    chargesTotal,
+                    billChargesSnapshot: charges,
+                    discountAmount: discount,
+                    finalTotal,
+                    coupon,
                     paymentMode:
                       paymentMode === "Online" ? "online" : "counter",
                     paymentStatus: paymentStatus === "Paid" ? "paid" : "due",
@@ -1369,12 +1466,20 @@ function BillSummaryModal({
 }
 
 function PriceRow({ label, value, discount }) {
+  const numericValue = Number(value || 0);
+  const isNegative = numericValue < 0;
+
   return (
     <div className="flex items-center justify-between text-sm font-bold">
       <span className="text-slate-500">{label}</span>
 
-      <span className={discount ? "text-emerald-600" : "text-[#111936]"}>
-        {value < 0 ? "-" : ""}₹{Math.abs(Number(value || 0))}
+      <span
+        className={
+          discount || isNegative ? "text-emerald-600" : "text-[#111936]"
+        }
+      >
+        {isNegative ? "-" : ""}₹
+        {Math.round(Math.abs(numericValue)).toLocaleString("en-IN")}
       </span>
     </div>
   );

@@ -122,6 +122,7 @@ function Cart() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [sessionChecking, setSessionChecking] = useState(true);
   const [sessionInfo, setSessionInfo] = useState(null);
+  const [settings, setSettings] = useState(null);
 
   const { cart, addToCart, removeItem, deleteItem, clearCart } =
     useContext(CartContext);
@@ -130,12 +131,51 @@ function Cart() {
   const token = localStorage.getItem("token");
   const navigate = useNavigate();
 
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-
-  const total = cart.reduce(
+  const subtotal = cart.reduce(
     (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1),
     0,
   );
+
+  const billChargesConfig = Array.isArray(settings?.billCharges)
+    ? settings.billCharges
+    : [];
+
+  const activeBillCharges = billChargesConfig.filter(
+    (charge) => charge?.active && charge?.name,
+  );
+
+  const billChargesSnapshot = activeBillCharges.map((charge) => {
+    const rawAmount =
+      charge.valueType === "fixed"
+        ? Number(charge.value || 0)
+        : (subtotal * Number(charge.value || 0)) / 100;
+
+    const amount = charge.mode === "deduct" ? -rawAmount : rawAmount;
+
+    return {
+      name: charge.name,
+      mode: charge.mode || "add",
+      valueType: charge.valueType || "percentage",
+      value: Number(charge.value || 0),
+      amount,
+    };
+  });
+
+  const chargesTotal = billChargesSnapshot.reduce(
+    (sum, charge) => sum + Number(charge.amount || 0),
+    0,
+  );
+
+  const couponApplyOn = settings?.couponApplyOn || "subtotal";
+
+  const couponBaseAmount =
+    couponApplyOn === "after_charges"
+      ? Math.max(0, subtotal + chargesTotal)
+      : subtotal;
+
+  const totalBeforeDiscount = Math.max(0, subtotal + chargesTotal);
+
+  const total = subtotal;
 
   const checkoutStatus = sessionInfo?.checkoutStatus || "open";
   const paymentStatus = String(
@@ -187,12 +227,10 @@ function Cart() {
         localStorage.removeItem("token");
         localStorage.removeItem("table");
 
+        const billToken = err.response?.data?.billToken || "";
+
         setTimeout(() => {
-          navigate(
-            data?.billToken
-              ? `/thank-you?bill=${data.billToken}`
-              : "/thank-you",
-          );
+          navigate(billToken ? `/thank-you?bill=${billToken}` : "/thank-you");
         }, 800);
       }
 
@@ -203,8 +241,15 @@ function Cart() {
   };
 
   useEffect(() => {
-    setFinalTotal(total - discountAmount);
-  }, [total, discountAmount]);
+    setFinalTotal(Math.max(0, totalBeforeDiscount - discountAmount));
+  }, [totalBeforeDiscount, discountAmount]);
+
+  useEffect(() => {
+    api
+      .get("/settings/public")
+      .then((res) => setSettings(res.data || null))
+      .catch(() => setSettings(null));
+  }, []);
 
   useEffect(() => {
     checkSessionLock({ silent: true }).finally(() => setSessionChecking(false));
@@ -237,14 +282,15 @@ function Cart() {
     api
       .post("/coupons/validate", {
         code: couponCode,
-        total,
+        total: couponBaseAmount,
       })
       .then((res) => {
         setAppliedCoupon(res.data.coupon);
 
-        setDiscountAmount(Number(res.data.discount || 0));
+        const discount = Number(res.data.discount || 0);
+        setDiscountAmount(discount);
 
-        setFinalTotal(Number(res.data.finalTotal || total));
+        setFinalTotal(Math.max(0, totalBeforeDiscount - discount));
 
         toast.success(
           `Coupon applied • Saved ₹${Math.round(
@@ -257,7 +303,7 @@ function Cart() {
 
         setAppliedCoupon(null);
         setDiscountAmount(0);
-        setFinalTotal(total);
+        setFinalTotal(totalBeforeDiscount);
 
         toast.error(err.response?.data?.message || "Invalid coupon");
       })
@@ -337,10 +383,20 @@ function Cart() {
       sessionId: currentToken,
       token: currentToken,
 
-      subtotal: total,
-      discountAmount: discountAmount,
-      finalTotal: finalTotal,
+      subtotal,
+      chargesTotal,
+      billChargesSnapshot,
+      discountAmount,
+      finalTotal,
       total: finalTotal,
+      coupon: appliedCoupon
+        ? {
+            code: appliedCoupon.code,
+            discountType: appliedCoupon.discountType,
+            discountValue: appliedCoupon.discountValue,
+            discountAmount,
+          }
+        : null,
 
       items: cart.map((item) => ({
         name: item.name,
@@ -361,6 +417,9 @@ function Cart() {
         toast.success("Order placed successfully! 🎉");
         clearCart();
         setNotes({});
+        setAppliedCoupon(null);
+        setCouponCode("");
+        setDiscountAmount(0);
         setFinalTotal(0);
 
         setTimeout(() => {
@@ -674,24 +733,65 @@ function Cart() {
                   <div className="space-y-2.5">
                     <div className="flex justify-between text-sm text-gray-500">
                       <span>Subtotal</span>
-                      <span>₹{subtotal}</span>
+                      <span>
+                        ₹{Math.round(subtotal).toLocaleString("en-IN")}
+                      </span>
                     </div>
 
-                    <div className="flex justify-between text-sm text-gray-400">
-                      <span>Service Charge</span>
-                      <span>₹0</span>
-                    </div>
+                    {billChargesSnapshot.map((charge, index) => {
+                      const amount = Number(charge.amount || 0);
 
-                    <div className="flex justify-between text-sm text-gray-400">
-                      <span>Taxes</span>
-                      <span>₹0</span>
-                    </div>
+                      return (
+                        <div
+                          key={`${charge.name}-${index}`}
+                          className={`flex justify-between text-sm font-semibold ${
+                            amount < 0 ? "text-emerald-600" : "text-gray-500"
+                          }`}
+                        >
+                          <span>
+                            {charge.name}
+                            {charge.valueType === "percentage"
+                              ? ` (${charge.value}%)`
+                              : ""}
+                          </span>
+                          <span>
+                            {amount < 0 ? "-" : "+"}₹
+                            {Math.round(Math.abs(amount)).toLocaleString(
+                              "en-IN",
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
+
+                    {billChargesSnapshot.length > 0 && (
+                      <div className="flex justify-between text-sm font-black text-[#241309]">
+                        <span>Total Charges</span>
+                        <span>
+                          ₹{Math.round(chargesTotal).toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    )}
+
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-sm font-black text-emerald-600">
+                        <span>
+                          Coupon Discount
+                          {appliedCoupon?.code
+                            ? ` (${appliedCoupon.code})`
+                            : ""}
+                        </span>
+                        <span>
+                          -₹{Math.round(discountAmount).toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-5 rounded-2xl bg-[#fff7e8] p-4">
                     <div className="flex items-center justify-between">
                       <span className="text-base font-black text-[#241309]">
-                        Total
+                        Final Payable
                       </span>
 
                       <span
@@ -703,13 +803,20 @@ function Cart() {
                           WebkitTextFillColor: "transparent",
                         }}
                       >
-                        ₹{subtotal}
+                        ₹{Math.round(finalTotal).toLocaleString("en-IN")}
                       </span>
                     </div>
+
+                    {billChargesSnapshot.length > 0 && (
+                      <p className="mt-2 text-[11px] font-semibold text-amber-800/70">
+                        Includes ₹
+                        {Math.round(chargesTotal).toLocaleString("en-IN")} in
+                        taxes/charges.
+                      </p>
+                    )}
                   </div>
 
-                  {/* apply coupon code  */}
-                  {/* <div className="w-full p-4 mt-5 overflow-hidden bg-white border shadow-sm rounded-3xl border-amber-100 sm:p-5">
+                  <div className="w-full p-4 mt-5 overflow-hidden bg-white border shadow-sm rounded-3xl border-amber-100 sm:p-5">
                     <div className="flex items-center gap-2 mb-4">
                       <div className="flex items-center justify-center w-9 h-9 rounded-2xl bg-amber-50 text-amber-700">
                         <TicketPercent size={18} />
@@ -720,7 +827,9 @@ function Cart() {
                           Apply Coupon
                         </h3>
                         <p className="text-xs font-medium text-slate-400">
-                          Add a valid offer code to unlock savings
+                          {couponApplyOn === "after_charges"
+                            ? "Coupon applies after taxes/charges"
+                            : "Coupon applies on subtotal"}
                         </p>
                       </div>
                     </div>
@@ -733,13 +842,14 @@ function Cart() {
                           setCouponCode(e.target.value.toUpperCase())
                         }
                         placeholder="Enter code"
-                        className="w-full min-w-0 h-12 rounded-2xl border border-amber-100 bg-[#fffaf1] px-4 text-[13px] font-extrabold uppercase tracking-[0.14em] text-[#111936] outline-none transition placeholder:font-semibold placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-300 focus:border-amber-300 focus:ring-4 focus:ring-amber-100"
+                        disabled={orderLocked || couponLoading}
+                        className="w-full min-w-0 h-12 rounded-2xl border border-amber-100 bg-[#fffaf1] px-4 text-[13px] font-extrabold uppercase tracking-[0.14em] text-[#111936] outline-none transition placeholder:font-semibold placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-300 focus:border-amber-300 focus:ring-4 focus:ring-amber-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                       />
 
                       <button
                         type="button"
                         onClick={applyCoupon}
-                        disabled={couponLoading}
+                        disabled={couponLoading || orderLocked}
                         className="flex items-center justify-center w-full h-12 gap-2 px-4 rounded-2xl bg-[#111936] text-[13px] font-extrabold text-amber-300 transition hover:bg-[#1c274f] disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {couponLoading ? (
@@ -775,13 +885,29 @@ function Cart() {
                             </p>
 
                             <h4 className="text-2xl font-black tracking-tight text-emerald-600">
-                              -₹{Math.round(discountAmount)}
+                              -₹
+                              {Math.round(discountAmount).toLocaleString(
+                                "en-IN",
+                              )}
                             </h4>
                           </div>
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAppliedCoupon(null);
+                            setCouponCode("");
+                            setDiscountAmount(0);
+                            setFinalTotal(totalBeforeDiscount);
+                          }}
+                          className="mt-3 text-xs font-black underline text-emerald-700"
+                        >
+                          Remove coupon
+                        </button>
                       </div>
                     )}
-                  </div> */}
+                  </div>
 
                   {orderLocked && (
                     <div className="px-4 py-3 mt-5 border rounded-2xl border-amber-200 bg-amber-50">

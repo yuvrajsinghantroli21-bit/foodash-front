@@ -194,23 +194,34 @@ export default function AdminDashboard() {
     const token = getTokenFromOrders(tableOrders);
     const bill = sessionBills[token];
 
-    const subtotal = getTableSubtotal(tableOrders);
+    const subtotal =
+      bill?.subtotal !== undefined && bill?.subtotal !== null
+        ? Number(bill.subtotal || 0)
+        : getTableSubtotal(tableOrders);
+
+    const billChargesSnapshot = Array.isArray(bill?.billChargesSnapshot)
+      ? bill.billChargesSnapshot
+      : [];
+
+    const chargesTotal =
+      bill?.chargesTotal !== undefined && bill?.chargesTotal !== null
+        ? Number(bill.chargesTotal || 0)
+        : billChargesSnapshot.reduce(
+            (sum, charge) => sum + Number(charge?.amount || 0),
+            0,
+          );
+
     const discountAmount = Number(bill?.discountAmount || 0);
 
-    const finalTotal = Math.max(0, subtotal - discountAmount);
-
-    const paidAmount = tableOrders.reduce((sum, order) => {
-      const orderTotal = getOrderTotal(order);
-      const status = getOrderPaymentStatus(order, bill);
-
-      return status === "paid" ? sum + orderTotal : sum;
-    }, 0);
-
-    const dueAmount = Math.max(0, finalTotal - paidAmount);
+    const finalTotal =
+      bill?.finalTotal !== undefined && bill?.finalTotal !== null
+        ? Number(bill.finalTotal || 0)
+        : Math.max(0, subtotal + chargesTotal - discountAmount);
 
     const sessionPaymentStatus = String(
       bill?.paymentStatus || "due",
     ).toLowerCase();
+
     const sessionPaidAmount =
       sessionPaymentStatus === "paid"
         ? Number(bill?.paidAmount || finalTotal || 0)
@@ -218,6 +229,8 @@ export default function AdminDashboard() {
 
     return {
       subtotal,
+      chargesTotal,
+      billChargesSnapshot,
       discountAmount,
       finalTotal,
       paidAmount: sessionPaidAmount,
@@ -1444,6 +1457,36 @@ export default function AdminDashboard() {
                           <span>₹{money(tableBill.subtotal)}</span>
                         </div>
 
+                        {(tableBill.billChargesSnapshot || []).map(
+                          (charge, index) => {
+                            const amount = Number(charge?.amount || 0);
+
+                            return (
+                              <div
+                                key={`${charge?.name || "charge"}-${index}`}
+                                className={`flex items-center justify-between text-sm font-black ${
+                                  amount < 0
+                                    ? "text-emerald-600"
+                                    : "text-slate-600"
+                                }`}
+                              >
+                                <span>{charge?.name || "Charge"}</span>
+                                <span>
+                                  {amount < 0 ? "-" : "+"}₹
+                                  {money(Math.abs(amount))}
+                                </span>
+                              </div>
+                            );
+                          },
+                        )}
+
+                        {(tableBill.billChargesSnapshot || []).length > 0 && (
+                          <div className="flex items-center justify-between text-sm font-black text-slate-700">
+                            <span>Total Charges</span>
+                            <span>₹{money(tableBill.chargesTotal)}</span>
+                          </div>
+                        )}
+
                         {tableBill.discountAmount > 0 && (
                           <div className="flex items-center justify-between text-sm font-black text-emerald-600">
                             <span>
@@ -1720,7 +1763,17 @@ function BillSummaryModal({
 
   const discount = Number(sessionBill?.discountAmount || 0);
 
-  const finalTotal = Math.max(0, subtotal - discount);
+  const charges = Array.isArray(sessionBill?.billChargesSnapshot)
+    ? sessionBill.billChargesSnapshot
+    : [];
+
+  const chargesTotal = Number(sessionBill?.chargesTotal || 0);
+
+  const finalTotal =
+    sessionBill?.finalTotal !== undefined && sessionBill?.finalTotal !== null
+      ? Number(sessionBill.finalTotal || 0)
+      : Math.max(0, Number(subtotal || 0) + chargesTotal - discount);
+
   const paidAmount =
     String(sessionBill?.paymentStatus || "due").toLowerCase() === "paid"
       ? Number(sessionBill?.paidAmount || finalTotal || 0)
@@ -1872,6 +1925,19 @@ function BillSummaryModal({
           <div className="p-4 space-y-2 bg-white rounded-3xl">
             <PriceRow label="Subtotal" value={subtotal} />
 
+            {charges.map((charge, index) => (
+              <PriceRow
+                key={`${charge?.name || "charge"}-${index}`}
+                label={charge?.name || "Charge"}
+                value={Number(charge?.amount || 0)}
+                discount={Number(charge?.amount || 0) < 0}
+              />
+            ))}
+
+            {charges.length > 0 && (
+              <PriceRow label="Total Charges" value={chargesTotal} />
+            )}
+
             {coupon && discount > 0 && (
               <PriceRow
                 label={`Coupon ${coupon.code}`}
@@ -1980,12 +2046,19 @@ function BillSummaryModal({
 }
 
 function PriceRow({ label, value, discount }) {
+  const numericValue = Number(value || 0);
+  const isNegative = numericValue < 0;
+
   return (
     <div className="flex items-center justify-between text-sm font-bold">
       <span className="text-slate-500">{label}</span>
 
-      <span className={discount ? "text-emerald-600" : "text-[#111936]"}>
-        {value < 0 ? "-" : ""}₹{money(Math.abs(Number(value || 0)))}
+      <span
+        className={
+          discount || isNegative ? "text-emerald-600" : "text-[#111936]"
+        }
+      >
+        {isNegative ? "-" : ""}₹{money(Math.abs(numericValue))}
       </span>
     </div>
   );
