@@ -322,6 +322,8 @@ export default function RestaurantRegister() {
   const [showCpw, setShowCpw] = useState(false);
   const [toast, setToast] = useState(null);
   const logoRef = useRef();
+  const [showTerms, setShowTerms] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
 
   const navigate = useNavigate();
 
@@ -347,6 +349,14 @@ export default function RestaurantRegister() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (!agreeTerms) {
+      setToast({
+        msg: "Please accept Terms & Conditions.",
+        type: "error",
+      });
+      return;
+    }
 
     const errs = validate(form);
 
@@ -1308,6 +1318,18 @@ body {
                       value={form.email}
                       onChange={(e) => set("email", e.target.value)}
                     />
+
+                    <p
+                      style={{
+                        fontSize: 11,
+                        color: "#9ca3af",
+                        margin: "4px 0 0",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      We'll send important account and billing updates to this
+                      email.
+                    </p>
                   </Field>
                   <Field
                     label="Phone Number"
@@ -1696,6 +1718,50 @@ body {
                   </div>
                 </div>
 
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 10,
+                    marginTop: 4,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={agreeTerms}
+                    onChange={(e) => setAgreeTerms(e.target.checked)}
+                    style={{
+                      marginTop: 3,
+                      cursor: "pointer",
+                    }}
+                  />
+
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: "#6b7280",
+                      lineHeight: 1.6,
+                      margin: 0,
+                    }}
+                  >
+                    I agree to the{" "}
+                    <button
+                      type="button"
+                      onClick={() => setShowTerms(true)}
+                      style={{
+                        border: "none",
+                        background: "none",
+                        color: "#F59E0B",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >
+                      Terms & Conditions
+                    </button>
+                  </p>
+                </div>
+
                 {/* Submit button */}
                 <button
                   type="submit"
@@ -1777,6 +1843,92 @@ body {
           </div>
         </div>
       </div>
+
+      {showTerms && (
+        <div
+          onClick={() => setShowTerms(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.55)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 700,
+              maxHeight: "80vh",
+              overflowY: "auto",
+              background: "#fff",
+              borderRadius: 24,
+              padding: 28,
+            }}
+          >
+            <h2
+              style={{
+                fontSize: 24,
+                fontWeight: 900,
+                marginBottom: 18,
+              }}
+            >
+              Qzora Terms & Conditions
+            </h2>
+
+            <div
+              style={{
+                color: "#4b5563",
+                lineHeight: 1.8,
+                fontSize: 14,
+              }}
+            >
+              <p>
+                Qzora provides restaurant website, QR ordering, menu management,
+                billing and operational software.
+              </p>
+
+              <p>
+                Restaurant owners remain responsible for menu prices, taxes,
+                staff actions, customer interactions and payment collection.
+              </p>
+
+              <p>
+                Qzora is not responsible for revenue loss, business loss,
+                customer disputes, internet outages, hardware failures,
+                incorrect menu data, payment disputes or operational mistakes.
+              </p>
+
+              <p>
+                While Qzora aims for high availability, uninterrupted service
+                cannot be guaranteed.
+              </p>
+
+              <p>By registering, you acknowledge and agree to these terms.</p>
+            </div>
+
+            <button
+              onClick={() => setShowTerms(false)}
+              style={{
+                marginTop: 24,
+                width: "100%",
+                height: 48,
+                border: "none",
+                borderRadius: 12,
+                background: "#F59E0B",
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              I Understand
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

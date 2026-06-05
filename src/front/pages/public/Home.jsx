@@ -527,38 +527,6 @@ function Home() {
     [marqueeBase],
   );
 
-  if (loadingSettings || !heroReady) {
-    return (
-      <div
-        className="min-h-screen"
-        style={{
-          background: "#f5ead7",
-        }}
-      />
-    );
-  }
-
-  const handleExplore = () => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      navigate("/order");
-    } else {
-      navigate("/menu-preview");
-    }
-  };
-
-  const measureTitleStart = () => {
-    if (!heroTitleRef.current) return;
-    const rect = heroTitleRef.current.getBoundingClientRect();
-    const centerX = window.innerWidth / 2;
-    const centerY = window.innerHeight / 2;
-    setTitleStart({
-      x: centerX - (rect.left + rect.width / 2),
-      y: centerY - (rect.top + rect.height / 2),
-    });
-    setTitleMeasured(true);
-  };
-
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const urlToken = params.get("token");
@@ -617,6 +585,38 @@ function Home() {
       window.removeEventListener("resize", onResize);
     };
   }, [location.search, settings?.homepageAnimation]);
+
+  if (loadingSettings || !heroReady) {
+    return (
+      <div
+        className="min-h-screen"
+        style={{
+          background: "#f5ead7",
+        }}
+      />
+    );
+  }
+
+  const handleExplore = () => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      navigate("/order");
+    } else {
+      navigate("/menu-preview");
+    }
+  };
+
+  const measureTitleStart = () => {
+    if (!heroTitleRef.current) return;
+    const rect = heroTitleRef.current.getBoundingClientRect();
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+    setTitleStart({
+      x: centerX - (rect.left + rect.width / 2),
+      y: centerY - (rect.top + rect.height / 2),
+    });
+    setTitleMeasured(true);
+  };
 
   const animationOn = settings?.homepageAnimation === true;
 
