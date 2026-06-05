@@ -1,8 +1,10 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import api from "../api/api";
 import { useParams } from "react-router-dom";
 
 const WebsiteSettingsContext = createContext(null);
+
+const MAIN_TITLE = "Qzora - Restaurant QR Ordering Platform";
 
 const getSlugFromHost = () => {
   const host = window.location.hostname;
@@ -30,11 +32,32 @@ const getSlugFromHost = () => {
   return "";
 };
 
+const isRestaurantRoute = () => {
+  const host = window.location.hostname;
+  const path = window.location.pathname;
+
+  const isSuperAdmin = path.startsWith("/superadmin");
+
+  const isMainWebsite =
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "qzora.in" ||
+    host === "www.qzora.in" ||
+    host === "foodash.com" ||
+    host === "www.foodash.com";
+
+  return (
+    !isSuperAdmin &&
+    (path.startsWith("/r/") || path.startsWith("/admin") || !isMainWebsite)
+  );
+};
+
 export function WebsiteSettingsProvider({ children }) {
   const { restaurantSlug } = useParams();
 
-  const [settings, setSettings] = useState({});
+  const [settings, setSettings] = useState(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
+  const requestIdRef = useRef(0);
 
   const getSlug = () => {
     const fromUrl = restaurantSlug;
@@ -44,49 +67,7 @@ export function WebsiteSettingsProvider({ children }) {
     return fromUrl || fromHost || fromStorage || "white-house-cafe";
   };
 
-  useEffect(() => {
-    if (!settings) return;
-
-    const host = window.location.hostname;
-    const path = window.location.pathname;
-
-    const isSuperAdmin = path.startsWith("/superadmin");
-
-    const isQzoraMainWebsite =
-      host === "localhost" ||
-      host === "127.0.0.1" ||
-      host === "qzora.in" ||
-      host === "www.qzora.in";
-
-    const isFoodDashMainWebsite =
-      host === "foodash.com" || host === "www.foodash.com";
-
-    const isMainWebsite = isQzoraMainWebsite || isFoodDashMainWebsite;
-
-    const isRestaurantPage =
-      path.startsWith("/r/") ||
-      path.startsWith("/admin") ||
-      (!isMainWebsite && !isSuperAdmin);
-
-    if (!isRestaurantPage || isSuperAdmin) {
-      document.title = "Qzora - Restaurant QR Ordering Platform";
-
-      let favicon = document.querySelector("link[rel='icon']");
-      if (!favicon) {
-        favicon = document.createElement("link");
-        favicon.rel = "icon";
-        document.head.appendChild(favicon);
-      }
-
-      favicon.href = "/qzora_logo.png";
-      return;
-    }
-
-    document.title =
-      settings.browserTitle ||
-      settings.cafeName ||
-      "Restaurant Website - Qzora";
-
+  const setFavicon = (href) => {
     let favicon = document.querySelector("link[rel='icon']");
 
     if (!favicon) {
@@ -95,27 +76,63 @@ export function WebsiteSettingsProvider({ children }) {
       document.head.appendChild(favicon);
     }
 
-    favicon.href = settings.favicon || "/favicon.ico";
-  }, [settings]);
+    favicon.href = href;
+  };
+
+  useEffect(() => {
+    if (loadingSettings) return;
+
+    if (!isRestaurantRoute()) {
+      document.title = MAIN_TITLE;
+      setFavicon("/qzoralogo1.png");
+      return;
+    }
+
+    document.title =
+      settings?.browserTitle ||
+      settings?.cafeName ||
+      "Restaurant Website - Qzora";
+
+    setFavicon(settings?.favicon || "/favicon.ico");
+  }, [settings, loadingSettings]);
 
   const fetchPublicSettings = () => {
     const slug = getSlug();
+    const currentRequestId = requestIdRef.current + 1;
 
+    requestIdRef.current = currentRequestId;
     localStorage.setItem("restaurantSlug", slug);
-
     setLoadingSettings(true);
+
+    const start = Date.now();
+    const MIN_LOADING_MS = 100;
+    const MAX_LOADING_MS = 1200;
 
     return api
       .get(`/settings/public?slug=${slug}`)
       .then((res) => {
+        if (requestIdRef.current !== currentRequestId) return;
         setSettings(res.data || {});
       })
       .catch((err) => {
         console.log(err);
+        if (requestIdRef.current !== currentRequestId) return;
         setSettings({});
       })
       .finally(() => {
-        setLoadingSettings(false);
+        if (requestIdRef.current !== currentRequestId) return;
+
+        const elapsed = Date.now() - start;
+        const delay = Math.max(0, MIN_LOADING_MS - elapsed);
+
+        setTimeout(
+          () => {
+            if (requestIdRef.current === currentRequestId) {
+              setLoadingSettings(false);
+            }
+          },
+          Math.min(delay, MAX_LOADING_MS),
+        );
       });
   };
 
@@ -146,7 +163,7 @@ export function WebsiteSettingsProvider({ children }) {
   return (
     <WebsiteSettingsContext.Provider
       value={{
-        settings,
+        settings: settings || {},
         setSettings,
         loadingSettings,
         fetchPublicSettings,

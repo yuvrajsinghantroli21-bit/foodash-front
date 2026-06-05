@@ -20,12 +20,15 @@ function Navbar({ totalItems = 0 }) {
 
   const location = useLocation();
   const navigate = useNavigate();
+  const { settings = {}, loadingSettings } = useWebsiteSettings();
+
+  if (loadingSettings) {
+    return null;
+  }
 
   const table = localStorage.getItem("table");
   const token = localStorage.getItem("token");
   const hasSession = Boolean(token);
-
-  const { settings } = useWebsiteSettings();
 
   const cafeName = settings?.cafeName || "The White House Café";
   const logo = settings?.logo || defaultImg;
@@ -173,6 +176,9 @@ function Navbar({ totalItems = 0 }) {
             <img
               src={logo}
               alt={cafeName}
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
               className="object-cover w-full h-full"
             />
           </div>
@@ -323,6 +329,8 @@ function Navbar({ totalItems = 0 }) {
               <img
                 src={foodashLogo}
                 alt="FoodDash"
+                loading="lazy"
+                decoding="async"
                 className="object-contain w-auto h-16 pt-2 transition-all duration-300 opacity-85 hover:opacity-100 hover:scale-105"
               />
 
@@ -409,6 +417,8 @@ function Navbar({ totalItems = 0 }) {
                 <img
                   src={foodashLogo}
                   alt="FoodDash"
+                  loading="lazy"
+                  decoding="async"
                   className="object-contain w-auto h-16"
                 />
               </div>

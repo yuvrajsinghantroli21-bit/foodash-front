@@ -20,6 +20,7 @@ import {
   CreditCard,
   Bell,
   BellOff,
+  BellRing,
   Printer,
   Wallet,
   TicketPercent,
@@ -178,8 +179,10 @@ export default function AdminDashboard() {
   const [tick, setTick] = useState(0);
   const [settings, setSettings] = useState(null);
   const [page, setPage] = useState(1);
+  const [assistanceRequests, setAssistanceRequests] = useState([]);
 
   const audioRef = useRef(null);
+  const assistanceSeenRef = useRef(new Set());
 
   const getTokenFromOrders = (tableOrders = []) =>
     tableOrders[0]?.token ||
@@ -423,6 +426,92 @@ export default function AdminDashboard() {
       }
     };
 
+    const handleAssistanceRequested = (payload = {}) => {
+      const token =
+        payload.token || payload.sessionId || payload.tableSessionToken || "";
+
+      if (!token) return;
+
+      const requestKey = payload._id || payload.id || token;
+
+      setAssistanceRequests((prev) => {
+        const cleanPrev = prev.filter(Boolean);
+        const exists = cleanPrev.some(
+          (item) =>
+            (item._id || item.id || item.token) === requestKey ||
+            item.token === token,
+        );
+
+        if (exists) {
+          return cleanPrev.map((item) =>
+            (item._id || item.id || item.token) === requestKey ||
+            item.token === token
+              ? {
+                  ...item,
+                  ...payload,
+                  token,
+                  status: payload.status || "active",
+                  requestedAt:
+                    payload.requestedAt ||
+                    payload.createdAt ||
+                    item.requestedAt ||
+                    new Date().toISOString(),
+                }
+              : item,
+          );
+        }
+
+        return [
+          {
+            ...payload,
+            token,
+            table:
+              payload.table ||
+              payload.tableNumber ||
+              payload.tableKey ||
+              "Unknown",
+            status: payload.status || "active",
+            requestedAt:
+              payload.requestedAt ||
+              payload.createdAt ||
+              new Date().toISOString(),
+          },
+          ...cleanPrev,
+        ];
+      });
+
+      if (!assistanceSeenRef.current.has(requestKey)) {
+        assistanceSeenRef.current.add(requestKey);
+        toast.success(
+          `Table ${payload.table || payload.tableNumber || "—"} called assistance 🔔`,
+        );
+
+        if (soundEnabled && audioRef.current) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.play().catch(() => {});
+        }
+      }
+    };
+
+    const handleAssistanceCompleted = (payload = {}) => {
+      const token = payload.token || payload.sessionId || "";
+      const requestId = payload._id || payload.id || "";
+
+      setAssistanceRequests((prev) =>
+        prev.filter((item) => {
+          if (requestId && (item._id === requestId || item.id === requestId)) {
+            return false;
+          }
+
+          if (token && item.token === token) {
+            return false;
+          }
+
+          return true;
+        }),
+      );
+    };
+
     socket.on("new-order", handleNewOrder);
     socket.on("orderUpdated", handleOrderUpdated);
     socket.on("order-updated", handleOrderUpdated);
@@ -431,6 +520,8 @@ export default function AdminDashboard() {
     socket.on("checkout-requested", handleCheckoutRequest);
     socket.on("checkout-payment-method-selected", handleCheckoutRequest);
     socket.on("payment-paid", handleCheckoutRequest);
+    socket.on("assistance-requested", handleAssistanceRequested);
+    socket.on("assistance-completed", handleAssistanceCompleted);
 
     return () => {
       socket.off("new-order", handleNewOrder);
@@ -441,6 +532,8 @@ export default function AdminDashboard() {
       socket.off("checkout-requested", handleCheckoutRequest);
       socket.off("checkout-payment-method-selected", handleCheckoutRequest);
       socket.off("payment-paid", handleCheckoutRequest);
+      socket.off("assistance-requested", handleAssistanceRequested);
+      socket.off("assistance-completed", handleAssistanceCompleted);
     };
   }, [soundEnabled]);
 
@@ -510,6 +603,45 @@ export default function AdminDashboard() {
     .filter(Boolean);
 
   const checkoutRequestCount = checkoutRequests.length;
+
+  const activeAssistanceRequests = assistanceRequests
+    .filter(Boolean)
+    .filter(
+      (item) => String(item.status || "active").toLowerCase() !== "completed",
+    );
+
+  const assistanceRequestCount = activeAssistanceRequests.length;
+
+  const completeAssistance = (request) => {
+    if (!request?.token) return;
+
+    const optimisticKey = request._id || request.id || request.token;
+
+    setAssistanceRequests((prev) =>
+      prev.filter(
+        (item) =>
+          (item._id || item.id || item.token) !== optimisticKey &&
+          item.token !== request.token,
+      ),
+    );
+
+    api
+      .put(`/session/${request.token}/assistance/complete`, {
+        requestId: request._id || request.id || "",
+      })
+      .then(() => {
+        toast.success(`Assistance completed for Table ${request.table || "—"}`);
+      })
+      .catch((err) => {
+        console.log(err);
+        toast.error(
+          err.response?.data?.message ||
+            "Backend assistance complete route will be connected next.",
+        );
+
+        setAssistanceRequests((prev) => [request, ...prev]);
+      });
+  };
 
   const updateBatchStatus = (id, status) => {
     if (!id) return;
@@ -849,7 +981,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* STATS */}
-        <div className="grid grid-cols-1 gap-4 mb-5 sm:grid-cols-2 lg:grid-cols-6 lg:gap-6">
+        <div className="grid grid-cols-1 gap-4 mb-5 sm:grid-cols-2 lg:grid-cols-7 lg:gap-6">
           <StatCard
             icon={<Users size={28} />}
             value={activeTables}
@@ -891,7 +1023,94 @@ export default function AdminDashboard() {
             label="Checkout Requests"
             tone="orange"
           />
+
+          <StatCard
+            icon={<BellRing size={28} />}
+            value={assistanceRequestCount}
+            label="Assistance Calls"
+            tone={assistanceRequestCount > 0 ? "red" : "green"}
+          />
         </div>
+
+        {activeAssistanceRequests.length > 0 && (
+          <div className="mb-5 overflow-hidden rounded-2xl border border-red-200 bg-red-50/80 shadow-[0_10px_32px_rgba(239,68,68,0.12)]">
+            <div className="flex flex-col gap-2 px-5 py-4 border-b border-red-200/70 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-black text-red-900">
+                  <BellRing size={20} />
+                  Assistance Calls
+                </h2>
+                <p className="mt-1 text-sm font-semibold text-red-800/70">
+                  Customers need help at their table. Mark assisted after staff
+                  reaches the table.
+                </p>
+              </div>
+
+              <span className="rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-red-700 shadow-sm">
+                {activeAssistanceRequests.length} Active
+              </span>
+            </div>
+
+            <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+              {activeAssistanceRequests.map((request) => (
+                <div
+                  key={request._id || request.id || request.token}
+                  className="p-4 bg-white border border-red-200 shadow-sm rounded-2xl"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-red-600">
+                        Customer Assistance
+                      </p>
+
+                      <h3 className="mt-1 text-2xl font-black text-[#111936]">
+                        Table {request.table || request.tableNumber || "—"}
+                      </h3>
+                    </div>
+
+                    <span className="px-3 py-1 text-xs font-black text-red-600 rounded-full bg-red-50">
+                      Help Needed
+                    </span>
+                  </div>
+
+                  <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
+                    {request.message ||
+                      "Customer requested assistance at the table."}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3 mt-4">
+                    <div className="p-3 rounded-2xl bg-slate-50">
+                      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                        Requested
+                      </p>
+                      <p className="mt-1 text-sm font-black text-slate-700">
+                        {fmt(request.requestedAt || request.createdAt)}
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-slate-50">
+                      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                        Waiting
+                      </p>
+                      <p className="mt-1 text-sm font-black text-red-500">
+                        {elapsed(request.requestedAt || request.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => completeAssistance(request)}
+                    className="mt-4 flex min-h-[42px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
+                  >
+                    <CheckCircle2 size={16} />
+                    Mark Assisted
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {checkoutRequests.length > 0 && (
           <div className="mb-5 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/80 shadow-[0_10px_32px_rgba(217,119,6,0.12)]">
@@ -1059,6 +1278,14 @@ export default function AdminDashboard() {
               (checkoutPaymentMode === "cash" ||
                 tableBill.paymentMode === "cash");
 
+            const tableAssistanceRequests = activeAssistanceRequests.filter(
+              (request) =>
+                String(request.table || request.tableNumber || "") ===
+                String(tableKey),
+            );
+
+            const hasAssistanceRequest = tableAssistanceRequests.length > 0;
+
             return (
               <section
                 key={tableKey}
@@ -1097,6 +1324,13 @@ export default function AdminDashboard() {
                       <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-3 py-1 text-[11px] font-black text-emerald-700">
                         <CheckCircle2 size={13} />
                         Paid
+                      </span>
+                    )}
+
+                    {hasAssistanceRequest && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-3 py-1 text-[11px] font-black text-red-600">
+                        <BellRing size={13} />
+                        Assistance
                       </span>
                     )}
                   </div>
@@ -1394,7 +1628,6 @@ export default function AdminDashboard() {
 
                             <button
                               onClick={() => {
-                                updateBatchStatus(order._id, "served");
                                 serveOrder(order._id);
                               }}
                               className={`flex min-h-[42px] items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-black ${
@@ -1418,6 +1651,37 @@ export default function AdminDashboard() {
                         </div>
                       );
                     })}
+
+                    {hasAssistanceRequest && (
+                      <div className="p-4 mb-4 border border-red-200 rounded-2xl bg-red-50">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="flex items-center gap-2 text-sm font-black text-red-900">
+                              <BellRing size={16} />
+                              Customer called assistance
+                            </p>
+                            <p className="mt-1 text-xs font-semibold text-red-800/70">
+                              Requested{" "}
+                              {elapsed(
+                                tableAssistanceRequests[0]?.requestedAt ||
+                                  tableAssistanceRequests[0]?.createdAt,
+                              )}{" "}
+                              ago. Please assist the table.
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              completeAssistance(tableAssistanceRequests[0])
+                            }
+                            className="min-h-[42px] rounded-xl bg-emerald-600 px-4 py-2 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
+                          >
+                            Mark Assisted
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {checkoutRequested && (
                       <div className="p-4 mb-4 border rounded-2xl border-amber-200 bg-amber-50">

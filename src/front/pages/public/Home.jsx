@@ -394,7 +394,7 @@ function BrandTitle({
 function Home() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { settings = {} } = useWebsiteSettings() || {};
+  const { settings = {}, loadingSettings } = useWebsiteSettings() || {};
 
   const sessionHandledRef = useRef(false);
   const heroTitleRef = useRef(null);
@@ -434,6 +434,7 @@ function Home() {
   const heroButtonColor = settings?.heroButtonColor || "#14532d";
   const heroButtonTextColor = settings?.heroButtonTextColor || "#ffffff";
   const heroCardBgColor = settings?.heroCardBgColor || "#fffaf1";
+  const [heroReady, setHeroReady] = useState(false);
 
   const heroEyebrow =
     settings?.heroEyebrow || "Good Food. Good Mood. Great Memories.";
@@ -445,6 +446,27 @@ function Home() {
   const ctaText = settings?.ctaText || "Explore Our Menu";
   const secondaryCtaText = settings?.secondaryCtaText || "Scan. Choose. Relax.";
   const heroImage = settings?.heroImage || "";
+
+  useEffect(() => {
+    if (!heroImage) {
+      setHeroReady(true);
+      return;
+    }
+
+    setHeroReady(false);
+
+    const img = new Image();
+
+    img.src = heroImage;
+
+    img.onload = () => {
+      setHeroReady(true);
+    };
+
+    img.onerror = () => {
+      setHeroReady(true);
+    };
+  }, [heroImage]);
 
   const introWelcomeText = settings?.introWelcomeText || "Welcome to";
   const introMainWord = settings?.introMainWord || "Elegance.";
@@ -504,6 +526,17 @@ function Home() {
     () => [...marqueeBase, ...marqueeBase],
     [marqueeBase],
   );
+
+  if (loadingSettings || !heroReady) {
+    return (
+      <div
+        className="min-h-screen"
+        style={{
+          background: "#f5ead7",
+        }}
+      />
+    );
+  }
 
   const handleExplore = () => {
     const token = localStorage.getItem("token");
@@ -571,9 +604,9 @@ function Home() {
     const t2 = setTimeout(() => measureTitleStart(), 450);
     const onResize = () => measureTitleStart();
     window.addEventListener("resize", onResize);
-    const t3 = setTimeout(() => setCurtainLeaving(true), 3200);
-    const t4 = setTimeout(() => setShowIntro(false), 4300);
-    const t5 = setTimeout(() => setLoaded(true), 4650);
+    const t3 = setTimeout(() => setCurtainLeaving(true), 2400);
+    const t4 = setTimeout(() => setShowIntro(false), 3200);
+    const t5 = setTimeout(() => setLoaded(true), 3400);
 
     return () => {
       clearTimeout(t1);
@@ -708,6 +741,9 @@ function Home() {
                     <img
                       src={heroImage}
                       alt={cafeName}
+                      loading="eager"
+                      fetchPriority="high"
+                      decoding="async"
                       className="w-full h-full object-cover object-[58%_center] md:object-center"
                     />
                   </picture>

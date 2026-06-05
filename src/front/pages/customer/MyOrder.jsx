@@ -169,9 +169,14 @@ export default function MyOrder() {
   const [selectedBill, setSelectedBill] = useState(null);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
 
+  const [assistanceLoading, setAssistanceLoading] = useState(false);
+  const [assistanceRequested, setAssistanceRequested] = useState(false);
+  const [assistanceInfo, setAssistanceInfo] = useState(null);
+
   const completedRedirectStarted = useRef(false);
   const sessionExpiredHandled = useRef(false);
   const billTokenRef = useRef("");
+  const servedShownRef = useRef(new Set());
 
   const table = localStorage.getItem("table");
   const token = localStorage.getItem("token");
@@ -286,7 +291,12 @@ export default function MyOrder() {
         ),
       );
 
-      if (updatedOrder?.status === "served") {
+      if (
+        updatedOrder?.status === "served" &&
+        updatedOrder?._id &&
+        !servedShownRef.current.has(updatedOrder._id)
+      ) {
+        servedShownRef.current.add(updatedOrder._id);
         toast.success("One batch is served! 🍽️");
       }
     };
@@ -304,6 +314,14 @@ export default function MyOrder() {
 
       toast.success("Payment received ✅ Your paid bill is ready.");
       fetchSessionBill();
+    };
+
+    const handleAssistanceCompleted = (data) => {
+      if (data?.token !== token) return;
+
+      setAssistanceRequested(false);
+      setAssistanceInfo(null);
+      toast.success("Assistance completed. Thank you for waiting 🤍");
     };
 
     const handleSessionExpired = (data) => {
@@ -334,6 +352,7 @@ export default function MyOrder() {
     socket.on("order-updated", handleUpdate);
     socket.on("tables-current-updated", handleTableUpdate);
     socket.on("payment-paid", handlePaymentPaid);
+    socket.on("assistance-completed", handleAssistanceCompleted);
     socket.on("session-expired", handleSessionExpired);
 
     return () => {
@@ -341,6 +360,7 @@ export default function MyOrder() {
       socket.off("order-updated", handleUpdate);
       socket.off("tables-current-updated", handleTableUpdate);
       socket.off("payment-paid", handlePaymentPaid);
+      socket.off("assistance-completed", handleAssistanceCompleted);
       socket.off("session-expired", handleSessionExpired);
     };
   }, [token, navigate, checkoutMeta?.billToken]);
@@ -371,6 +391,48 @@ export default function MyOrder() {
 
     return () => clearTimeout(timer);
   }, [orders, navigate, checkoutMeta?.billToken]);
+
+  const requestAssistance = () => {
+    if (!token) {
+      toast.error("Session not found. Please scan QR again.");
+      return;
+    }
+
+    if (assistanceRequested) {
+      toast.success("Assistance is already on the way.");
+      return;
+    }
+
+    setAssistanceLoading(true);
+
+    api
+      .post(`/session/${token}/assistance`, {
+        table,
+        message: "Customer requested assistance at the table.",
+      })
+      .then((res) => {
+        const data = res.data || {};
+
+        setAssistanceRequested(true);
+        setAssistanceInfo({
+          requestedAt: data.requestedAt || new Date().toISOString(),
+          message:
+            data.message ||
+            "Assistance requested. A staff member will arrive shortly.",
+        });
+
+        toast.success("Assistance requested. Staff is on the way 🤍");
+      })
+      .catch((err) => {
+        toast.error(
+          err.response?.data?.message ||
+            "Assistance request is not active yet. Backend will be connected next.",
+        );
+      })
+      .finally(() => {
+        setAssistanceLoading(false);
+      });
+  };
 
   const applyCoupon = () => {
     const code = couponCode.trim().toUpperCase();
@@ -623,7 +685,7 @@ export default function MyOrder() {
   const finalTotal =
     sessionBill?.finalTotal !== undefined && sessionBill?.finalTotal !== null
       ? Number(sessionBill.finalTotal)
-      : Math.max(0, subtotal - discountAmount);
+      : Math.max(0, subtotal + chargesTotal - discountAmount);
 
   const activeCoupon = sessionBill?.coupon || null;
 
@@ -939,6 +1001,10 @@ export default function MyOrder() {
               totalBatches={totalBatches}
               totalItems={totalItems}
               billToken={billToken}
+              assistanceLoading={assistanceLoading}
+              assistanceRequested={assistanceRequested}
+              assistanceInfo={assistanceInfo}
+              requestAssistance={requestAssistance}
               onOpenBill={() =>
                 setSelectedBill({
                   orders,
@@ -1009,6 +1075,10 @@ function SessionBillCard({
   totalBatches,
   totalItems,
   billToken,
+  assistanceLoading,
+  assistanceRequested,
+  assistanceInfo,
+  requestAssistance,
   onOpenBill,
 }) {
   const couponLocked = checkoutStarted || isPaid;
@@ -1039,9 +1109,15 @@ function SessionBillCard({
           <button
             type="button"
             onClick={onOpenBill}
-            className="rounded-2xl bg-[#3d2412] px-5 py-3 text-sm font-black text-amber-100 shadow-lg transition hover:-translate-y-1 hover:bg-[#2c190d]"
+            className="group inline-flex items-center justify-center gap-2 rounded-[1.3rem] border border-amber-200 bg-[#fffaf1] px-5 py-3 text-left text-sm font-black text-[#3d2412] shadow-[0_12px_28px_rgba(61,36,18,0.10)] transition hover:-translate-y-1 hover:bg-amber-50"
           >
-            View Full Bill
+            <ReceiptText size={17} className="text-amber-700" />
+            <span>
+              Click me to see
+              <span className="block text-[11px] font-black uppercase tracking-[0.16em] text-amber-700">
+                full bill summary
+              </span>
+            </span>
           </button>
         </div>
 
@@ -1061,25 +1137,98 @@ function SessionBillCard({
           <button
             type="button"
             onClick={onOpenBill}
-            className="rounded-2xl bg-[#3d2412] p-4 text-left text-white transition hover:-translate-y-1"
+            className="group relative overflow-hidden rounded-2xl bg-[#3d2412] p-4 text-left text-white transition hover:-translate-y-1"
           >
-            <div className="flex items-center gap-2 mb-1 text-amber-200">
+            <div className="absolute w-24 h-24 transition rounded-full -right-8 -top-8 bg-amber-300/10 blur-2xl group-hover:bg-amber-300/20" />
+
+            <div className="relative flex items-center gap-2 mb-1 text-amber-200">
               <BadgeIndianRupee size={16} />
               <span className="text-xs font-bold text-amber-100/70">
                 Final Payable
               </span>
             </div>
 
-            <p className="text-3xl font-black tracking-tight text-amber-100">
+            <p className="relative text-3xl font-black tracking-tight text-amber-100">
               ₹{money(finalTotal)}
             </p>
 
+            <p className="relative mt-2 inline-flex rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-100">
+              Click to view full bill
+            </p>
+
             {discountAmount > 0 && (
-              <p className="mt-1 text-xs font-bold text-emerald-200">
+              <p className="relative mt-2 text-xs font-bold text-emerald-200">
                 Saved ₹{money(discountAmount)} on ₹{money(subtotal)}
               </p>
             )}
           </button>
+        </div>
+
+        <div className="mt-5 rounded-[1.7rem] border border-amber-100 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${
+                  assistanceRequested
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-amber-50 text-amber-700"
+                }`}
+              >
+                {assistanceRequested ? (
+                  <ShieldCheck size={20} />
+                ) : (
+                  <BellRing size={20} />
+                )}
+              </div>
+
+              <div>
+                <p className="text-sm font-black text-[#241309]">
+                  {assistanceRequested
+                    ? "Assistance is on the way"
+                    : "Need help at your table?"}
+                </p>
+
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                  {assistanceRequested
+                    ? "Please stay seated. A staff member will arrive shortly."
+                    : "Call staff for water, cutlery, payment help, or any quick request."}
+                </p>
+
+                {assistanceInfo?.requestedAt && (
+                  <p className="mt-1 text-[11px] font-bold text-emerald-700">
+                    Requested at{" "}
+                    {new Date(assistanceInfo.requestedAt).toLocaleTimeString(
+                      [],
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      },
+                    )}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={requestAssistance}
+              disabled={assistanceLoading || assistanceRequested}
+              className={`inline-flex min-h-[46px] items-center justify-center gap-2 rounded-2xl px-5 text-sm font-black shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 ${
+                assistanceRequested
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-[#3d2412] text-amber-100"
+              }`}
+            >
+              {assistanceLoading ? (
+                <Loader2 size={17} className="animate-spin" />
+              ) : assistanceRequested ? (
+                <ShieldCheck size={17} />
+              ) : (
+                <BellRing size={17} />
+              )}
+              {assistanceRequested ? "Staff Notified" : "Call Assistance"}
+            </button>
+          </div>
         </div>
 
         <div className="mt-5 rounded-[1.7rem] border border-amber-100 bg-[#fffaf1] p-4">
@@ -1190,6 +1339,73 @@ function SessionBillCard({
             <span className="text-3xl font-black tracking-tight text-emerald-700">
               ₹{money(finalTotal)}
             </span>
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-[1.7rem] border border-amber-100 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${
+                  assistanceRequested
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-amber-50 text-amber-700"
+                }`}
+              >
+                {assistanceRequested ? (
+                  <ShieldCheck size={20} />
+                ) : (
+                  <BellRing size={20} />
+                )}
+              </div>
+
+              <div>
+                <p className="text-sm font-black text-[#241309]">
+                  {assistanceRequested
+                    ? "Assistance is on the way"
+                    : "Need help at your table?"}
+                </p>
+
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                  {assistanceRequested
+                    ? "Please stay seated. A staff member will arrive shortly."
+                    : "Call staff for water, cutlery, payment help, or any quick request."}
+                </p>
+
+                {assistanceInfo?.requestedAt && (
+                  <p className="mt-1 text-[11px] font-bold text-emerald-700">
+                    Requested at{" "}
+                    {new Date(assistanceInfo.requestedAt).toLocaleTimeString(
+                      [],
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      },
+                    )}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={requestAssistance}
+              disabled={assistanceLoading || assistanceRequested}
+              className={`inline-flex min-h-[46px] items-center justify-center gap-2 rounded-2xl px-5 text-sm font-black shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 ${
+                assistanceRequested
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-[#3d2412] text-amber-100"
+              }`}
+            >
+              {assistanceLoading ? (
+                <Loader2 size={17} className="animate-spin" />
+              ) : assistanceRequested ? (
+                <ShieldCheck size={17} />
+              ) : (
+                <BellRing size={17} />
+              )}
+              {assistanceRequested ? "Staff Notified" : "Call Assistance"}
+            </button>
           </div>
         </div>
 

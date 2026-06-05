@@ -397,7 +397,15 @@ function HeroSection() {
         }}
       />
 
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(247,239,228,0.38)_0%,rgba(247,239,228,0.24)_34%,rgba(247,239,228,0.06)_58%,rgba(37,18,7,0.50)_100%)]" />
+      <div
+        className="absolute inset-0 bg-[linear-gradient(
+90deg,
+rgba(247,239,228,0.65)_0%,
+rgba(247,239,228,0.48)_34%,
+rgba(247,239,228,0.12)_58%,
+rgba(37,18,7,0.55)_100%
+)]"
+      />
 
       <div className="absolute hidden w-64 h-64 rounded-full pointer-events-none -bottom-12 -left-16 bg-emerald-900/24 blur-3xl lg:block" />
 
@@ -420,7 +428,7 @@ function HeroSection() {
 
           <motion.p
             variants={fadeUp}
-            className="mt-7 max-w-[570px] text-[clamp(1rem,1.15vw,1.13rem)] font-medium leading-[1.7] text-[#665342]"
+            className="mt-7 max-w-[570px] text-[clamp(1rem,1.15vw,1.13rem)] font-medium leading-[1.7] text-[#fff8ed] drop-shadow-[0_4px_18px_rgba(0,0,0,0.55)]"
           >
             QR ordering, digital menu, kitchen management and analytics —
             everything you need to run your restaurant smarter.
@@ -491,7 +499,7 @@ function HeroSection() {
         initial={{ opacity: 0, y: 22, x: "-50%" }}
         animate={{ opacity: 1, y: 0, x: "-50%" }}
         transition={{ duration: 0.8, delay: 0.85 }}
-        className="hidden lg:absolute lg:bottom-8 lg:left-1/2 lg:z-50 lg:grid lg:w-[min(100%-2rem,70rem)] lg:-translate-x-1/2 lg:grid-cols-4 lg:overflow-hidden lg:rounded-[1.65rem] lg:border lg:border-[#e7d5bc] lg:bg-[#fff8ed] lg:px-5 lg:py-5 lg:shadow-[0_28px_70px_rgba(66,33,10,0.13)]"
+        className="hidden lg:absolute lg:bottom-8 lg:left-1/2 lg:z-10 lg:grid lg:w-[min(100%-2rem,70rem)] lg:-translate-x-1/2 lg:grid-cols-4 lg:overflow-hidden lg:rounded-[1.65rem] lg:border lg:border-[#e7d5bc] lg:bg-[#fff8ed] lg:px-5 lg:py-5 lg:shadow-[0_28px_70px_rgba(66,33,10,0.13)]"
       >
         <StatPill
           icon={<Coffee size={21} />}
