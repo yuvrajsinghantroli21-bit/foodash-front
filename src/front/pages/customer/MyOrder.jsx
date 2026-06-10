@@ -737,7 +737,10 @@ export default function MyOrder() {
     ? sessionBill.billChargesSnapshot
     : [];
 
-  const chargesTotal = Number(sessionBill?.chargesTotal || 0);
+  const chargesTotal = charges.reduce(
+    (sum, charge) => sum + Number(charge.amount || 0),
+    0,
+  );
 
   const finalTotal =
     sessionBill?.finalTotal !== undefined && sessionBill?.finalTotal !== null
@@ -1825,7 +1828,9 @@ function CustomerBillMiniBox({
 
   const charges = isFullBill ? sessionBill?.billChargesSnapshot || [] : [];
 
-  const chargesTotal = isFullBill ? Number(sessionBill?.chargesTotal || 0) : 0;
+  const chargesTotal = isFullBill
+    ? charges.reduce((sum, charge) => sum + Number(charge.amount || 0), 0)
+    : 0;
 
   return (
     <div className="fixed inset-0 z-[9999] overflow-y-auto bg-black/45 px-3 py-4 backdrop-blur-sm sm:px-4 sm:py-8">
