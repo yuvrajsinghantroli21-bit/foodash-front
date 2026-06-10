@@ -481,7 +481,7 @@ rgba(37,18,7,0.55)_100%
                   <Star key={index} size={16} fill="currentColor" />
                 ))}
               </div>
-              <p className="mt-1 text-sm font-bold text-[#5f4d3e]">
+              <p className="mt-1 text-sm font-bold text-[#fff8ed] drop-shadow-[0_4px_18px_rgba(0,0,0,0.55)]">
                 Trusted by 500+ restaurants
               </p>
             </div>

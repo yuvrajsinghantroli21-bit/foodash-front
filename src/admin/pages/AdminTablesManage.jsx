@@ -112,7 +112,7 @@ function TableQrCard({ table, onDelete }) {
         <body>
           <div class="card">
             <h1>Table ${table.tableNumber}</h1>
-            <p>Scan to open FoodDash menu</p>
+            <p>Scan to open Qzora menu</p>
             <img src="${img}" />
             <div class="footer">The White House Café</div>
           </div>

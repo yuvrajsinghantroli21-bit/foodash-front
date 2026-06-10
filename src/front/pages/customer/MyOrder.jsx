@@ -1828,177 +1828,180 @@ function CustomerBillMiniBox({
   const chargesTotal = isFullBill ? Number(sessionBill?.chargesTotal || 0) : 0;
 
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
-        <div className="flex items-start justify-between gap-4 border-b border-amber-100 bg-[#fffaf1] px-5 py-4">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">
-              Bill Summary
-            </p>
+    <div className="fixed inset-0 z-[9999] overflow-y-auto bg-black/45 px-3 py-4 backdrop-blur-sm sm:px-4 sm:py-8">
+      <div className="flex items-start justify-center w-full max-w-2xl min-h-full mx-auto sm:items-center">
+        <div className="relative my-auto flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-[1.6rem] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.25)] sm:rounded-[2rem]">
+          <div className="flex items-start justify-between gap-4 border-b border-amber-100 bg-[#fffaf1] px-5 py-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">
+                Bill Summary
+              </p>
 
-            <h2 className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#241309]">
-              {data.title}
-            </h2>
+              <h2 className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#241309]">
+                {data.title}
+              </h2>
 
-            <p className="mt-1 text-xs font-semibold text-slate-400">
-              Table {table || "—"} · {orders.length} batch
-              {orders.length !== 1 ? "es" : ""}
-            </p>
+              <p className="mt-1 text-xs font-semibold text-slate-400">
+                Table {table || "—"} · {orders.length} batch
+                {orders.length !== 1 ? "es" : ""}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center justify-center w-10 h-10 transition bg-white rounded-full shadow-sm text-slate-500 hover:bg-red-50 hover:text-red-500"
+            >
+              <X size={18} />
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex items-center justify-center w-10 h-10 transition bg-white rounded-full shadow-sm text-slate-500 hover:bg-red-50 hover:text-red-500"
-          >
-            <X size={18} />
-          </button>
-        </div>
+          <div className="flex-1 min-h-0 px-5 py-4 overflow-y-auto">
+            <div className="space-y-5">
+              {orders.map((order, batchIndex) => (
+                <div
+                  key={order._id || batchIndex}
+                  className="p-4 bg-white border shadow-sm rounded-3xl border-amber-100"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div>
+                      <h3 className="text-sm font-black text-[#241309]">
+                        Batch #{batchIndex + 1}
+                      </h3>
+                      <p className="mt-1 text-[11px] font-semibold text-slate-400">
+                        Batch Total ₹{money(getOrderTotal(order))}
+                      </p>
+                    </div>
+                  </div>
 
-        <div className="max-h-[62vh] overflow-y-auto px-5 py-4">
-          <div className="space-y-5">
-            {orders.map((order, batchIndex) => (
-              <div
-                key={order._id || batchIndex}
-                className="p-4 bg-white border shadow-sm rounded-3xl border-amber-100"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                  <div>
-                    <h3 className="text-sm font-black text-[#241309]">
-                      Batch #{batchIndex + 1}
-                    </h3>
-                    <p className="mt-1 text-[11px] font-semibold text-slate-400">
-                      Batch Total ₹{money(getOrderTotal(order))}
-                    </p>
+                  <div className="space-y-3">
+                    {(order.items || []).map((item, index) => {
+                      const image = getImage(item);
+                      const itemTotal =
+                        Number(item.price || 0) * Number(item.qty || 1);
+
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 rounded-2xl bg-[#fbfaf8] p-3"
+                        >
+                          <div className="flex items-center justify-center w-12 h-12 overflow-hidden bg-white shrink-0 rounded-2xl">
+                            {image ? (
+                              <img
+                                src={image}
+                                alt={item.name}
+                                className="object-cover w-full h-full"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <span className="text-xl">🍽</span>
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate text-sm font-black text-[#241309]">
+                              {item.name}
+                            </p>
+
+                            <p className="mt-1 text-xs font-semibold text-slate-400">
+                              ₹{Number(item.price || 0)} ×{" "}
+                              {Number(item.qty || 1)}
+                            </p>
+
+                            {item.note && (
+                              <p className="mt-1 truncate text-[11px] font-semibold text-amber-700">
+                                Note: {item.note}
+                              </p>
+                            )}
+                          </div>
+
+                          <p className="text-sm font-black text-slate-700">
+                            ₹{money(itemTotal)}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                <div className="space-y-3">
-                  {(order.items || []).map((item, index) => {
-                    const image = getImage(item);
-                    const itemTotal =
-                      Number(item.price || 0) * Number(item.qty || 1);
+          <div className="border-t border-amber-100 bg-[#fffaf1] px-5 py-4">
+            <div className="p-4 space-y-2 bg-white rounded-3xl">
+              <PriceRow label="Subtotal" value={subtotal} />
+              {charges.map((charge, index) => (
+                <PriceRow
+                  key={index}
+                  label={charge.name}
+                  value={Number(charge.amount || 0)}
+                />
+              ))}
 
-                    return (
-                      <div
-                        key={index}
-                        className="flex items-center gap-3 rounded-2xl bg-[#fbfaf8] p-3"
-                      >
-                        <div className="flex items-center justify-center w-12 h-12 overflow-hidden bg-white shrink-0 rounded-2xl">
-                          {image ? (
-                            <img
-                              src={image}
-                              alt={item.name}
-                              className="object-cover w-full h-full"
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                              }}
-                            />
-                          ) : (
-                            <span className="text-xl">🍽</span>
-                          )}
-                        </div>
+              {charges.length > 0 && (
+                <PriceRow label="Total Charges" value={chargesTotal} />
+              )}
 
-                        <div className="flex-1 min-w-0">
-                          <p className="truncate text-sm font-black text-[#241309]">
-                            {item.name}
-                          </p>
+              {coupon?.code && discount > 0 && (
+                <PriceRow
+                  label={`Coupon ${coupon.code}`}
+                  value={-Math.round(discount)}
+                  discount
+                />
+              )}
 
-                          <p className="mt-1 text-xs font-semibold text-slate-400">
-                            ₹{Number(item.price || 0)} × {Number(item.qty || 1)}
-                          </p>
+              <div className="my-3 border-t border-dashed border-slate-200" />
 
-                          {item.note && (
-                            <p className="mt-1 truncate text-[11px] font-semibold text-amber-700">
-                              Note: {item.note}
-                            </p>
-                          )}
-                        </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-black uppercase tracking-[0.12em] text-[#241309]">
+                  Final Payable
+                </span>
 
-                        <p className="text-sm font-black text-slate-700">
-                          ₹{money(itemTotal)}
-                        </p>
-                      </div>
-                    );
-                  })}
+                <span className="text-3xl font-black tracking-tight text-emerald-700">
+                  ₹{money(finalTotal)}
+                </span>
+              </div>
+            </div>
+
+            {isFullBill && (
+              <div className="px-4 py-3 mt-4 bg-white rounded-2xl">
+                <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-black">
+                  <span className="inline-flex items-center gap-2 text-[#7b5b42]">
+                    {paymentMode === "Online" ? (
+                      <CreditCard size={15} />
+                    ) : (
+                      <Wallet size={15} />
+                    )}
+                    {paymentMode}
+                  </span>
+
+                  <span
+                    className={`rounded-full px-3 py-1 ${
+                      paymentStatus === "Paid"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-red-100 text-red-600"
+                    }`}
+                  >
+                    {paymentStatus}
+                  </span>
                 </div>
+
+                {sessionBill?.razorpayPaymentId && (
+                  <p className="mt-2 text-[11px] font-bold text-slate-400 break-all">
+                    Payment ID: {sessionBill.razorpayPaymentId}
+                  </p>
+                )}
+
+                {sessionBill?.razorpayOrderId && (
+                  <p className="mt-1 text-[11px] font-bold text-slate-400 break-all">
+                    Order ID: {sessionBill.razorpayOrderId}
+                  </p>
+                )}
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="border-t border-amber-100 bg-[#fffaf1] px-5 py-4">
-          <div className="p-4 space-y-2 bg-white rounded-3xl">
-            <PriceRow label="Subtotal" value={subtotal} />
-            {charges.map((charge, index) => (
-              <PriceRow
-                key={index}
-                label={charge.name}
-                value={Number(charge.amount || 0)}
-              />
-            ))}
-
-            {charges.length > 0 && (
-              <PriceRow label="Total Charges" value={chargesTotal} />
             )}
-
-            {coupon?.code && discount > 0 && (
-              <PriceRow
-                label={`Coupon ${coupon.code}`}
-                value={-Math.round(discount)}
-                discount
-              />
-            )}
-
-            <div className="my-3 border-t border-dashed border-slate-200" />
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-black uppercase tracking-[0.12em] text-[#241309]">
-                Final Payable
-              </span>
-
-              <span className="text-3xl font-black tracking-tight text-emerald-700">
-                ₹{money(finalTotal)}
-              </span>
-            </div>
           </div>
-
-          {isFullBill && (
-            <div className="px-4 py-3 mt-4 bg-white rounded-2xl">
-              <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-black">
-                <span className="inline-flex items-center gap-2 text-[#7b5b42]">
-                  {paymentMode === "Online" ? (
-                    <CreditCard size={15} />
-                  ) : (
-                    <Wallet size={15} />
-                  )}
-                  {paymentMode}
-                </span>
-
-                <span
-                  className={`rounded-full px-3 py-1 ${
-                    paymentStatus === "Paid"
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-red-100 text-red-600"
-                  }`}
-                >
-                  {paymentStatus}
-                </span>
-              </div>
-
-              {sessionBill?.razorpayPaymentId && (
-                <p className="mt-2 text-[11px] font-bold text-slate-400 break-all">
-                  Payment ID: {sessionBill.razorpayPaymentId}
-                </p>
-              )}
-
-              {sessionBill?.razorpayOrderId && (
-                <p className="mt-1 text-[11px] font-bold text-slate-400 break-all">
-                  Order ID: {sessionBill.razorpayOrderId}
-                </p>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>
