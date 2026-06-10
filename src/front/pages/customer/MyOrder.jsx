@@ -29,6 +29,47 @@ import {
 
 const money = (value) => Math.round(Number(value || 0)).toLocaleString("en-IN");
 
+const getItemStatus = (item, fallback = "pending") => {
+  const raw = String(
+    item?.itemStatus || item?.status || fallback || "pending",
+  ).toLowerCase();
+  if (["served", "preparing", "pending"].includes(raw)) return raw;
+  return "pending";
+};
+
+const getBatchStatus = (order) => {
+  const items = Array.isArray(order?.items) ? order.items : [];
+  if (items.length === 0) return order?.status || "pending";
+
+  const statuses = items.map((item) =>
+    getItemStatus(item, order?.status || "pending"),
+  );
+
+  if (statuses.every((status) => status === "served")) return "served";
+  if (
+    statuses.some((status) => status === "preparing" || status === "served")
+  ) {
+    return "preparing";
+  }
+
+  return order?.status || "pending";
+};
+
+const saveBillTokenForSession = (sessionToken, billToken) => {
+  if (!sessionToken || !billToken) return;
+  localStorage.setItem(`qzora_bill_token_${sessionToken}`, billToken);
+  localStorage.setItem("qzora_last_bill_token", billToken);
+};
+
+const getSavedBillTokenForSession = (sessionToken) => {
+  if (!sessionToken) return localStorage.getItem("qzora_last_bill_token") || "";
+  return (
+    localStorage.getItem(`qzora_bill_token_${sessionToken}`) ||
+    localStorage.getItem("qzora_last_bill_token") ||
+    ""
+  );
+};
+
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
     if (window.Razorpay) {
@@ -152,6 +193,81 @@ const StatusBanner = ({ status }) => {
   return null;
 };
 
+function ItemStatusPill({ status }) {
+  const safeStatus = getItemStatus({ itemStatus: status });
+
+  const config = {
+    pending: {
+      label: "Pending",
+      icon: <Timer size={12} />,
+      cls: "border-amber-200 bg-amber-50 text-amber-700",
+    },
+    preparing: {
+      label: "Preparing",
+      icon: <ChefHat size={12} />,
+      cls: "border-orange-200 bg-orange-50 text-orange-700",
+    },
+    served: {
+      label: "Served",
+      icon: <CheckCircle2 size={12} />,
+      cls: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    },
+  };
+
+  const item = config[safeStatus] || config.pending;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${item.cls}`}
+    >
+      {item.icon}
+      {item.label}
+    </span>
+  );
+}
+
+export function CustomerSessionCompletionWatcher() {
+  const navigate = useNavigate();
+  const handledRef = useRef(false);
+
+  useEffect(() => {
+    const handleSessionExpired = (data = {}) => {
+      const currentToken = localStorage.getItem("token");
+      const incomingToken =
+        data?.token || data?.sessionId || data?.tableSessionToken || "";
+
+      if (!currentToken || (incomingToken && incomingToken !== currentToken))
+        return;
+      if (handledRef.current) return;
+
+      handledRef.current = true;
+
+      const finalBillToken =
+        data?.billToken || getSavedBillTokenForSession(currentToken);
+
+      if (finalBillToken) saveBillTokenForSession(currentToken, finalBillToken);
+
+      localStorage.removeItem("token");
+      localStorage.removeItem("table");
+
+      navigate(
+        finalBillToken ? `/thank-you?bill=${finalBillToken}` : "/thank-you",
+        {
+          replace: true,
+        },
+      );
+    };
+
+    socket.on("session-expired", handleSessionExpired);
+
+    return () => {
+      socket.off("session-expired", handleSessionExpired);
+    };
+  }, [navigate]);
+
+  return null;
+}
+
 export default function MyOrder() {
   const navigate = useNavigate();
 
@@ -261,6 +377,7 @@ export default function MyOrder() {
 
         if (meta.billToken) {
           billTokenRef.current = meta.billToken;
+          saveBillTokenForSession(token, meta.billToken);
         }
 
         if (res.data.bill?.coupon?.code) {
@@ -300,12 +417,12 @@ export default function MyOrder() {
       );
 
       if (
-        updatedOrder?.status === "served" &&
+        getBatchStatus(updatedOrder) === "served" &&
         updatedOrder?._id &&
         !servedShownRef.current.has(updatedOrder._id)
       ) {
         servedShownRef.current.add(updatedOrder._id);
-        toast.success("One batch is served! 🍽️");
+        toast.success("One batch is fully served! 🍽️");
       }
     };
 
@@ -318,6 +435,7 @@ export default function MyOrder() {
 
       if (data?.billToken) {
         billTokenRef.current = data.billToken;
+        saveBillTokenForSession(token, data.billToken);
       }
 
       toast.success("Payment received ✅ Your paid bill is ready.");
@@ -351,7 +469,10 @@ export default function MyOrder() {
         data?.billToken ||
         billTokenRef.current ||
         checkoutMeta?.billToken ||
+        getSavedBillTokenForSession(token) ||
         "";
+
+      if (finalBillToken) saveBillTokenForSession(token, finalBillToken);
 
       toast.success("Session completed. Thank you! 🙏");
       localStorage.removeItem("token");
@@ -395,7 +516,12 @@ export default function MyOrder() {
 
     const timer = setTimeout(() => {
       const finalBillToken =
-        billTokenRef.current || checkoutMeta?.billToken || "";
+        billTokenRef.current ||
+        checkoutMeta?.billToken ||
+        getSavedBillTokenForSession(token) ||
+        "";
+
+      if (finalBillToken) saveBillTokenForSession(token, finalBillToken);
 
       localStorage.removeItem("token");
       localStorage.removeItem("table");
@@ -549,6 +675,7 @@ export default function MyOrder() {
 
         if (data?.billToken) {
           billTokenRef.current = data.billToken;
+          saveBillTokenForSession(token, data.billToken);
         }
 
         setCheckoutMeta((prev) => ({
@@ -587,6 +714,7 @@ export default function MyOrder() {
 
     if (data?.billToken) {
       billTokenRef.current = data.billToken;
+      saveBillTokenForSession(token, data.billToken);
     }
 
     setCheckoutMeta((prev) => ({
@@ -917,7 +1045,7 @@ export default function MyOrder() {
         {token && orders.length > 0 && (
           <div className="mt-8 space-y-5">
             {orders.map((order, index) => {
-              const safeStatus = order.status || "pending";
+              const safeStatus = getBatchStatus(order);
               const batchTotal = getOrderTotal(order);
 
               const time = new Date(order.createdAt).toLocaleTimeString([], {
@@ -962,9 +1090,13 @@ export default function MyOrder() {
                   <div className="px-4 divide-y divide-amber-100/70">
                     {(order.items || []).map((item, i) => {
                       const image = getImage(item);
+                      const itemStatus = getItemStatus(item, safeStatus);
 
                       return (
-                        <div key={i} className="flex items-center gap-3 py-4">
+                        <div
+                          key={i}
+                          className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center"
+                        >
                           <div className="flex items-center justify-center w-16 h-16 overflow-hidden shadow-inner shrink-0 rounded-2xl bg-amber-50">
                             {image ? (
                               <img
@@ -998,12 +1130,16 @@ export default function MyOrder() {
                             </div>
                           </div>
 
-                          <p className="shrink-0 text-sm font-black text-[#241309]">
-                            ₹
-                            {money(
-                              Number(item.price || 0) * Number(item.qty || 1),
-                            )}
-                          </p>
+                          <div className="flex items-center justify-between gap-3 shrink-0 sm:flex-col sm:items-end">
+                            <ItemStatusPill status={itemStatus} />
+
+                            <p className="text-sm font-black text-[#241309]">
+                              ₹
+                              {money(
+                                Number(item.price || 0) * Number(item.qty || 1),
+                              )}
+                            </p>
+                          </div>
                         </div>
                       );
                     })}
@@ -1678,106 +1814,109 @@ function CheckoutModal({
   onPayAtTable,
 }) {
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/55 px-4 backdrop-blur-md">
-      <div className="w-full max-w-3xl overflow-hidden rounded-[2.4rem] bg-[#fffaf1] shadow-[0_28px_90px_rgba(0,0,0,0.35)]">
-        <div className="relative px-5 py-5 text-center border-b border-amber-100 sm:px-8">
+    <div className="fixed inset-0 z-[1000] overflow-y-auto bg-black/55 px-3 py-4 backdrop-blur-md sm:px-4 sm:py-8">
+      <div className="flex items-start justify-center min-h-full sm:items-center">
+        <div className="relative w-full max-w-2xl overflow-hidden rounded-[1.7rem] bg-[#fffaf1] shadow-[0_28px_90px_rgba(0,0,0,0.35)] sm:rounded-[2.4rem]">
           <button
             type="button"
             onClick={onClose}
-            className="absolute flex items-center justify-center w-10 h-10 transition bg-white rounded-full shadow-sm right-4 top-4 text-slate-500 hover:bg-red-50 hover:text-red-500"
+            aria-label="Close checkout modal"
+            className="fixed right-4 top-4 z-[1002] flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-500 shadow-xl transition hover:bg-red-50 hover:text-red-500 sm:absolute sm:right-5 sm:top-5"
           >
-            <X size={18} />
+            <X size={19} />
           </button>
 
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-amber-700">
-            Request Checkout
-          </p>
+          <div className="relative px-5 py-5 text-center border-b border-amber-100 sm:px-8">
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-amber-700">
+              Request Checkout
+            </p>
 
-          <h2 className="mt-2 text-3xl font-black tracking-[-0.05em] text-[#241309] sm:text-4xl">
-            Choose Payment Method
-          </h2>
+            <h2 className="mt-2 text-3xl font-black tracking-[-0.05em] text-[#241309] sm:text-4xl">
+              Choose Payment Method
+            </h2>
 
-          <p className="mx-auto mt-2 max-w-md text-sm font-semibold leading-6 text-[#7b5b42]">
-            Your table will be locked for checkout. New items cannot be added
-            after this step.
-          </p>
+            <p className="mx-auto mt-2 max-w-md text-sm font-semibold leading-6 text-[#7b5b42]">
+              Your table will be locked for checkout. New items cannot be added
+              after this step.
+            </p>
 
-          <div className="inline-flex items-center gap-2 px-5 py-2 mx-auto mt-4 text-sm font-black bg-white rounded-full shadow-sm text-emerald-700">
-            <IndianRupee size={16} />
-            Payable ₹{money(finalTotal)}
+            <div className="inline-flex items-center gap-2 px-5 py-2 mx-auto mt-4 text-sm font-black bg-white rounded-full shadow-sm text-emerald-700">
+              <IndianRupee size={16} />
+              Payable ₹{money(finalTotal)}
+            </div>
           </div>
-        </div>
 
-        <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
-          <button
-            type="button"
-            onClick={onPayOnline}
-            disabled={paymentLoading}
-            className="group rounded-[2rem] border border-emerald-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-emerald-50 text-emerald-700 transition group-hover:scale-105">
-              {paymentLoading ? (
-                <Loader2 size={26} className="animate-spin" />
-              ) : (
-                <Smartphone size={28} />
-              )}
-            </div>
+          <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
+            <button
+              type="button"
+              onClick={onPayOnline}
+              disabled={paymentLoading}
+              className="group rounded-[2rem] border border-emerald-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-emerald-50 text-emerald-700 transition group-hover:scale-105">
+                {paymentLoading ? (
+                  <Loader2 size={26} className="animate-spin" />
+                ) : (
+                  <Smartphone size={28} />
+                )}
+              </div>
 
-            <h3 className="text-2xl font-black tracking-[-0.04em] text-[#241309]">
-              Pay Online
-            </h3>
+              <h3 className="text-2xl font-black tracking-[-0.04em] text-[#241309]">
+                Pay Online
+              </h3>
 
-            <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
-              Pay instantly using UPI, cards, wallets, or net banking. Your bill
-              will be marked paid after successful payment.
-            </p>
+              <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+                Pay instantly using UPI, cards, wallets, or net banking. Your
+                bill will be marked paid after successful payment.
+              </p>
 
-            <div className="flex flex-wrap gap-2 mt-5">
-              {["UPI", "Cards", "Wallets"].map((item) => (
-                <span
-                  key={item}
-                  className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700"
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
-          </button>
+              <div className="flex flex-wrap gap-2 mt-5">
+                {["UPI", "Cards", "Wallets"].map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </button>
 
-          <button
-            type="button"
-            onClick={onPayAtTable}
-            disabled={paymentLoading}
-            className="group rounded-[2rem] border border-amber-100 bg-[#3d2412] p-5 text-left text-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-amber-100 text-[#3d2412] transition group-hover:scale-105">
-              {paymentLoading ? (
-                <Loader2 size={26} className="animate-spin" />
-              ) : (
-                <Wallet size={28} />
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={onPayAtTable}
+              disabled={paymentLoading}
+              className="group rounded-[2rem] border border-amber-100 bg-[#3d2412] p-5 text-left text-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-amber-100 text-[#3d2412] transition group-hover:scale-105">
+                {paymentLoading ? (
+                  <Loader2 size={26} className="animate-spin" />
+                ) : (
+                  <Wallet size={28} />
+                )}
+              </div>
 
-            <h3 className="text-2xl font-black tracking-[-0.04em] text-amber-50">
-              Pay at Table
-            </h3>
+              <h3 className="text-2xl font-black tracking-[-0.04em] text-amber-50">
+                Pay at Table
+              </h3>
 
-            <p className="mt-2 text-sm font-semibold leading-6 text-amber-100/75">
-              A staff member will be notified and will arrive at your table to
-              collect payment. Please keep your bill amount ready.
-            </p>
+              <p className="mt-2 text-sm font-semibold leading-6 text-amber-100/75">
+                A staff member will be notified and will arrive at your table to
+                collect payment. Please keep your bill amount ready.
+              </p>
 
-            <div className="flex flex-wrap gap-2 mt-5">
-              {["Cash", "UPI to Staff", "Card Machine"].map((item) => (
-                <span
-                  key={item}
-                  className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-100"
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
-          </button>
+              <div className="flex flex-wrap gap-2 mt-5">
+                {["Cash", "UPI to Staff", "Card Machine"].map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-100"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1884,6 +2023,10 @@ function CustomerBillMiniBox({
                       const image = getImage(item);
                       const itemTotal =
                         Number(item.price || 0) * Number(item.qty || 1);
+                      const itemStatus = getItemStatus(
+                        item,
+                        getBatchStatus(order),
+                      );
 
                       return (
                         <div
@@ -1914,6 +2057,10 @@ function CustomerBillMiniBox({
                               ₹{Number(item.price || 0)} ×{" "}
                               {Number(item.qty || 1)}
                             </p>
+
+                            <div className="mt-2">
+                              <ItemStatusPill status={itemStatus} />
+                            </div>
 
                             {item.note && (
                               <p className="mt-1 truncate text-[11px] font-semibold text-amber-700">

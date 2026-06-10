@@ -72,6 +72,53 @@ const getOrderTotal = (order) => {
   );
 };
 
+const cleanStatus = (status) => String(status || "pending").toLowerCase();
+
+const getItemStatus = (item, orderStatus = "pending") => {
+  const batchStatus = cleanStatus(orderStatus);
+
+  // Old orders will not have itemStatus yet, so they safely inherit the batch status.
+  if (!item?.itemStatus) {
+    if (batchStatus === "served") return "served";
+    if (batchStatus === "preparing") return "preparing";
+    return "pending";
+  }
+
+  const status = cleanStatus(item.itemStatus);
+
+  return ["pending", "preparing", "served"].includes(status)
+    ? status
+    : "pending";
+};
+
+const getAutoBatchStatus = (items = [], currentStatus = "pending") => {
+  if (cleanStatus(currentStatus) === "completed") return "completed";
+
+  const safeItems = Array.isArray(items) ? items : [];
+  if (safeItems.length === 0) return cleanStatus(currentStatus);
+
+  const statuses = safeItems.map((item) => getItemStatus(item, currentStatus));
+
+  if (statuses.every((status) => status === "served")) return "served";
+  if (
+    statuses.some((status) => status === "preparing" || status === "served")
+  ) {
+    return "preparing";
+  }
+
+  return "pending";
+};
+
+const getStatusPillClass = (status) => {
+  const clean = cleanStatus(status);
+
+  if (clean === "served")
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (clean === "preparing")
+    return "border-orange-200 bg-orange-50 text-orange-600";
+  return "border-amber-200 bg-amber-50 text-amber-700";
+};
+
 /* ───────────────── STAT CARD ───────────────── */
 
 function StatCard({ icon, value, label, tone }) {
@@ -667,58 +714,120 @@ export default function AdminDashboard() {
       });
   };
 
-  const updateBatchStatus = (id, status) => {
-    if (!id) return;
+  const updateOrderEverywhere = (updated) => {
+    if (!updated || !updated._id) return;
+
+    setOrders((prev) => {
+      const cleanPrev = prev.filter(Boolean);
+
+      const next =
+        String(updated.status || "").toLowerCase() === "completed"
+          ? cleanPrev.filter((o) => o?._id !== updated._id)
+          : cleanPrev.map((o) => (o?._id === updated._id ? updated : o));
+
+      fetchSessionBills(next);
+      return next;
+    });
+  };
+
+  const saveOrderItemsAndStatus = ({ order, items, successMessage }) => {
+    if (!order || !order._id) return;
+
+    const nextStatus = getAutoBatchStatus(items, order.status);
 
     api
-      .put(`/order/${id}`, { status })
+      .put(`/order/${order._id}`, {
+        items,
+        status: nextStatus,
+      })
       .then((res) => {
         const updated = res.data;
 
         if (!updated || !updated._id) return;
 
-        setOrders((prev) => {
-          const cleanPrev = prev.filter(Boolean);
+        updateOrderEverywhere(updated);
 
-          let next;
-
-          if (String(updated.status || "").toLowerCase() === "completed") {
-            next = cleanPrev.filter((o) => o?._id !== updated._id);
-          } else {
-            next = cleanPrev.map((o) => (o?._id === id ? updated : o));
-          }
-
-          fetchSessionBills(next);
-          return next;
-        });
+        if (successMessage) toast.success(successMessage);
       })
       .catch((err) => {
         console.log(err);
+        toast.error(
+          err.response?.data?.message || "Failed to update item status",
+        );
       });
   };
 
-  const serveOrder = (id) => {
+  const updateBatchStatus = (id, status) => {
     if (!id) return;
 
+    const order = orders.find((o) => o?._id === id);
+    const currentItems = Array.isArray(order?.items) ? order.items : [];
+    const nextStatus = cleanStatus(status);
+
+    const newItems = currentItems.map((item) => ({
+      ...item,
+      itemStatus:
+        nextStatus === "served"
+          ? "served"
+          : nextStatus === "preparing"
+            ? "preparing"
+            : getItemStatus(item, order?.status),
+    }));
+
     api
-      .put(`/orders/${id}/serve`)
+      .put(`/order/${id}`, {
+        status: nextStatus,
+        items: newItems,
+      })
       .then((res) => {
         const updated = res.data;
 
         if (!updated || !updated._id) return;
 
-        setOrders((prev) => {
-          const next = prev
-            .filter(Boolean)
-            .map((o) => (o?._id === updated._id ? updated : o));
-
-          fetchSessionBills(next);
-          return next;
-        });
+        updateOrderEverywhere(updated);
       })
       .catch((err) => {
         console.log(err);
+        toast.error(
+          err.response?.data?.message || "Failed to update batch status",
+        );
       });
+  };
+
+  const updateItemStatus = (order, index, itemStatus) => {
+    if (!order || !order._id) return;
+
+    const currentItems = Array.isArray(order.items) ? order.items : [];
+
+    if (!currentItems[index]) return;
+
+    const newItems = currentItems.map((item, itemIndex) =>
+      itemIndex === index
+        ? {
+            ...item,
+            itemStatus,
+          }
+        : {
+            ...item,
+            itemStatus: getItemStatus(item, order.status),
+          },
+    );
+
+    const allServed = newItems.every(
+      (item) => getItemStatus(item, itemStatus) === "served",
+    );
+
+    saveOrderItemsAndStatus({
+      order,
+      items: newItems,
+      successMessage: allServed
+        ? "All items served. Batch marked served ✅"
+        : null,
+    });
+  };
+
+  const serveOrder = (id) => {
+    updateBatchStatus(id, "served");
   };
 
   const deleteBatch = (id) => {
@@ -747,7 +856,10 @@ export default function AdminDashboard() {
     newItems.splice(index, 1);
 
     api
-      .put(`/order/${order._id}`, { items: newItems })
+      .put(`/order/${order._id}`, {
+        items: newItems,
+        status: getAutoBatchStatus(newItems, order.status),
+      })
       .then((res) => {
         const updated = res.data;
 
@@ -782,7 +894,10 @@ export default function AdminDashboard() {
     };
 
     api
-      .put(`/order/${order._id}`, { items: newItems })
+      .put(`/order/${order._id}`, {
+        items: newItems,
+        status: getAutoBatchStatus(newItems, order.status),
+      })
       .then((res) => {
         const updated = res.data;
 
@@ -1608,12 +1723,19 @@ We hope to see you again soon.`;
                           <div className="space-y-3">
                             {(order.items || []).map((item, i) => {
                               const itemImage = getItemImage(item);
+                              const itemStatus = getItemStatus(
+                                item,
+                                order.status,
+                              );
 
                               return (
-                                <div key={`${order._id}-${i}`}>
-                                  <div className="flex flex-col gap-3 rounded-lg sm:flex-row sm:items-center">
+                                <div
+                                  key={`${order._id}-${i}`}
+                                  className="p-3 border border-gray-100 rounded-2xl bg-slate-50/50"
+                                >
+                                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                                     <div className="flex items-center flex-1 min-w-0 gap-3">
-                                      <div className="flex items-center justify-center w-10 h-10 overflow-hidden bg-gray-100 rounded-md shrink-0">
+                                      <div className="flex items-center justify-center overflow-hidden bg-white shadow-sm h-11 w-11 shrink-0 rounded-xl">
                                         {itemImage ? (
                                           <img
                                             src={itemImage}
@@ -1632,14 +1754,34 @@ We hope to see you again soon.`;
                                         )}
                                       </div>
 
-                                      <p className="text-sm font-bold truncate text-slate-700">
-                                        {item.name || "Item"}
-                                      </p>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <p className="text-sm font-black truncate text-slate-800">
+                                            {item.name || "Item"}
+                                          </p>
+
+                                          <span
+                                            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${getStatusPillClass(
+                                              itemStatus,
+                                            )}`}
+                                          >
+                                            {itemStatus}
+                                          </span>
+                                        </div>
+
+                                        {item.note &&
+                                          item.note.trim() !== "" && (
+                                            <p className="mt-1 text-xs italic font-semibold text-amber-500">
+                                              📝 {item.note}
+                                            </p>
+                                          )}
+                                      </div>
                                     </div>
 
-                                    <div className="flex items-center justify-between gap-3 sm:justify-end">
-                                      <div className="flex items-center overflow-hidden bg-white border border-gray-200 rounded-md">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 lg:justify-end">
+                                      <div className="flex items-center overflow-hidden bg-white border border-gray-200 rounded-xl">
                                         <button
+                                          type="button"
                                           onClick={() =>
                                             updateQty(
                                               order,
@@ -1650,7 +1792,7 @@ We hope to see you again soon.`;
                                               ),
                                             )
                                           }
-                                          className="flex items-center justify-center w-8 h-8 text-slate-500 hover:bg-gray-50"
+                                          className="flex items-center justify-center h-9 w-9 text-slate-500 hover:bg-gray-50"
                                         >
                                           <Minus size={13} />
                                         </button>
@@ -1660,6 +1802,7 @@ We hope to see you again soon.`;
                                         </span>
 
                                         <button
+                                          type="button"
                                           onClick={() =>
                                             updateQty(
                                               order,
@@ -1667,13 +1810,13 @@ We hope to see you again soon.`;
                                               Number(item.qty || 1) + 1,
                                             )
                                           }
-                                          className="flex items-center justify-center w-8 h-8 text-slate-500 hover:bg-gray-50"
+                                          className="flex items-center justify-center h-9 w-9 text-slate-500 hover:bg-gray-50"
                                         >
                                           <Plus size={13} />
                                         </button>
                                       </div>
 
-                                      <span className="min-w-[70px] text-right text-sm font-black text-slate-700">
+                                      <span className="min-w-[72px] text-right text-sm font-black text-slate-700">
                                         ₹
                                         {money(
                                           Number(item.price || 0) *
@@ -1681,20 +1824,49 @@ We hope to see you again soon.`;
                                         )}
                                       </span>
 
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            updateItemStatus(
+                                              order,
+                                              i,
+                                              "preparing",
+                                            )
+                                          }
+                                          className={`min-h-[38px] rounded-xl border px-3 py-2 text-xs font-black transition ${
+                                            itemStatus === "preparing"
+                                              ? "border-orange-200 bg-orange-50 text-orange-600"
+                                              : "border-orange-200 bg-white text-orange-600 hover:bg-orange-50"
+                                          }`}
+                                        >
+                                          Preparing
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            updateItemStatus(order, i, "served")
+                                          }
+                                          className={`min-h-[38px] rounded-xl border px-3 py-2 text-xs font-black transition ${
+                                            itemStatus === "served"
+                                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                              : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"
+                                          }`}
+                                        >
+                                          Served
+                                        </button>
+                                      </div>
+
                                       <button
+                                        type="button"
                                         onClick={() => deleteItem(order, i)}
-                                        className="flex items-center justify-center text-red-400 rounded-md h-9 w-9 hover:bg-red-50"
+                                        className="flex items-center justify-center text-red-400 h-9 w-9 rounded-xl hover:bg-red-50"
                                       >
                                         <X size={16} />
                                       </button>
                                     </div>
                                   </div>
-
-                                  {item.note && item.note.trim() !== "" && (
-                                    <p className="mt-1 ml-0 text-xs italic font-medium text-amber-500 sm:ml-12">
-                                      📝 {item.note}
-                                    </p>
-                                  )}
                                 </div>
                               );
                             })}
